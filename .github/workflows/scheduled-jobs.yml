@@ -2,7 +2,7 @@
 # The Edge Functions are service-only: they compare the bearer token with their CRON_SECRET
 # function secret and fail closed. It lives ONLY in GitHub Actions secrets + Supabase secrets.
 #
-# Required repository secrets (Settings -> Secrets and variables -> Actions):
+# Required secrets in the GitHub Environment `development` (Settings -> Environments -> development):
 #   SUPABASE_URL                 e.g. https://<ref>.supabase.co
 #   CRON_SECRET                  same value as the CRON_SECRET function secret (NOT the service_role key)
 #
@@ -33,6 +33,7 @@ jobs:
   process-deletion:
     if: ${{ github.event_name != 'schedule' || github.event.schedule == '17 */6 * * *' }}
     runs-on: ubuntu-latest
+    environment: development # secrets live in the `development` environment, not repo-level
     timeout-minutes: 5
     steps:
       - name: Skip when not selected
@@ -66,6 +67,7 @@ jobs:
   retention-sweep:
     if: ${{ github.event_name != 'schedule' || github.event.schedule == '43 20 * * *' }}
     runs-on: ubuntu-latest
+    environment: development # secrets live in the `development` environment, not repo-level
     timeout-minutes: 5
     steps:
       - name: Skip when not selected

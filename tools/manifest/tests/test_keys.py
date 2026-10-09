@@ -34,13 +34,37 @@ def code_of(fn: object, *args: object) -> ErrorCode:
     return ei.value.code
 
 
+@pytest.fixture
+def fake_monorepo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """backend/ nested in a monorepo (parent has CLAUDE.md + app/); independent of the checkout."""
+    mono = tmp_path / "mono"
+    backend = mono / "backend"
+    (backend / "tools" / "manifest").mkdir(parents=True)
+    (mono / "app").mkdir()
+    (mono / "CLAUDE.md").write_text("x", encoding="utf-8")
+    monkeypatch.setattr(keys_mod, "BACKEND_ROOT", backend)
+    return mono
+
+
 def test_repo_root_is_the_dentisai_repo() -> None:
-    assert (BACKEND_ROOT / "CLAUDE.md").is_file()
     assert (BACKEND_ROOT / "tools" / "manifest").is_dir()
     roots = protected_roots()
     assert roots[0] == BACKEND_ROOT
-    # backend/ currently lives inside the monorepo (CLAUDE.md / app/ at the parent)
-    assert roots[1] == BACKEND_ROOT.parent
+    # the parent is protected only when it looks like the monorepo (standalone repo: just backend/)
+    parent_is_monorepo = any(
+        (BACKEND_ROOT.parent / m).exists() for m in ("CLAUDE.md", ".git", "app")
+    )
+    assert roots[1:] == ([BACKEND_ROOT.parent] if parent_is_monorepo else [])
+
+
+def test_protected_roots_standalone(tmp_path: Path) -> None:
+    backend = tmp_path / "standalone"
+    backend.mkdir()
+    assert protected_roots(backend) == [backend]
+
+
+def test_protected_roots_in_monorepo(fake_monorepo: Path) -> None:
+    assert protected_roots() == [fake_monorepo / "backend", fake_monorepo]
 
 
 def test_key_id_is_first_8_bytes_of_sha256() -> None:
@@ -127,8 +151,6 @@ def test_load_missing_and_oversized(tmp_path: Path) -> None:
 def test_location_problems(tmp_path: Path) -> None:
     assert location_problems(BACKEND_ROOT / "tools" / "x.pem")
     assert location_problems(BACKEND_ROOT)
-    assert location_problems(BACKEND_ROOT.parent / "app" / "k.pem")  # monorepo, outside backend/
-    assert location_problems(BACKEND_ROOT.parent / "k.pem")
     assert location_problems(tmp_path / "k.pem") == []
     (tmp_path / "proj" / ".git").mkdir(parents=True)
     probs = location_problems(tmp_path / "proj" / "sub" / "k.pem")
@@ -197,8 +219,13 @@ def test_b64decode_canonical(text: str, match: str) -> None:
         b64decode_canonical(text, 32, "k")
 
 
-def test_keygen_refuses_in_monorepo_outside_backend() -> None:
-    target = BACKEND_ROOT.parent / "docs" / "SHOULD_NOT_EXIST_key.pem"
+def test_location_problems_monorepo_outside_backend(fake_monorepo: Path) -> None:
+    assert location_problems(fake_monorepo / "app" / "k.pem")  # monorepo, outside backend/
+    assert location_problems(fake_monorepo / "k.pem")
+
+
+def test_keygen_refuses_in_monorepo_outside_backend(fake_monorepo: Path) -> None:
+    target = fake_monorepo / "docs" / "SHOULD_NOT_EXIST_key.pem"
     assert code_of(keygen, target, None) is ErrorCode.E_REFUSED
     assert not target.exists()
 
