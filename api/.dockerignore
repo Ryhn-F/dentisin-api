@@ -1,0 +1,11 @@
+# Only pyproject.toml, uv.lock and app/ are needed in the image.
+*
+!pyproject.toml
+!uv.lock
+!app/
+app/**/__pycache__
+app/**/*.pyc
+# never ship secrets even if someone drops them into app/
+app/**/.env*
+app/**/*.pem
+app/**/*.key

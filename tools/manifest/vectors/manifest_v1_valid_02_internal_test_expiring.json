@@ -1,0 +1,195 @@
+{
+  "test_only": true,
+  "warning": "TEST-ONLY KEY. The seed is derived from a public label. Never embed this public key or key_id in a production app; production verifiers reject these key_ids (E_KEY_TEST_ONLY).",
+  "key_derivation": "private seed = SHA-256(ASCII label); Ed25519 per RFC 8032",
+  "signing_key": {
+    "label": "DentisAI manifest test vector key 1 - TEST ONLY - NEVER TRUST IN PRODUCTION",
+    "private_seed_hex": "65d561e0d9153e24d8cd28c9898cc23c440a7357d33435cbfab9307341f36cd0",
+    "public_key_hex": "5fd227c20e83f673b04198b095e6e915eb9219fef2d34dc917851b02b79cb6c1",
+    "public_key_b64": "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+    "key_id": "965ba6b27d5ca7a7"
+  },
+  "other_key": {
+    "label": "DentisAI manifest test vector key 2 - TEST ONLY - NEVER TRUST IN PRODUCTION",
+    "public_key_b64": "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE=",
+    "key_id": "e12ef5f599e59801"
+  },
+  "description": "internal-test channel with expires_at and a PLACEHOLDER license (accepted only outside production).",
+  "manifest_object_unsorted": {
+    "schema_version": 1,
+    "signer_key_id": "965ba6b27d5ca7a7",
+    "sequence": 7,
+    "model": {
+      "version": "0.2.0",
+      "url": "https://test-project-ref.supabase.co/storage/v1/object/public/manifests/model/0.2.0/model.tflite",
+      "sha256": "57e2e56de2d1fadb1b6525d7decb548d611439d2989a1de94c3e5a1ede434158",
+      "size_bytes": 4812347,
+      "labels_url": "https://test-project-ref.supabase.co/storage/v1/object/public/manifests/model/0.2.0/labels.json",
+      "labels_sha256": "de73b4a30c54bb6a1589e4689165b7f96a67e0e09ea9d60dbd51cf3e4a7c8269",
+      "labels_size_bytes": 1236,
+      "license": "LicenseRef-PLACEHOLDER"
+    },
+    "rules": {
+      "version": "2026.10.2",
+      "url": "https://test-project-ref.supabase.co/storage/v1/object/public/manifests/rules/2026.10.2/rules.json",
+      "sha256": "f9061db05ee19656437a9bd993239bda63716b5b9ffb806bae3b68dd282e1ff0",
+      "size_bytes": 8002
+    },
+    "recommender": {
+      "version": "1.2.0",
+      "url": "https://test-project-ref.supabase.co/storage/v1/object/public/manifests/recommender/1.2.0/recommender.json",
+      "sha256": "af4f7746049e6e6f24d04c66704a69364f176ef2d93a04985bd30d2c6582979d",
+      "size_bytes": 3002
+    },
+    "created_at": "2026-10-08T12:30:45Z",
+    "min_app_version": "1.0.0",
+    "channel": "internal-test",
+    "expires_at": "2026-11-08T12:30:45Z"
+  },
+  "manifest_json": "{\"channel\":\"internal-test\",\"created_at\":\"2026-10-08T12:30:45Z\",\"expires_at\":\"2026-11-08T12:30:45Z\",\"min_app_version\":\"1.0.0\",\"model\":{\"labels_sha256\":\"de73b4a30c54bb6a1589e4689165b7f96a67e0e09ea9d60dbd51cf3e4a7c8269\",\"labels_size_bytes\":1236,\"labels_url\":\"https://test-project-ref.supabase.co/storage/v1/object/public/manifests/model/0.2.0/labels.json\",\"license\":\"LicenseRef-PLACEHOLDER\",\"sha256\":\"57e2e56de2d1fadb1b6525d7decb548d611439d2989a1de94c3e5a1ede434158\",\"size_bytes\":4812347,\"url\":\"https://test-project-ref.supabase.co/storage/v1/object/public/manifests/model/0.2.0/model.tflite\",\"version\":\"0.2.0\"},\"recommender\":{\"sha256\":\"af4f7746049e6e6f24d04c66704a69364f176ef2d93a04985bd30d2c6582979d\",\"size_bytes\":3002,\"url\":\"https://test-project-ref.supabase.co/storage/v1/object/public/manifests/recommender/1.2.0/recommender.json\",\"version\":\"1.2.0\"},\"rules\":{\"sha256\":\"f9061db05ee19656437a9bd993239bda63716b5b9ffb806bae3b68dd282e1ff0\",\"size_bytes\":8002,\"url\":\"https://test-project-ref.supabase.co/storage/v1/object/public/manifests/rules/2026.10.2/rules.json\",\"version\":\"2026.10.2\"},\"schema_version\":1,\"sequence\":7,\"signer_key_id\":\"965ba6b27d5ca7a7\"}",
+  "canonical_hex": "7b226368616e6e656c223a22696e7465726e616c2d74657374222c22637265617465645f6174223a22323032362d31302d30385431323a33303a34355a222c22657870697265735f6174223a22323032362d31312d30385431323a33303a34355a222c226d696e5f6170705f76657273696f6e223a22312e302e30222c226d6f64656c223a7b226c6162656c735f736861323536223a2264653733623461333063353462623661313538396534363839313635623766393661363765306530396561396436306462643531636633653461376338323639222c226c6162656c735f73697a655f6279746573223a313233362c226c6162656c735f75726c223a2268747470733a2f2f746573742d70726f6a6563742d7265662e73757061626173652e636f2f73746f726167652f76312f6f626a6563742f7075626c69632f6d616e6966657374732f6d6f64656c2f302e322e302f6c6162656c732e6a736f6e222c226c6963656e7365223a224c6963656e73655265662d504c414345484f4c444552222c22736861323536223a2235376532653536646532643166616462316236353235643764656362353438643631313433396432393839613164653934633365356131656465343334313538222c2273697a655f6279746573223a343831323334372c2275726c223a2268747470733a2f2f746573742d70726f6a6563742d7265662e73757061626173652e636f2f73746f726167652f76312f6f626a6563742f7075626c69632f6d616e6966657374732f6d6f64656c2f302e322e302f6d6f64656c2e74666c697465222c2276657273696f6e223a22302e322e30227d2c227265636f6d6d656e646572223a7b22736861323536223a2261663466373734363034396536653666323464303463363637303461363933363466313736656632643933613034393835626433306432633635383239373964222c2273697a655f6279746573223a333030322c2275726c223a2268747470733a2f2f746573742d70726f6a6563742d7265662e73757061626173652e636f2f73746f726167652f76312f6f626a6563742f7075626c69632f6d616e6966657374732f7265636f6d6d656e6465722f312e322e302f7265636f6d6d656e6465722e6a736f6e222c2276657273696f6e223a22312e322e30227d2c2272756c6573223a7b22736861323536223a2266393036316462303565653139363536343337613962643939333233396264613633373136623562396666623830366261653362363864643238326531666630222c2273697a655f6279746573223a383030322c2275726c223a2268747470733a2f2f746573742d70726f6a6563742d7265662e73757061626173652e636f2f73746f726167652f76312f6f626a6563742f7075626c69632f6d616e6966657374732f72756c65732f323032362e31302e322f72756c65732e6a736f6e222c2276657273696f6e223a22323032362e31302e32227d2c22736368656d615f76657273696f6e223a312c2273657175656e6365223a372c227369676e65725f6b65795f6964223a2239363562613662323764356361376137227d",
+  "canonical_sha256": "1a700a781a3440a769858a5d0caa1d5c1efebe3bd2de23c08f7c5716b6cf3538",
+  "manifest_sig": "{\"alg\":\"Ed25519\",\"key_id\":\"965ba6b27d5ca7a7\",\"sig\":\"db6lrdRsKsdPpyOH9QWM6mnHDn2uVHqfPJ/sAhabvqkwpRP11alTPATdpfjZrYDwCERC1jR5LyoezLWRNg0MDQ==\"}",
+  "signature_hex": "75bea5add46c2ac74fa72387f5058cea69c70e7dae547a9f3c9fec02169bbea930a513f5d5a9533c04dda5f8d9ad80f0084442d634792f2a1eccb591360d0c0d",
+  "cases": [
+    {
+      "name": "default policy",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "expect": "OK"
+    },
+    {
+      "name": "trusted keys list does not contain the signer",
+      "trusted_public_keys_b64": [
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "expect": "E_KEY_UNKNOWN"
+    },
+    {
+      "name": "signer key revoked",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "revoked_key_ids": [
+        "965ba6b27d5ca7a7"
+      ],
+      "expect": "E_KEY_REVOKED"
+    },
+    {
+      "name": "production policy rejects TEST key",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "production": true,
+      "expect": "E_KEY_TEST_ONLY"
+    },
+    {
+      "name": "rollback: last_sequence = sequence + 1",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "last_sequence": 8,
+      "expect": "E_ROLLBACK"
+    },
+    {
+      "name": "same sequence, same bytes (idempotent re-check)",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "last_sequence": 7,
+      "last_manifest_sha256": "1a700a781a3440a769858a5d0caa1d5c1efebe3bd2de23c08f7c5716b6cf3538",
+      "expect": "OK"
+    },
+    {
+      "name": "same sequence, different bytes (equivocation)",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "last_sequence": 7,
+      "last_manifest_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "expect": "E_ROLLBACK"
+    },
+    {
+      "name": "older sequence seen before",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "last_sequence": 6,
+      "expect": "OK"
+    },
+    {
+      "name": "schema downgrade: last_schema_version = 2",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "last_schema_version": 2,
+      "expect": "E_SCHEMA_DOWNGRADE"
+    },
+    {
+      "name": "app exactly at min_app_version",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "app_version": "1.0.0",
+      "expect": "OK"
+    },
+    {
+      "name": "app older than min_app_version (numeric, not string, compare)",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "app_version": "0.99.99",
+      "expect": "E_APP_TOO_OLD"
+    },
+    {
+      "name": "app newer by minor (numeric, not string, compare)",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-10-08T13:30:45Z",
+      "app_version": "1.8.0",
+      "expect": "OK"
+    },
+    {
+      "name": "one second before expires_at",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-11-08T12:30:44Z",
+      "expect": "OK"
+    },
+    {
+      "name": "now == expires_at is expired",
+      "trusted_public_keys_b64": [
+        "X9Inwg6D9nOwQZiwlebpFeuSGf7y003JF4UbArectsE=",
+        "ZklsD0fRdn7mt4uxf3DK1GpftsKOOnCMgUruHnj1SwE="
+      ],
+      "now": "2026-11-08T12:30:45Z",
+      "expect": "E_EXPIRED"
+    }
+  ]
+}

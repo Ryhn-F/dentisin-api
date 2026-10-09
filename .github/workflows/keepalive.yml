@@ -1,0 +1,43 @@
+# Keep-alive for the Supabase Free project (pauses after ~1 week of inactivity, ADR 008).
+# Runs every 3rd day of the month (1,4,7,...,31): the longest gap is 3 days.
+#
+# LAYOUT: paths below are relative to BACKEND_ROOT. If backend/ is its own repository, keep
+# BACKEND_DIR empty. If this file is copied to the root `.github/workflows/` of a monorepo
+# (GitHub only reads the root .github), set BACKEND_DIR to "backend/" (trailing slash).
+#
+# Repository secrets (Settings > Secrets and variables > Actions):
+#   KEEPALIVE_URL       e.g. https://<project-ref>.supabase.co/rest/v1/rpc/keepalive
+#   SUPABASE_ANON_KEY   the ANON / publishable key ONLY. Never the service_role / secret key
+#                       (ping.py refuses privileged keys and the secrets-scan CI job flags them).
+# Details and the [PERLU VERIFIKASI] notes: tools/README.md (section "keepalive").
+name: keepalive
+
+on:
+  schedule:
+    - cron: "17 3 */3 * *" # 03:17 UTC (10:17 WIB), off the busy :00 mark
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+env:
+  BACKEND_DIR: "" # "" standalone repo | "backend/" monorepo
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: ${{ env.BACKEND_DIR }}tools/keepalive
+          persist-credentials: false
+      - name: Ping Supabase (HTTP 2xx = success)
+        env:
+          KEEPALIVE_URL: ${{ secrets.KEEPALIVE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: python3 "${BACKEND_DIR}tools/keepalive/ping.py"

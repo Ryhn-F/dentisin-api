@@ -1,0 +1,35 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.age
+manifest_signing*.key
+# supabase local
+supabase/.branches/
+supabase/.temp/
+# python
+__pycache__/
+.venv/
+.pytest_cache/
+.hypothesis/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+# ml (JANGAN commit dataset / bobot terlatih tak berizin / foto)
+ml/data/raw/
+ml/data/processed/
+ml/runs/
+*.pt
+*.ckpt
+*.onnx
+# backups & exports
+*.sql.age
+*.dump
+dataset_export/
+# node
+node_modules/
+.claude
+claude.md

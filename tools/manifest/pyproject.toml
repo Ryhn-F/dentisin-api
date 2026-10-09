@@ -1,0 +1,45 @@
+[project]
+name = "dentisai-manifest"
+version = "0.1.0"
+description = "Ed25519 signed-manifest tooling for DentisAI model/rules distribution (FR-101)"
+requires-python = ">=3.12"
+# cryptography: Apache-2.0 OR BSD-3-Clause (permissive, ADR 008 compatible)
+dependencies = ["cryptography>=43"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6", "mypy>=1.11"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["src/dentisai_manifest"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "PL"]
+# S101: asserts are only used for type narrowing of already-validated data.
+# UP040: keep TypeAlias (PEP 613) for wider tooling support.
+ignore = ["PLR0913", "PLR2004", "PLR0911", "PLR0912", "PLR0915", "S101", "UP040"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "S603", "PLC0415", "PLR0917"]
+
+[tool.mypy]
+strict = true
+mypy_path = "src"
+files = ["src", "tests"]

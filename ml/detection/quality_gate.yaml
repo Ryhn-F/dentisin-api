@@ -1,0 +1,28 @@
+# Photo quality gate thresholds (FR-21, PRD A2). Read by quality_gate.py and ported to the app.
+# ALL values are PLACEHOLDER engineering guesses: FR-21 requires a labelled set of >= 200 photos
+# (diagnostic / not diagnostic, reason) before any threshold is set. Release builds must refuse
+# status: PLACEHOLDER (same rule as triage/rules.yaml params).
+version: 1
+status: PLACEHOLDER
+reviewed_by: null
+reviewed_at: null
+source: null
+working_size:
+  max_side: 320            # image is block-averaged by an integer factor so max(H, W) <= max_side
+blur:
+  min_laplacian_var: 60.0  # PLACEHOLDER; variance of 3x3 Laplacian on 0-255 luma (valid region)
+brightness:
+  min_mean: 50.0           # PLACEHOLDER; mean luma 0-255
+  max_mean: 220.0          # PLACEHOLDER
+  dark_level: 16           # pixel luma <= dark_level counts as under-exposed
+  bright_level: 245        # pixel luma >= bright_level counts as over-exposed (flashlight glare)
+  max_dark_fraction: 0.5   # PLACEHOLDER
+  max_bright_fraction: 0.25  # PLACEHOLDER
+teeth_visible:             # HEURISTIC (see quality_gate.py) -- replaceable by a learned estimator
+  roi_fraction: 0.6        # central ROI = middle 60% of width and height
+  tooth_min_value: 150     # max(R,G,B) >= this
+  tooth_max_saturation_pct: 35  # (max-min)/max <= 35%
+  tissue_min_red_margin: 25     # R - max(G, B) >= this -> lips/gums/tongue
+  min_tooth_fraction: 0.06   # PLACEHOLDER
+  max_tooth_fraction: 0.85   # PLACEHOLDER (a white wall/paper is not a mouth)
+  min_tissue_fraction: 0.03  # PLACEHOLDER

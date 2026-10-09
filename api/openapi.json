@@ -1,0 +1,1260 @@
+{
+  "components": {
+    "schemas": {
+      "Box": {
+        "additionalProperties": false,
+        "properties": {
+          "cls": {
+            "enum": [
+              "caries_cavitated",
+              "caries_noncavitated"
+            ],
+            "title": "Cls",
+            "type": "string"
+          },
+          "x1": {
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "X1",
+            "type": "number"
+          },
+          "x2": {
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "X2",
+            "type": "number"
+          },
+          "y1": {
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "Y1",
+            "type": "number"
+          },
+          "y2": {
+            "maximum": 20000.0,
+            "minimum": 0.0,
+            "title": "Y2",
+            "type": "number"
+          }
+        },
+        "required": [
+          "cls",
+          "x1",
+          "y1",
+          "x2",
+          "y2"
+        ],
+        "title": "Box",
+        "type": "object"
+      },
+      "DetectionOut": {
+        "additionalProperties": false,
+        "properties": {
+          "cls": {
+            "enum": [
+              "caries_cavitated",
+              "caries_noncavitated"
+            ],
+            "title": "Cls",
+            "type": "string"
+          },
+          "score": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score",
+            "type": "number"
+          },
+          "x1": {
+            "title": "X1",
+            "type": "number"
+          },
+          "x2": {
+            "title": "X2",
+            "type": "number"
+          },
+          "y1": {
+            "title": "Y1",
+            "type": "number"
+          },
+          "y2": {
+            "title": "Y2",
+            "type": "number"
+          }
+        },
+        "required": [
+          "cls",
+          "x1",
+          "y1",
+          "x2",
+          "y2",
+          "score"
+        ],
+        "title": "DetectionOut",
+        "type": "object"
+      },
+      "EnqueueRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "image_upload_id": {
+            "description": "public.image_upload.id of a consented dataset photo. Never a photo or path.",
+            "format": "uuid",
+            "title": "Image Upload Id",
+            "type": "string"
+          },
+          "required_reviews": {
+            "default": 2,
+            "description": "Independent dentist reviews needed before the item is complete (>= 2 recommended for inter-rater agreement).",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Required Reviews",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "image_upload_id"
+        ],
+        "title": "EnqueueRequest",
+        "type": "object"
+      },
+      "EnqueueResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "created": {
+            "description": "false when the photo was already queued (idempotent).",
+            "title": "Created",
+            "type": "boolean"
+          },
+          "item": {
+            "$ref": "#/components/schemas/QueueItemOut"
+          }
+        },
+        "required": [
+          "item",
+          "created"
+        ],
+        "title": "EnqueueResponse",
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Details"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "request_id"
+        ],
+        "title": "ErrorDetail",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "InferRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "image_upload_id": {
+            "description": "public.image_upload.id of a consented dataset photo (storage reference). Raw photos are never accepted in the body.",
+            "format": "uuid",
+            "title": "Image Upload Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_upload_id"
+        ],
+        "title": "InferRequest",
+        "type": "object"
+      },
+      "InferResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "detections": {
+            "items": {
+              "$ref": "#/components/schemas/DetectionOut"
+            },
+            "title": "Detections",
+            "type": "array"
+          },
+          "detector": {
+            "title": "Detector",
+            "type": "string"
+          },
+          "disclaimer": {
+            "default": "Hasil ini hanya indikasi skrining, bukan diagnosis. Perlu diperiksa oleh dokter gigi atau fasilitas kesehatan.",
+            "title": "Disclaimer",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "purpose": {
+            "const": "qa_second_opinion",
+            "default": "qa_second_opinion",
+            "title": "Purpose",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detector",
+          "model_version",
+          "detections"
+        ],
+        "title": "InferResponse",
+        "type": "object"
+      },
+      "ModelOut": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "enum": [
+              "production",
+              "internal-test"
+            ],
+            "title": "Channel",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "manifest_created_at": {
+            "format": "date-time",
+            "title": "Manifest Created At",
+            "type": "string"
+          },
+          "manifest_sha256": {
+            "title": "Manifest Sha256",
+            "type": "string"
+          },
+          "min_app_version": {
+            "title": "Min App Version",
+            "type": "string"
+          },
+          "model_license": {
+            "title": "Model License",
+            "type": "string"
+          },
+          "model_sha256": {
+            "title": "Model Sha256",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "recommender_version": {
+            "title": "Recommender Version",
+            "type": "string"
+          },
+          "registered_at": {
+            "format": "date-time",
+            "title": "Registered At",
+            "type": "string"
+          },
+          "rules_version": {
+            "title": "Rules Version",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "signer_key_id": {
+            "title": "Signer Key Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "manifest_sha256",
+          "sequence",
+          "schema_version",
+          "channel",
+          "signer_key_id",
+          "min_app_version",
+          "model_version",
+          "model_sha256",
+          "model_license",
+          "rules_version",
+          "recommender_version",
+          "manifest_created_at",
+          "expires_at",
+          "registered_at"
+        ],
+        "title": "ModelOut",
+        "type": "object"
+      },
+      "ModelRegisterRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "manifest_json": {
+            "description": "The EXACT bytes of manifest.json (DCJ-1 canonical, printable ASCII). All registry metadata is derived from it after verification; nothing else is trusted.",
+            "maxLength": 16384,
+            "minLength": 2,
+            "title": "Manifest Json",
+            "type": "string"
+          },
+          "manifest_sig": {
+            "description": "The exact manifest.sig: {\"alg\":\"Ed25519\",\"key_id\":...,\"sig\":...}. The server only verifies; it never signs.",
+            "maxLength": 512,
+            "minLength": 2,
+            "title": "Manifest Sig",
+            "type": "string"
+          }
+        },
+        "required": [
+          "manifest_json",
+          "manifest_sig"
+        ],
+        "title": "ModelRegisterRequest",
+        "type": "object"
+      },
+      "ModelRegisterResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "created": {
+            "description": "false when this exact manifest was already registered.",
+            "title": "Created",
+            "type": "boolean"
+          },
+          "model": {
+            "$ref": "#/components/schemas/ModelOut"
+          }
+        },
+        "required": [
+          "model",
+          "created"
+        ],
+        "title": "ModelRegisterResponse",
+        "type": "object"
+      },
+      "QueueItemOut": {
+        "additionalProperties": false,
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "enqueued_at": {
+            "format": "date-time",
+            "title": "Enqueued At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "image_upload_id": {
+            "format": "uuid",
+            "title": "Image Upload Id",
+            "type": "string"
+          },
+          "required_reviews": {
+            "title": "Required Reviews",
+            "type": "integer"
+          },
+          "review_count": {
+            "title": "Review Count",
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "completed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "image_upload_id",
+          "status",
+          "required_reviews",
+          "review_count",
+          "enqueued_at"
+        ],
+        "title": "QueueItemOut",
+        "type": "object"
+      },
+      "QueueListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/QueueItemOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque cursor for the next page; null on the last page.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "QueueListResponse",
+        "type": "object"
+      },
+      "ReviewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "boxes": {
+            "items": {
+              "$ref": "#/components/schemas/Box"
+            },
+            "maxItems": 100,
+            "title": "Boxes",
+            "type": "array"
+          },
+          "decision": {
+            "enum": [
+              "annotated",
+              "no_finding",
+              "ungradable"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "grader_pseudonym": {
+            "description": "Pseudonymous grader id (e.g. drg-a1). Never a real name.",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{1,31}$",
+            "title": "Grader Pseudonym",
+            "type": "string"
+          },
+          "image_height": {
+            "maximum": 20000.0,
+            "minimum": 1.0,
+            "title": "Image Height",
+            "type": "integer"
+          },
+          "image_width": {
+            "maximum": 20000.0,
+            "minimum": 1.0,
+            "title": "Image Width",
+            "type": "integer"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          }
+        },
+        "required": [
+          "grader_pseudonym",
+          "decision",
+          "image_width",
+          "image_height"
+        ],
+        "title": "ReviewRequest",
+        "type": "object"
+      },
+      "ReviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "queue_id": {
+            "format": "uuid",
+            "title": "Queue Id",
+            "type": "string"
+          },
+          "queue_status": {
+            "enum": [
+              "pending",
+              "completed",
+              "cancelled"
+            ],
+            "title": "Queue Status",
+            "type": "string"
+          },
+          "required_reviews": {
+            "title": "Required Reviews",
+            "type": "integer"
+          },
+          "review_count": {
+            "title": "Review Count",
+            "type": "integer"
+          },
+          "review_id": {
+            "format": "uuid",
+            "title": "Review Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "queue_id",
+          "queue_status",
+          "review_count",
+          "required_reviews"
+        ],
+        "title": "ReviewResponse",
+        "type": "object"
+      },
+      "StatusResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "StatusResponse",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "description": "Supabase Auth access token (JWT).",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "**DentisAI ML/AI API.** Hanya untuk ML & integrasi AI (ADR 005/009):\nantrean review dokter gigi atas foto berizin, registri versi model/aturan\nbertanda tangan, dan inferensi awan opsional untuk QA. **Tidak ada CRUD dan\ntidak ada auth sendiri** \u2014 keduanya di Supabase. Semua keluaran deteksi adalah\n*indikasi skrining*, bukan diagnosis.\n",
+    "title": "DentisAI ML/AI API",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Liveness (no data, no I/O)",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/readyz": {
+      "get": {
+        "operationId": "readyz_readyz_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Readiness: configuration complete and Supabase reachable",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/v1/ml/infer": {
+      "post": {
+        "operationId": "infer_v1_ml_infer_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InferRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InferResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "OPTIONAL QA/second-opinion inference (404 unless ENABLE_CLOUD_INFER=true)",
+        "tags": [
+          "inference"
+        ]
+      }
+    },
+    "/v1/ml/models": {
+      "post": {
+        "operationId": "register_model_v1_ml_models_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ModelRegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRegisterResponse"
+                }
+              }
+            },
+            "description": "Already registered (idempotent)."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRegisterResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Register a model/rules version from a signed manifest (admin; verify-only)",
+        "tags": [
+          "model-registry"
+        ]
+      }
+    },
+    "/v1/ml/review-queue": {
+      "get": {
+        "operationId": "list_pending_v1_ml_review_queue_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueueListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "List pending review items (reviewer/admin), keyset-paginated",
+        "tags": [
+          "review-queue"
+        ]
+      },
+      "post": {
+        "operationId": "enqueue_v1_ml_review_queue_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnqueueRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnqueueResponse"
+                }
+              }
+            },
+            "description": "Already queued (idempotent)."
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnqueueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Enqueue a consented dataset photo for dentist review (admin)",
+        "tags": [
+          "review-queue"
+        ]
+      }
+    },
+    "/v1/ml/review-queue/{queue_id}/review": {
+      "post": {
+        "operationId": "submit_review_v1_ml_review_queue__queue_id__review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "queue_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Queue Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Submit one dentist review (boxes in canonical format) for a queue item",
+        "tags": [
+          "review-queue"
+        ]
+      }
+    }
+  }
+}

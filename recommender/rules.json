@@ -1,0 +1,445 @@
+{
+  "rules_version": "0.1.0-draft",
+  "scope": "fluoride_only_v1",
+  "language": "id",
+  "readme": "Tabel aturan rekomendasi pasta gigi v1 (fluoride saja). SEMUA nilai berstatus needs_review atau draft: belum ada drg yang mengesahkan. Jangan dipakai sebagai klaim klinis sebelum reviewed_by dan reviewed_at terisi. Tidak ada nama merek di berkas ini (merek hanya di products.json).",
+  "valid_age_months": {
+    "min": 0,
+    "max": 216,
+    "status": "needs_review",
+    "rationale": "Rentang usia wajar untuk pengguna aplikasi (0-18 th). Di luar rentang = galat usia tidak valid.",
+    "source": "Asumsi tim teknis (PRD tidak menentukan); tidak ada sumber klinis [PERLU VERIFIKASI oleh drg]",
+    "reviewed_by": null,
+    "reviewed_at": null
+  },
+  "regulatory_ceiling_ppm": {
+    "value": 1500,
+    "status": "needs_review",
+    "rationale": "Plafon 0,15% (= 1500 ppm) dari Permenkes 445/1998; rekomendasi tidak pernah melewati plafon. Status berlaku belum terverifikasi.",
+    "source": "Permenkes 445/1998: batas fluoride kosmetik/higiene mulut 0,15% (= 1500 ppm) via jurnal hukum (sumber sekunder); apakah masih berlaku di bawah Peraturan BPOM 23/2019 jo. 17/2022 [PERLU VERIFIKASI] (docs/research/03_ai_components.md §3.3)",
+    "reviewed_by": null,
+    "reviewed_at": null
+  },
+  "min_products": 2,
+  "age_bands": [
+    {
+      "id": "pre_eruption",
+      "label": "Belum ada gigi (0-5 bulan)",
+      "age_months": {
+        "min": 0,
+        "max": 5,
+        "status": "needs_review",
+        "rationale": "Batas 6 bulan = perkiraan gigi pertama tumbuh; tidak ada di sumber riset [PERLU VERIFIKASI].",
+        "source": "Asumsi tim teknis (PRD tidak menentukan); tidak ada sumber klinis [PERLU VERIFIKASI oleh drg]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "fluoride_ppm": {
+        "candidates": [],
+        "decision_pending": false,
+        "selected_candidate_id": null,
+        "status": "needs_review",
+        "rationale": "Tidak ada kadar fluoride yang disarankan sebelum gigi tumbuh; ini asumsi dan harus disahkan drg (fluoride < 6 th menurut PDGI/IDAI masih terbuka).",
+        "source": "Walsh dkk. 2019, Cochrane CD007868 (hanya abstrak; efek naik dengan konsentrasi, bermakna pada >= 1000 ppm) https://cochranelibrary.com/cdsr/doi/10.1002/14651858.CD007868.pub3/information; docs/research/03_ai_components.md §3.3; SNI 16-4767-1998 (pasta gigi anak: fluor bebas maks. 500-1000 ppm, tanpa sukrosa) via sumber sekunder, tampak usang (docs/research/03_ai_components.md §3.3) [PERLU VERIFIKASI teks resmi dan apakah masih berlaku]; Permenkes 445/1998: batas fluoride kosmetik/higiene mulut 0,15% (= 1500 ppm) via jurnal hukum (sumber sekunder); apakah masih berlaku di bawah Peraturan BPOM 23/2019 jo. 17/2022 [PERLU VERIFIKASI] (docs/research/03_ai_components.md §3.3)",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "amount": {
+        "code": "none_until_first_tooth",
+        "message_id": "no_toothpaste_before_first_tooth",
+        "status": "needs_review",
+        "rationale": "Belum perlu pasta gigi sebelum gigi pertama tumbuh; gusi dibersihkan dengan kain lembap. Tidak ada di sumber riset [PERLU VERIFIKASI].",
+        "source": "AAPD/AAP via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 3 th sebutir beras/smear, 3-6 th sebesar kacang polong [PERLU VERIFIKASI ke dokumen asli]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "supervision": {
+        "required": true,
+        "until_age_months": 84,
+        "message_id": "supervise_until_7y",
+        "status": "needs_review",
+        "rationale": "Awasi sikat gigi sampai usia >= 7 tahun (84 bulan). Batas 84 bulan harus disahkan drg.",
+        "source": "EAPD via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 1000 ppm 'dapat dipertimbangkan' tetapi bukti terbatas; awasi sikat gigi sampai >= 7 th [PERLU VERIFIKASI ke dokumen asli]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "note_ids": [
+        "no_toothpaste_before_first_tooth"
+      ],
+      "generic_message_id": "no_toothpaste_before_first_tooth"
+    },
+    {
+      "id": "toddler_6_35m",
+      "label": "Gigi susu awal (6 bulan sampai kurang dari 3 tahun)",
+      "age_months": {
+        "min": 6,
+        "max": 35,
+        "status": "needs_review",
+        "rationale": "Batas usia < 3 th mengikuti ringkasan AAPD/AAP; harus disahkan drg.",
+        "source": "Asumsi tim teknis (PRD tidak menentukan); tidak ada sumber klinis [PERLU VERIFIKASI oleh drg]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "fluoride_ppm": {
+        "candidates": [
+          {
+            "id": "guideline_ge1000",
+            "label": "Anjuran pedoman: 1000-1450 ppm",
+            "ppm_min": 1000,
+            "ppm_max": 1450,
+            "rationale": "Anjuran fluoride >= 1000 ppm (pilihan 1000-1450) untuk risiko karies pada semua usia; efek naik dengan konsentrasi.",
+            "source": "Walsh dkk. 2019, Cochrane CD007868 (hanya abstrak; efek naik dengan konsentrasi, bermakna pada >= 1000 ppm) https://cochranelibrary.com/cdsr/doi/10.1002/14651858.CD007868.pub3/information; docs/research/03_ai_components.md §3.3; EAPD via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 1000 ppm 'dapat dipertimbangkan' tetapi bukti terbatas; awasi sikat gigi sampai >= 7 th [PERLU VERIFIKASI ke dokumen asli]"
+          },
+          {
+            "id": "sni_legacy_500_1000",
+            "label": "SNI lama untuk pasta gigi anak: 500-1000 ppm",
+            "ppm_min": 500,
+            "ppm_max": 1000,
+            "rationale": "Standar lama membatasi fluor bebas 500-1000 ppm untuk pasta gigi anak; bertentangan dengan anjuran >= 1000 ppm, dan produk anak 500 ppm sangat umum di pasar.",
+            "source": "SNI 16-4767-1998 (pasta gigi anak: fluor bebas maks. 500-1000 ppm, tanpa sukrosa) via sumber sekunder, tampak usang (docs/research/03_ai_components.md §3.3) [PERLU VERIFIKASI teks resmi dan apakah masih berlaku]"
+          }
+        ],
+        "decision_pending": true,
+        "selected_candidate_id": null,
+        "status": "needs_review",
+        "rationale": "Konflik belum diputuskan: SNI lama 500-1000 ppm vs anjuran >= 1000 ppm. Kedua kandidat ditampilkan; pilihan final oleh drg/PDGI/IDAI (isi selected_candidate_id lalu decision_pending=false).",
+        "source": "Walsh dkk. 2019, Cochrane CD007868 (hanya abstrak; efek naik dengan konsentrasi, bermakna pada >= 1000 ppm) https://cochranelibrary.com/cdsr/doi/10.1002/14651858.CD007868.pub3/information; docs/research/03_ai_components.md §3.3; SNI 16-4767-1998 (pasta gigi anak: fluor bebas maks. 500-1000 ppm, tanpa sukrosa) via sumber sekunder, tampak usang (docs/research/03_ai_components.md §3.3) [PERLU VERIFIKASI teks resmi dan apakah masih berlaku]; Permenkes 445/1998: batas fluoride kosmetik/higiene mulut 0,15% (= 1500 ppm) via jurnal hukum (sumber sekunder); apakah masih berlaku di bawah Peraturan BPOM 23/2019 jo. 17/2022 [PERLU VERIFIKASI] (docs/research/03_ai_components.md §3.3)",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "amount": {
+        "code": "smear",
+        "message_id": "amount_smear",
+        "status": "needs_review",
+        "rationale": "Usia < 3 th: olesan tipis / sebutir beras (AAPD/AAP, ringkasan sekunder).",
+        "source": "AAPD/AAP via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 3 th sebutir beras/smear, 3-6 th sebesar kacang polong [PERLU VERIFIKASI ke dokumen asli]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "supervision": {
+        "required": true,
+        "until_age_months": 84,
+        "message_id": "supervise_until_7y",
+        "status": "needs_review",
+        "rationale": "Awasi sikat gigi sampai usia >= 7 tahun (84 bulan). Batas 84 bulan harus disahkan drg.",
+        "source": "EAPD via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 1000 ppm 'dapat dipertimbangkan' tetapi bukti terbatas; awasi sikat gigi sampai >= 7 th [PERLU VERIFIKASI ke dokumen asli]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "note_ids": [
+        "look_for_ppm_on_pack",
+        "spit_dont_swallow",
+        "rinse_little"
+      ],
+      "generic_message_id": "generic_conservative"
+    },
+    {
+      "id": "preschool_36_83m",
+      "label": "Prasekolah (3 sampai 6 tahun)",
+      "age_months": {
+        "min": 36,
+        "max": 83,
+        "status": "needs_review",
+        "rationale": "Batas 3-6 th mengikuti ringkasan AAPD/AAP; harus disahkan drg.",
+        "source": "Asumsi tim teknis (PRD tidak menentukan); tidak ada sumber klinis [PERLU VERIFIKASI oleh drg]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "fluoride_ppm": {
+        "candidates": [
+          {
+            "id": "guideline_ge1000",
+            "label": "Anjuran pedoman: 1000-1450 ppm",
+            "ppm_min": 1000,
+            "ppm_max": 1450,
+            "rationale": "Anjuran fluoride >= 1000 ppm (pilihan 1000-1450) untuk risiko karies pada semua usia; efek naik dengan konsentrasi.",
+            "source": "Walsh dkk. 2019, Cochrane CD007868 (hanya abstrak; efek naik dengan konsentrasi, bermakna pada >= 1000 ppm) https://cochranelibrary.com/cdsr/doi/10.1002/14651858.CD007868.pub3/information; docs/research/03_ai_components.md §3.3; EAPD via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 1000 ppm 'dapat dipertimbangkan' tetapi bukti terbatas; awasi sikat gigi sampai >= 7 th [PERLU VERIFIKASI ke dokumen asli]"
+          },
+          {
+            "id": "sni_legacy_500_1000",
+            "label": "SNI lama untuk pasta gigi anak: 500-1000 ppm",
+            "ppm_min": 500,
+            "ppm_max": 1000,
+            "rationale": "Standar lama membatasi fluor bebas 500-1000 ppm untuk pasta gigi anak; bertentangan dengan anjuran >= 1000 ppm, dan produk anak 500 ppm sangat umum di pasar.",
+            "source": "SNI 16-4767-1998 (pasta gigi anak: fluor bebas maks. 500-1000 ppm, tanpa sukrosa) via sumber sekunder, tampak usang (docs/research/03_ai_components.md §3.3) [PERLU VERIFIKASI teks resmi dan apakah masih berlaku]"
+          }
+        ],
+        "decision_pending": true,
+        "selected_candidate_id": null,
+        "status": "needs_review",
+        "rationale": "Konflik belum diputuskan: SNI lama 500-1000 ppm vs anjuran >= 1000 ppm. Kedua kandidat ditampilkan; pilihan final oleh drg/PDGI/IDAI (isi selected_candidate_id lalu decision_pending=false).",
+        "source": "Walsh dkk. 2019, Cochrane CD007868 (hanya abstrak; efek naik dengan konsentrasi, bermakna pada >= 1000 ppm) https://cochranelibrary.com/cdsr/doi/10.1002/14651858.CD007868.pub3/information; docs/research/03_ai_components.md §3.3; SNI 16-4767-1998 (pasta gigi anak: fluor bebas maks. 500-1000 ppm, tanpa sukrosa) via sumber sekunder, tampak usang (docs/research/03_ai_components.md §3.3) [PERLU VERIFIKASI teks resmi dan apakah masih berlaku]; Permenkes 445/1998: batas fluoride kosmetik/higiene mulut 0,15% (= 1500 ppm) via jurnal hukum (sumber sekunder); apakah masih berlaku di bawah Peraturan BPOM 23/2019 jo. 17/2022 [PERLU VERIFIKASI] (docs/research/03_ai_components.md §3.3)",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "amount": {
+        "code": "pea_size",
+        "message_id": "amount_pea",
+        "status": "needs_review",
+        "rationale": "Usia 3-6 th: sebesar kacang polong (AAPD/AAP, ringkasan sekunder).",
+        "source": "AAPD/AAP via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 3 th sebutir beras/smear, 3-6 th sebesar kacang polong [PERLU VERIFIKASI ke dokumen asli]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "supervision": {
+        "required": true,
+        "until_age_months": 84,
+        "message_id": "supervise_until_7y",
+        "status": "needs_review",
+        "rationale": "Awasi sikat gigi sampai usia >= 7 tahun (84 bulan). Batas 84 bulan harus disahkan drg.",
+        "source": "EAPD via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 1000 ppm 'dapat dipertimbangkan' tetapi bukti terbatas; awasi sikat gigi sampai >= 7 th [PERLU VERIFIKASI ke dokumen asli]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "note_ids": [
+        "look_for_ppm_on_pack",
+        "spit_dont_swallow",
+        "rinse_little"
+      ],
+      "generic_message_id": "generic_conservative"
+    },
+    {
+      "id": "school_84_216m",
+      "label": "Usia sekolah (7 tahun ke atas)",
+      "age_months": {
+        "min": 84,
+        "max": 216,
+        "status": "needs_review",
+        "rationale": "Batas 7 th mengikuti anjuran awasi sampai >= 7 th; batas atas 216 bulan (18 th) adalah batas kewajaran tim teknis.",
+        "source": "Asumsi tim teknis (PRD tidak menentukan); tidak ada sumber klinis [PERLU VERIFIKASI oleh drg]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "fluoride_ppm": {
+        "candidates": [
+          {
+            "id": "guideline_ge1000",
+            "label": "Anjuran pedoman: 1000-1450 ppm",
+            "ppm_min": 1000,
+            "ppm_max": 1450,
+            "rationale": "Anjuran fluoride >= 1000 ppm (pilihan 1000-1450) untuk risiko karies pada semua usia; efek naik dengan konsentrasi.",
+            "source": "Walsh dkk. 2019, Cochrane CD007868 (hanya abstrak; efek naik dengan konsentrasi, bermakna pada >= 1000 ppm) https://cochranelibrary.com/cdsr/doi/10.1002/14651858.CD007868.pub3/information; docs/research/03_ai_components.md §3.3; EAPD via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 1000 ppm 'dapat dipertimbangkan' tetapi bukti terbatas; awasi sikat gigi sampai >= 7 th [PERLU VERIFIKASI ke dokumen asli]"
+          }
+        ],
+        "decision_pending": true,
+        "selected_candidate_id": null,
+        "status": "needs_review",
+        "rationale": "Anjuran >= 1000 ppm; batas atas dibatasi plafon regulasi (lihat regulatory_ceiling_ppm). SNI anak tidak dimasukkan untuk usia >= 7 th; harus dikonfirmasi drg.",
+        "source": "Walsh dkk. 2019, Cochrane CD007868 (hanya abstrak; efek naik dengan konsentrasi, bermakna pada >= 1000 ppm) https://cochranelibrary.com/cdsr/doi/10.1002/14651858.CD007868.pub3/information; docs/research/03_ai_components.md §3.3; SNI 16-4767-1998 (pasta gigi anak: fluor bebas maks. 500-1000 ppm, tanpa sukrosa) via sumber sekunder, tampak usang (docs/research/03_ai_components.md §3.3) [PERLU VERIFIKASI teks resmi dan apakah masih berlaku]; Permenkes 445/1998: batas fluoride kosmetik/higiene mulut 0,15% (= 1500 ppm) via jurnal hukum (sumber sekunder); apakah masih berlaku di bawah Peraturan BPOM 23/2019 jo. 17/2022 [PERLU VERIFIKASI] (docs/research/03_ai_components.md §3.3)",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "amount": {
+        "code": "pea_size",
+        "message_id": "amount_pea",
+        "status": "needs_review",
+        "rationale": "Jumlah untuk usia >= 7 th diasumsikan sebesar kacang polong; PRD dan sumber riset tidak menyebut angka untuk usia ini [PERLU VERIFIKASI].",
+        "source": "AAPD/AAP via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 3 th sebutir beras/smear, 3-6 th sebesar kacang polong [PERLU VERIFIKASI ke dokumen asli]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "supervision": {
+        "required": false,
+        "until_age_months": 84,
+        "message_id": null,
+        "status": "needs_review",
+        "rationale": "Awasi sikat gigi sampai usia >= 7 tahun (84 bulan). Batas 84 bulan harus disahkan drg.",
+        "source": "EAPD via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 1000 ppm 'dapat dipertimbangkan' tetapi bukti terbatas; awasi sikat gigi sampai >= 7 th [PERLU VERIFIKASI ke dokumen asli]",
+        "reviewed_by": null,
+        "reviewed_at": null
+      },
+      "note_ids": [
+        "look_for_ppm_on_pack",
+        "spit_dont_swallow",
+        "rinse_little"
+      ],
+      "generic_message_id": "generic_conservative"
+    }
+  ],
+  "risk_levels": [
+    "low",
+    "moderate",
+    "high"
+  ],
+  "risk_note_ids": {
+    "low": [],
+    "moderate": [],
+    "high": [
+      "high_risk_see_dentist"
+    ]
+  },
+  "filters": {
+    "allergen_codes": [
+      {
+        "code": "flavor_mint",
+        "label": "Perisa mint/mentol"
+      },
+      {
+        "code": "cinnamon",
+        "label": "Kayu manis (sinamat)"
+      },
+      {
+        "code": "fruit_flavor",
+        "label": "Perisa buah"
+      },
+      {
+        "code": "propylene_glycol",
+        "label": "Propilen glikol"
+      },
+      {
+        "code": "sls",
+        "label": "SLS (natrium lauril sulfat)"
+      }
+    ],
+    "allergy_implies_pref": {
+      "sls": "no_sls"
+    },
+    "semantics": {
+      "allergy": "Produk dibuang bila daftar allergens memuat kode alergi ATAU daftar allergens tidak diketahui (null).",
+      "halal": "Bila halal=true, hanya produk dengan halal_certified = true. Nilai null (belum diketahui) dibuang.",
+      "no_sls": "Bila no_sls=true, hanya produk dengan contains_sls = false. Nilai null dibuang."
+    },
+    "status": "needs_review",
+    "rationale": "Daftar kode alergen dan aturan penyaringan (FR-52) perlu ditinjau drg/apoteker.",
+    "source": "docs/PRD.md FR-50..52; backend/CLAUDE.md §8 'Rekomendasi v1'",
+    "reviewed_by": null,
+    "reviewed_at": null
+  },
+  "mandatory_disclaimer_ids": [
+    "toothpaste_not_filling",
+    "see_dentist_cta"
+  ],
+  "product_note_ids": {
+    "examples": "products_are_examples",
+    "fewer_than_two": "fewer_than_two_products",
+    "allergy_unverified": "allergy_unverified"
+  },
+  "messages": {
+    "toothpaste_not_filling": {
+      "kind": "disclaimer",
+      "text": "Pasta gigi membantu, tetapi tidak menambal gigi berlubang.",
+      "status": "draft",
+      "rationale": "Kalimat wajib pada setiap rekomendasi pasta gigi (FR-52).",
+      "source": "docs/style/forbidden_phrases.md (kalimat wajib) dan docs/PRD.md FR-52 / §11; draf, belum disahkan drg",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "see_dentist_cta": {
+      "kind": "disclaimer",
+      "text": "Hasil ini bukan pengganti pemeriksaan dokter gigi. Periksakan gigi anak secara rutin ke dokter gigi atau puskesmas.",
+      "status": "draft",
+      "rationale": "CTA rujukan wajib ke dokter gigi/faskes pertama (prinsip 1 CLAUDE.md).",
+      "source": "docs/style/forbidden_phrases.md (kalimat wajib) dan docs/PRD.md FR-52 / §11; draf, belum disahkan drg",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "spit_dont_swallow": {
+      "kind": "note",
+      "text": "Ajari anak membuang busa pasta gigi, jangan ditelan. Anak kecil perlu dibantu orang dewasa.",
+      "status": "needs_review",
+      "rationale": "Buang, jangan telan (spit-don't-swallow) untuk mengurangi fluoride tertelan.",
+      "source": "docs/PRD.md FR-50..52; backend/CLAUDE.md §8 'Rekomendasi v1'; AAPD/AAP via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 3 th sebutir beras/smear, 3-6 th sebesar kacang polong [PERLU VERIFIKASI ke dokumen asli]",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "rinse_little": {
+      "kind": "note",
+      "text": "Setelah menyikat gigi, jangan berkumur banyak air. Cukup buang busanya.",
+      "status": "needs_review",
+      "rationale": "Jangan banyak berkumur agar fluoride tetap di gigi (FR-50).",
+      "source": "docs/PRD.md FR-50..52; backend/CLAUDE.md §8 'Rekomendasi v1'",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "supervise_until_7y": {
+      "kind": "note",
+      "text": "Dampingi anak saat menyikat gigi sampai usia 7 tahun. Orang dewasa yang menaruh pasta gigi di sikat.",
+      "status": "needs_review",
+      "rationale": "Awasi sampai >= 7 th (FR-50).",
+      "source": "EAPD via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 1000 ppm 'dapat dipertimbangkan' tetapi bukti terbatas; awasi sikat gigi sampai >= 7 th [PERLU VERIFIKASI ke dokumen asli]",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "no_toothpaste_before_first_tooth": {
+      "kind": "note",
+      "text": "Sebelum gigi pertama tumbuh, belum perlu pasta gigi. Bersihkan gusi bayi dengan kain bersih yang lembap.",
+      "status": "needs_review",
+      "rationale": "Asumsi tim teknis; harus disahkan drg.",
+      "source": "Asumsi tim teknis (PRD tidak menentukan); tidak ada sumber klinis [PERLU VERIFIKASI oleh drg]",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "amount_smear": {
+      "kind": "amount",
+      "text": "Pakai pasta gigi sangat sedikit, hanya olesan tipis sebesar sebutir beras.",
+      "status": "needs_review",
+      "rationale": "Teks jumlah untuk usia < 3 th.",
+      "source": "AAPD/AAP via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 3 th sebutir beras/smear, 3-6 th sebesar kacang polong [PERLU VERIFIKASI ke dokumen asli]",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "amount_pea": {
+      "kind": "amount",
+      "text": "Pakai pasta gigi sebesar kacang polong.",
+      "status": "needs_review",
+      "rationale": "Teks jumlah untuk usia >= 3 th.",
+      "source": "AAPD/AAP via ringkasan sekunder (docs/research/03_ai_components.md §3.3): < 3 th sebutir beras/smear, 3-6 th sebesar kacang polong [PERLU VERIFIKASI ke dokumen asli]",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "look_for_ppm_on_pack": {
+      "kind": "note",
+      "text": "Lihat tulisan kadar fluoride (ppm) di kemasan. Anjuran yang sering dipakai sekitar 1000 ppm. Tanyakan ke dokter gigi atau puskesmas kadar yang cocok untuk usia anak.",
+      "status": "needs_review",
+      "rationale": "Produk anak 500 ppm sangat umum di pasar; filter ppm dibuat transparan. Angka 1000 ppm bergantung pada konflik SNI vs pedoman yang belum diputuskan.",
+      "source": "SNI 16-4767-1998 (pasta gigi anak: fluor bebas maks. 500-1000 ppm, tanpa sukrosa) via sumber sekunder, tampak usang (docs/research/03_ai_components.md §3.3) [PERLU VERIFIKASI teks resmi dan apakah masih berlaku]; Walsh dkk. 2019, Cochrane CD007868 (hanya abstrak; efek naik dengan konsentrasi, bermakna pada >= 1000 ppm) https://cochranelibrary.com/cdsr/doi/10.1002/14651858.CD007868.pub3/information; docs/research/03_ai_components.md §3.3",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "high_risk_see_dentist": {
+      "kind": "note",
+      "text": "Anak dengan risiko lebih tinggi sebaiknya segera diperiksa dokter gigi atau puskesmas. Dokter dapat menyarankan perawatan tambahan.",
+      "status": "draft",
+      "rationale": "Tingkat risiko hanya menambah anjuran periksa; kadar fluoride tidak diubah di v1.",
+      "source": "Asumsi tim teknis (PRD tidak menentukan); tidak ada sumber klinis [PERLU VERIFIKASI oleh drg]",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "generic_conservative": {
+      "kind": "generic",
+      "text": "Pakai pasta gigi berfluoride dalam jumlah sangat sedikit dan dampingi anak saat menyikat gigi. Tanyakan kadar fluoride yang cocok untuk usia anak ke dokter gigi atau puskesmas.",
+      "status": "needs_review",
+      "rationale": "Pesan umum konservatif saat aturan belum disahkan drg; sengaja tidak menyebut angka ppm.",
+      "source": "Asumsi tim teknis (PRD tidak menentukan); tidak ada sumber klinis [PERLU VERIFIKASI oleh drg]",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "products_are_examples": {
+      "kind": "product_note",
+      "text": "Produk di daftar hanya contoh berdasarkan kandungan, bukan promosi merek.",
+      "status": "draft",
+      "rationale": "Kandungan dulu, merek netral (FR-51).",
+      "source": "docs/PRD.md FR-50..52; backend/CLAUDE.md §8 'Rekomendasi v1'",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "fewer_than_two_products": {
+      "kind": "product_note",
+      "text": "Contoh produk yang cocok kurang dari dua. Cari kemasan dengan kadar fluoride yang disarankan dokter gigi, atau tanyakan ke apoteker atau puskesmas.",
+      "status": "draft",
+      "rationale": "Contoh produk minimal dua merek netral (FR-51); bila kurang, tidak ada produk yang dikarang.",
+      "source": "docs/PRD.md FR-50..52; backend/CLAUDE.md §8 'Rekomendasi v1'",
+      "reviewed_by": null,
+      "reviewed_at": null
+    },
+    "allergy_unverified": {
+      "kind": "product_note",
+      "text": "Alergi ini belum ada di daftar kami. Baca daftar bahan di kemasan dan tanyakan ke dokter atau apoteker.",
+      "status": "draft",
+      "rationale": "Kode alergi di luar daftar tidak dapat dicek otomatis.",
+      "source": "Asumsi tim teknis (PRD tidak menentukan); tidak ada sumber klinis [PERLU VERIFIKASI oleh drg]",
+      "reviewed_by": null,
+      "reviewed_at": null
+    }
+  }
+}

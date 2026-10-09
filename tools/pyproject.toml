@@ -1,0 +1,43 @@
+[project]
+name = "dentisai-tools"
+version = "0.1.0"
+description = "Ops tooling for DentisAI: keep-alive, dataset export, TTS build, forbidden-phrase lint, secrets scan"
+requires-python = ">=3.11"
+# Runtime deps are intentionally tiny. ping.py, lint_forbidden_phrases.py and
+# check_secrets.py are stdlib-only so CI can run them without installing anything.
+# tools/manifest/ is a separate uv project (own pyproject, Ed25519 deps); it is excluded
+# from this project's pytest/ruff/mypy runs and tested by its own CI matrix entry.
+dependencies = [
+    "httpx>=0.27",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+# importlib mode: test files from different engineers may share basenames.
+addopts = "-q --import-mode=importlib"
+pythonpath = ["."]
+norecursedirs = ["manifest", ".venv", "node_modules", "__pycache__"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv", "manifest", "sign_manifest.py", "verify_manifest.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "W"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+explicit_package_bases = true
+mypy_path = "."
+exclude = ['^\.venv/', '^manifest/', '^sign_manifest\.py$', '^verify_manifest\.py$']

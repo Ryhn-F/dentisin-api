@@ -1,0 +1,146 @@
+# DentisAI — Supabase CLI configuration (local stack + `supabase config push`).
+# Secrets are NEVER written here: every secret is referenced as env(NAME) and
+# lives in backend/.env (git-ignored) / Supabase dashboard / CI secrets.
+# Hosted project: Supabase Free, region Singapore (ap-southeast-1), ADR 005/008.
+project_id = "dentisai"
+
+[api]
+enabled = true
+port = 54321
+# Only `public` is exposed. Schema `private` (helpers, secrets, jobs) is NOT.
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.pooler]
+enabled = false
+
+[db.migrations]
+enabled = true
+
+[db.seed]
+# SYNTHETIC data only (fake .invalid e-mails, no names, no photos).
+enabled = true
+sql_paths = ["./seed/seed.sql"]
+
+[realtime]
+# Not used by the app (outbox sync over RPC) — keep the attack surface small.
+enabled = false
+
+[studio]
+enabled = true
+port = 54323
+api_url = "http://127.0.0.1"
+
+# Local e-mail catcher. With [auth.email.smtp] enabled below, local mails go to
+# Resend instead; set RESEND_API_KEY in backend/.env or temporarily disable SMTP
+# for offline development (see README "Local development").
+[local_smtp]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+# Supabase Free hard cap per upload is 50 MB. Bucket-level limits are stricter
+# (dataset_photos 500 KiB JPEG only) and are defined in migration 0600.
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+# Confirmation / reset links land on a static page that opens the app via
+# deep link (dentisai://). https://app.ryhnfir.dev/auth/callback  (TODO owner)
+site_url = "env(AUTH_SITE_URL)"
+additional_redirect_urls = ["env(AUTH_REDIRECT_URL)", "dentisai://auth/callback"]
+# Access token lifetime (seconds). 1 h + refresh-token rotation.
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+# Anonymous sign-ins stay OFF: child mode needs no account at all (offline),
+# and anonymous users would inflate MAU/abuse surface without a privacy gain.
+enable_anonymous_sign_ins = false
+enable_manual_linking = false
+minimum_password_length = 10
+password_requirements = "lower_upper_letters_digits"
+
+[auth.rate_limit]
+# Resend Free allows 100 e-mails/day; cap Supabase well below it.
+email_sent = 10
+sms_sent = 0
+anonymous_users = 0
+token_refresh = 150
+sign_in_sign_ups = 30
+token_verifications = 30
+
+[auth.captcha]
+# FR-04: CAPTCHA on signup/sign-in/reset. Provider: "hcaptcha" or "turnstile".
+enabled = true
+provider = "env(CAPTCHA_PROVIDER)"
+secret = "env(CAPTCHA_SECRET)"
+
+[auth.email]
+enable_signup = true
+# E-mail confirmation required before first sign-in (owner decision, FR-04).
+enable_confirmations = true
+double_confirm_changes = true
+# Changing the password requires a recent login / reauthentication.
+secure_password_change = true
+max_frequency = "60s"
+otp_length = 6
+otp_expiry = 3600
+
+# Custom SMTP: Resend Free, sender on subdomain auth.ryhnfir.dev (ADR 008 r3).
+[auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "no-reply@auth.ryhnfir.dev"
+sender_name = "DentisAI"
+
+# E-mails contain only a link — never child data (ADR 008).
+[auth.email.template.confirmation]
+subject = "Konfirmasi email akun DentisAI"
+content_path = "./supabase/templates/confirmation.html"
+
+[auth.email.template.recovery]
+subject = "Atur ulang kata sandi DentisAI"
+content_path = "./supabase/templates/recovery.html"
+
+[auth.email.template.email_change]
+subject = "Konfirmasi perubahan email DentisAI"
+content_path = "./supabase/templates/email_change.html"
+
+[auth.sms]
+# No SMS OTP (paid) — PRD FR-04.
+enable_signup = false
+enable_confirmations = false
+
+[auth.mfa]
+max_enrolled_factors = 10
+
+[edge_runtime]
+enabled = true
+policy = "per_worker"
+inspector_port = 8083
+deno_version = 2
+
+# Service-only functions: the platform JWT gate is off because they are
+# invoked by cron with the service key and verify it themselves (constant-time
+# compare against SUPABASE_SERVICE_ROLE_KEY, fail closed).
+[functions.process-deletion]
+enabled = true
+verify_jwt = false
+
+[functions.retention-sweep]
+enabled = true
+verify_jwt = false
+
+[analytics]
+enabled = false

@@ -1,0 +1,95 @@
+# Scheduled Supabase maintenance jobs (right-to-delete + photo retention).
+# The Edge Functions are service-only: they compare the bearer token with their CRON_SECRET
+# function secret and fail closed. It lives ONLY in GitHub Actions secrets + Supabase secrets.
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   SUPABASE_URL                 e.g. https://<ref>.supabase.co
+#   CRON_SECRET                  same value as the CRON_SECRET function secret (NOT the service_role key)
+#
+# GitHub cron is UTC and may be delayed or skipped under load; scheduled workflows are also
+# disabled after 60 days without repo activity -> re-enable them if that happens.
+# Responses contain counts only (no ids/paths/e-mails), so printing the body is safe.
+name: scheduled-jobs
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"   # process-deletion: every 6 hours
+    - cron: "43 20 * * *"    # retention-sweep: daily 20:43 UTC (03:43 WIB)
+  workflow_dispatch:
+    inputs:
+      job:
+        description: "Which job to run"
+        type: choice
+        options: [both, process-deletion, retention-sweep]
+        default: both
+
+permissions: {}
+
+concurrency:
+  group: scheduled-jobs-${{ github.event.schedule || github.event.inputs.job || 'manual' }}
+  cancel-in-progress: false
+
+jobs:
+  process-deletion:
+    if: ${{ github.event_name != 'schedule' || github.event.schedule == '17 */6 * * *' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Skip when not selected
+        id: sel
+        env:
+          JOB: ${{ github.event.inputs.job }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ "${JOB}" = "retention-sweep" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Invoke process-deletion
+        if: steps.sel.outputs.run == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          : "${SUPABASE_URL:?missing secret SUPABASE_URL}"
+          : "${CRON_SECRET:?missing secret CRON_SECRET}"
+          # Key goes through a config file on stdin so it never appears in the process list.
+          # 207 = some requests failed -> --fail-with-body does not trip on it, so check explicitly.
+          code=$(printf 'header = "Authorization: Bearer %s"\n' "$CRON_SECRET" \
+            | curl -sS --max-time 120 --retry 2 --retry-delay 5 -X POST \
+                -K - -o body.json -w '%{http_code}' \
+                "${SUPABASE_URL%/}/functions/v1/process-deletion")
+          echo "HTTP ${code}"; cat body.json; echo
+          [ "${code}" = "200" ]
+
+  retention-sweep:
+    if: ${{ github.event_name != 'schedule' || github.event.schedule == '43 20 * * *' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Skip when not selected
+        id: sel
+        env:
+          JOB: ${{ github.event.inputs.job }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ "${JOB}" = "process-deletion" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Invoke retention-sweep
+        if: steps.sel.outputs.run == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          : "${SUPABASE_URL:?missing secret SUPABASE_URL}"
+          : "${CRON_SECRET:?missing secret CRON_SECRET}"
+          code=$(printf 'header = "Authorization: Bearer %s"\n' "$CRON_SECRET" \
+            | curl -sS --max-time 120 --retry 2 --retry-delay 5 -X POST \
+                -K - -o body.json -w '%{http_code}' \
+                "${SUPABASE_URL%/}/functions/v1/retention-sweep")
+          echo "HTTP ${code}"; cat body.json; echo
+          [ "${code}" = "200" ]

@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dentisai.local/triage/output.schema.json",
+  "title": "Triage engine output (rules 0.1.0-draft)",
+  "description": "Generated from rules.yaml by triage.export.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "level",
+    "reasons",
+    "lesions",
+    "advice_ids",
+    "referral_template_id",
+    "rules_version"
+  ],
+  "properties": {
+    "level": {
+      "enum": [
+        "emergency",
+        "urgent",
+        "scheduled",
+        "routine"
+      ]
+    },
+    "reasons": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "text"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "RF_AIRWAY_OR_SWALLOWING",
+              "RF_LETHARGY",
+              "RF_TRISMUS",
+              "RF_FACIAL_SWELLING",
+              "RF_FEVER_WITH_TOOTHACHE",
+              "RF_PUS_OR_FISTULA",
+              "RF_DENTAL_TRAUMA",
+              "RF_UNKNOWN_ANSWER",
+              "SYM_NIGHT_PAIN",
+              "PAIN_HIGH",
+              "PAIN_MODERATE",
+              "PAIN_UNKNOWN",
+              "SYM_WHITE_SPOT",
+              "DET_CAVITY_LARGE",
+              "DET_CAVITY_SMALL",
+              "DET_NONCAV_ATTENTION",
+              "DET_CAVITY_MANY",
+              "CTX_AGE_OUTSIDE_VALIDATED_RANGE",
+              "CTX_PHOTO_NOT_ASSESSED",
+              "DEFAULT_ROUTINE"
+            ]
+          },
+          "text": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "lesions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "detection_index",
+          "class",
+          "confidence",
+          "rel_area",
+          "counted",
+          "size"
+        ],
+        "properties": {
+          "detection_index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "class": {
+            "enum": [
+              "caries_cavitated",
+              "caries_noncavitated"
+            ]
+          },
+          "confidence": {
+            "type": "number"
+          },
+          "rel_area": {
+            "type": "number",
+            "minimum": 0
+          },
+          "counted": {
+            "type": "boolean"
+          },
+          "size": {
+            "enum": [
+              "small",
+              "large",
+              null
+            ]
+          }
+        }
+      }
+    },
+    "advice_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "allOf": [
+        {
+          "contains": {
+            "const": "ADV_DISCLAIMER_NOT_DIAGNOSIS"
+          }
+        },
+        {
+          "contains": {
+            "const": "ADV_REFERRAL_CTA"
+          }
+        }
+      ],
+      "items": {
+        "enum": [
+          "ADV_EMERGENCY_NOW",
+          "ADV_FASKES_TODAY",
+          "ADV_DENTIST_SOON",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_RECHECK_SYMPTOMS",
+          "ADV_ASK_MEDICATION",
+          "ADV_ATTENTION_AREA",
+          "ADV_RETAKE_OR_VISIT",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ]
+      }
+    },
+    "referral_template_id": {
+      "enum": [
+        "REF_EMERGENCY",
+        "REF_URGENT",
+        "REF_SCHEDULED",
+        "REF_ROUTINE"
+      ]
+    },
+    "rules_version": {
+      "const": "0.1.0-draft"
+    }
+  }
+}

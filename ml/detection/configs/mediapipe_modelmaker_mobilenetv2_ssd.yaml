@@ -1,0 +1,65 @@
+# Bake-off candidate 1 (ADR 001): MediaPipe Model Maker object detector, MobileNetV2 SSD.
+# NOT RUN in this repo (no GPU). Toolchain caveats (verified 2026-10-08, see ml/data/LICENSES.md):
+#   - Model Maker docs page is marked "Deprecated ... no longer actively maintained".
+#   - PyPI mediapipe-model-maker 0.2.1.4 (2024-04-22), classifiers Python 3.8-3.10 -> use a
+#     separate Python 3.10 env on Colab/Kaggle: `pip install mediapipe-model-maker==0.2.1.4`.
+#   - INT8 comes from quantization-aware training (QAT), not post-training quantization.
+schema_version: 1
+candidate: mediapipe_modelmaker_mobilenetv2_ssd
+trainer: mediapipe_model_maker
+priority: high
+license_verified: false   # weights license of the pretrained checkpoint [PERLU VERIFIKASI]
+data:   # identical for every candidate (same canonical file + same splits.json -> same split hash)
+  canonical: ../data/processed/ahmed2025/canonical.jsonl
+  splits: ../data/processed/ahmed2025/splits/splits.json
+  images_root: ../data/raw/ahmed2025
+  datasets: [ahmed2025]
+  classes: [caries_cavitated, caries_noncavitated]
+model:
+  variant: MOBILENET_V2          # SupportedModels enum; alt MOBILENET_V2_I320 / MOBILENET_MULTI_AVG(_I384)
+  input_size: [256, 256]
+  pretrained: model_maker_default
+  output_format: ssd_raw_anchors  # [PERLU VERIFIKASI] confirm tensor layout + anchors via spike S1
+  output_format_verified: false
+  preprocess:            # [PERLU VERIFIKASI] read from the exported model's metadata in spike S1
+    color_order: RGB
+    input_dtype: float32
+    pixel_range: [0, 255]
+    mean: [127.5, 127.5, 127.5]
+    std: [127.5, 127.5, 127.5]
+    resize_method: stretch
+    align: none
+    pad_value: null
+    interpolation: bilinear
+  decode:                # anchors are passed to export.py --anchors (extracted from model metadata)
+    scales: [10.0, 10.0, 5.0, 5.0]
+    box_order: yxhw
+    score_activation: sigmoid
+    background_class: true
+  output_tensors:
+    - {index: 0, role: raw_boxes, shape: [1, -1, 4], dtype: float32}
+    - {index: 1, role: raw_scores, shape: [1, -1, 3], dtype: float32}
+train:
+  seed: 20261008
+  epochs: 30
+  batch_size: 8
+  learning_rate: 0.3
+  qat_epochs: 10
+augment:
+  flashlight_hotspot: true
+  white_balance_shift: true
+  motion_blur: true
+  lip_occlusion: true
+  horizontal_flip: true
+  supported_by_trainer: false   # Model Maker has no custom augmentation hook -> pre-augment offline or record as limitation
+export:
+  format: tflite
+  int8: true
+  max_size_mb: 15
+  path: "Model Maker QAT -> export_model() (TFLite with metadata)"
+  representative_samples: 200
+trainer_options:
+  layout: mediapipe
+  cache_dir: /tmp/mm_cache
+notes:
+  - "Layout produced by: convert_annotations.py export --layout mediapipe"

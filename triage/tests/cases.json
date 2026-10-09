@@ -1,0 +1,6323 @@
+{
+  "format_version": 1,
+  "description": "Shared, language-neutral triage test table. Run by pytest (triage/) and Jest (app/). Expected values were authored by the engineering team and are NOT clinically graded.",
+  "graded_by_drg_note": "No case is graded by a dentist yet (graded_by_drg=false for all). The >= 30 dentist-graded cases requirement is NOT met; no clinical claim may be made.",
+  "rules_file": "../rules.yaml (TS: ../dist/rules.json)",
+  "params_profiles_file": "fixtures/params_profiles.json",
+  "how_to_run": "For each case: params = resolve_params(rules, profiles[input.params_profile].values); call evaluate(rules, input without params_profile, params); compare expected.level, reasons ids (ordered), advice_ids (ordered), referral_template_id, and expected.lesions (listed keys only), or expect a TriageInputError with expected.error_code.",
+  "cases": [
+    {
+      "id": "RF-01",
+      "description": "Tanda bahaya sendirian (sulit menelan/bernapas); alur berhenti, foto tidak diambil",
+      "tags": [
+        "red_flag",
+        "alone"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "yes",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_AIRWAY_OR_SWALLOWING",
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_EMERGENCY_NOW",
+          "ADV_FASKES_TODAY",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-02",
+      "description": "Tanda bahaya sendirian (sangat lemas); alur berhenti, foto tidak diambil",
+      "tags": [
+        "red_flag",
+        "alone"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "yes",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_LETHARGY",
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_EMERGENCY_NOW",
+          "ADV_FASKES_TODAY",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-03",
+      "description": "Tanda bahaya sendirian (sulit membuka mulut); alur berhenti, foto tidak diambil",
+      "tags": [
+        "red_flag",
+        "alone"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "yes",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_TRISMUS",
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_EMERGENCY_NOW",
+          "ADV_FASKES_TODAY",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-04",
+      "description": "Tanda bahaya sendirian (bengkak wajah); alur berhenti, foto tidak diambil",
+      "tags": [
+        "red_flag",
+        "alone"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "yes",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_FACIAL_SWELLING",
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-05",
+      "description": "Tanda bahaya sendirian (demam + sakit gigi); alur berhenti, foto tidak diambil",
+      "tags": [
+        "red_flag",
+        "alone"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "yes",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_FEVER_WITH_TOOTHACHE",
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-06",
+      "description": "Tanda bahaya sendirian (nanah/fistula); alur berhenti, foto tidak diambil",
+      "tags": [
+        "red_flag",
+        "alone"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "yes",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_PUS_OR_FISTULA",
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-07",
+      "description": "Tanda bahaya sendirian (trauma gigi); alur berhenti, foto tidak diambil",
+      "tags": [
+        "red_flag",
+        "alone"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "yes",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_DENTAL_TRAUMA",
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-08",
+      "description": "Tanda bahaya (sulit menelan/bernapas) + lubang besar + 3 lubang + nyeri 10 + nyeri malam: tanda bahaya tetap menang",
+      "tags": [
+        "red_flag",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.8,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "yes",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 10,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_AIRWAY_OR_SWALLOWING",
+          "SYM_NIGHT_PAIN",
+          "PAIN_HIGH",
+          "DET_CAVITY_LARGE",
+          "DET_CAVITY_SMALL",
+          "DET_CAVITY_MANY"
+        ],
+        "advice_ids": [
+          "ADV_EMERGENCY_NOW",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-09",
+      "description": "Tanda bahaya (sangat lemas) + lubang besar + 3 lubang + nyeri 10 + nyeri malam: tanda bahaya tetap menang",
+      "tags": [
+        "red_flag",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.8,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "yes",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 10,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_LETHARGY",
+          "SYM_NIGHT_PAIN",
+          "PAIN_HIGH",
+          "DET_CAVITY_LARGE",
+          "DET_CAVITY_SMALL",
+          "DET_CAVITY_MANY"
+        ],
+        "advice_ids": [
+          "ADV_EMERGENCY_NOW",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-10",
+      "description": "Tanda bahaya (sulit membuka mulut) + lubang besar + 3 lubang + nyeri 10 + nyeri malam: tanda bahaya tetap menang",
+      "tags": [
+        "red_flag",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.8,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "yes",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 10,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_TRISMUS",
+          "SYM_NIGHT_PAIN",
+          "PAIN_HIGH",
+          "DET_CAVITY_LARGE",
+          "DET_CAVITY_SMALL",
+          "DET_CAVITY_MANY"
+        ],
+        "advice_ids": [
+          "ADV_EMERGENCY_NOW",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-11",
+      "description": "Tanda bahaya (bengkak wajah) + lubang besar + 3 lubang + nyeri 10 + nyeri malam: tanda bahaya tetap menang",
+      "tags": [
+        "red_flag",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.8,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "yes",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 10,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_FACIAL_SWELLING",
+          "SYM_NIGHT_PAIN",
+          "PAIN_HIGH",
+          "DET_CAVITY_LARGE",
+          "DET_CAVITY_SMALL",
+          "DET_CAVITY_MANY"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-12",
+      "description": "Tanda bahaya (demam + sakit gigi) + lubang besar + 3 lubang + nyeri 10 + nyeri malam: tanda bahaya tetap menang",
+      "tags": [
+        "red_flag",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.8,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "yes",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 10,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_FEVER_WITH_TOOTHACHE",
+          "SYM_NIGHT_PAIN",
+          "PAIN_HIGH",
+          "DET_CAVITY_LARGE",
+          "DET_CAVITY_SMALL",
+          "DET_CAVITY_MANY"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-13",
+      "description": "Tanda bahaya (nanah/fistula) + lubang besar + 3 lubang + nyeri 10 + nyeri malam: tanda bahaya tetap menang",
+      "tags": [
+        "red_flag",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.8,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "yes",
+          "dental_trauma": "no",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 10,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_PUS_OR_FISTULA",
+          "SYM_NIGHT_PAIN",
+          "PAIN_HIGH",
+          "DET_CAVITY_LARGE",
+          "DET_CAVITY_SMALL",
+          "DET_CAVITY_MANY"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-14",
+      "description": "Tanda bahaya (trauma gigi) + lubang besar + 3 lubang + nyeri 10 + nyeri malam: tanda bahaya tetap menang",
+      "tags": [
+        "red_flag",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.8,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "yes",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 10,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_DENTAL_TRAUMA",
+          "SYM_NIGHT_PAIN",
+          "PAIN_HIGH",
+          "DET_CAVITY_LARGE",
+          "DET_CAVITY_SMALL",
+          "DET_CAVITY_MANY"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-15",
+      "description": "Semua 7 tanda bahaya 'ya', foto tidak diambil",
+      "tags": [
+        "red_flag",
+        "combination"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "yes",
+          "lethargy": "yes",
+          "trismus": "yes",
+          "facial_swelling": "yes",
+          "fever_with_toothache": "yes",
+          "pus_or_fistula": "yes",
+          "dental_trauma": "yes",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_AIRWAY_OR_SWALLOWING",
+          "RF_LETHARGY",
+          "RF_TRISMUS",
+          "RF_FACIAL_SWELLING",
+          "RF_FEVER_WITH_TOOTHACHE",
+          "RF_PUS_OR_FISTULA",
+          "RF_DENTAL_TRAUMA",
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_EMERGENCY_NOW",
+          "ADV_FASKES_TODAY",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-16",
+      "description": "Dua tanda bahaya 'hari ini' (bengkak + demam), foto dinilai tanpa temuan",
+      "tags": [
+        "red_flag",
+        "combination"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "yes",
+          "fever_with_toothache": "yes",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_FACIAL_SWELLING",
+          "RF_FEVER_WITH_TOOTHACHE"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-17",
+      "description": "Tanda bahaya 'sekarang' + 'hari ini': saran darurat sekarang muncul",
+      "tags": [
+        "red_flag",
+        "combination"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "yes",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "yes",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_AIRWAY_OR_SWALLOWING",
+          "RF_FACIAL_SWELLING"
+        ],
+        "advice_ids": [
+          "ADV_EMERGENCY_NOW",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-18",
+      "description": "Trauma gigi + temuan 'perlu perhatian' saja",
+      "tags": [
+        "red_flag",
+        "noncavitated"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "yes",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_DENTAL_TRAUMA",
+          "DET_NONCAV_ATTENTION"
+        ],
+        "advice_ids": [
+          "ADV_ATTENTION_AREA",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-19",
+      "description": "Nanah, profil params kosong (fallback): tetap darurat",
+      "tags": [
+        "red_flag",
+        "unset_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "yes",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "unset"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_PUS_OR_FISTULA",
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-20",
+      "description": "Sangat lemas, profil alternatif (foto tak dinilai = rutin): tetap darurat sekarang",
+      "tags": [
+        "red_flag",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "yes",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_LETHARGY",
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_EMERGENCY_NOW",
+          "ADV_FASKES_TODAY",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "RF-21",
+      "description": "Demam + sakit gigi, usia kosong, nyeri 'tidak tahu', bercak putih",
+      "tags": [
+        "red_flag",
+        "combination",
+        "unknown"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "yes",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "yes"
+        },
+        "age_months": null,
+        "pain": "unknown",
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_FEVER_WITH_TOOTHACHE",
+          "PAIN_UNKNOWN",
+          "SYM_WHITE_SPOT",
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "UNK-01",
+      "description": "Satu tanda bahaya 'tidak tahu' (demam): tidak dianggap 'tidak'",
+      "tags": [
+        "unknown",
+        "red_flag"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "unknown",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_UNKNOWN_ANSWER"
+        ],
+        "advice_ids": [
+          "ADV_RECHECK_SYMPTOMS",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "UNK-02",
+      "description": "Tanda bahaya 'tidak tahu', profil alternatif (level = segera)",
+      "tags": [
+        "unknown",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "unknown",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "RF_UNKNOWN_ANSWER"
+        ],
+        "advice_ids": [
+          "ADV_RECHECK_SYMPTOMS",
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "UNK-03",
+      "description": "Napas 'tidak tahu' + bengkak 'ya'",
+      "tags": [
+        "unknown",
+        "red_flag"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "unknown",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "yes",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_FACIAL_SWELLING",
+          "RF_UNKNOWN_ANSWER"
+        ],
+        "advice_ids": [
+          "ADV_RECHECK_SYMPTOMS",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "UNK-04",
+      "description": "Napas 'tidak tahu' + bengkak 'ya', profil alternatif: bengkak menang",
+      "tags": [
+        "unknown",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "unknown",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "yes",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_FACIAL_SWELLING",
+          "RF_UNKNOWN_ANSWER"
+        ],
+        "advice_ids": [
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "UNK-05",
+      "description": "Semua 7 tanda bahaya 'tidak tahu'",
+      "tags": [
+        "unknown"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "unknown",
+          "lethargy": "unknown",
+          "trismus": "unknown",
+          "facial_swelling": "unknown",
+          "fever_with_toothache": "unknown",
+          "pus_or_fistula": "unknown",
+          "dental_trauma": "unknown",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_UNKNOWN_ANSWER"
+        ],
+        "advice_ids": [
+          "ADV_RECHECK_SYMPTOMS",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "UNK-06",
+      "description": "Napas 'tidak tahu', params kosong: darurat hari ini (bukan 'sekarang')",
+      "tags": [
+        "unknown",
+        "unset_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "unknown",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "unset"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_UNKNOWN_ANSWER",
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_RECHECK_SYMPTOMS",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "UNK-07",
+      "description": "Lemas 'tidak tahu' + lubang besar (bingkai), profil alternatif",
+      "tags": [
+        "unknown",
+        "alt_params",
+        "frame"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": {
+          "x_min": 0.0,
+          "y_min": 0.0,
+          "x_max": 0.5,
+          "y_max": 0.5
+        },
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "unknown",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "RF_UNKNOWN_ANSWER",
+          "DET_CAVITY_LARGE"
+        ],
+        "advice_ids": [
+          "ADV_RECHECK_SYMPTOMS",
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "UNK-08",
+      "description": "Semua jawaban 'tidak tahu', nyeri 'tidak tahu', usia kosong",
+      "tags": [
+        "unknown"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "unknown",
+          "lethargy": "unknown",
+          "trismus": "unknown",
+          "facial_swelling": "unknown",
+          "fever_with_toothache": "unknown",
+          "pus_or_fistula": "unknown",
+          "dental_trauma": "unknown",
+          "night_pain": "unknown",
+          "white_spot": "unknown"
+        },
+        "age_months": null,
+        "pain": "unknown",
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "RF_UNKNOWN_ANSWER",
+          "SYM_NIGHT_PAIN",
+          "PAIN_UNKNOWN",
+          "SYM_WHITE_SPOT",
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_RECHECK_SYMPTOMS",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NP-01",
+      "description": "Nyeri malam 'ya' (profil uji: segera)",
+      "tags": [
+        "night_pain"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "SYM_NIGHT_PAIN"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NP-02",
+      "description": "Nyeri malam 'ya' (profil alternatif: darurat)",
+      "tags": [
+        "night_pain",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "SYM_NIGHT_PAIN"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NP-03",
+      "description": "Nyeri malam 'tidak tahu' diperlakukan seperti 'ya'",
+      "tags": [
+        "night_pain",
+        "unknown"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "unknown",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "SYM_NIGHT_PAIN"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NP-04",
+      "description": "Nyeri malam 'ya', params kosong: level lebih tinggi (darurat)",
+      "tags": [
+        "night_pain",
+        "unset_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "unset"
+      },
+      "expected": {
+        "level": "emergency",
+        "reasons_ids": [
+          "SYM_NIGHT_PAIN",
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_FASKES_TODAY",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_EMERGENCY"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NP-05",
+      "description": "Kontrol: nyeri malam 'tidak' + lubang besar",
+      "tags": [
+        "night_pain",
+        "detection"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_LARGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NP-06",
+      "description": "Nyeri malam 'ya' + lubang besar",
+      "tags": [
+        "night_pain",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "yes",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "SYM_NIGHT_PAIN",
+          "DET_CAVITY_LARGE"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "WS-01",
+      "description": "Bercak putih 'ya' (kuesioner)",
+      "tags": [
+        "white_spot"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "yes"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "SYM_WHITE_SPOT"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "WS-02",
+      "description": "Bercak putih 'tidak tahu' diperlakukan seperti 'ya'",
+      "tags": [
+        "white_spot",
+        "unknown"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "unknown"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "SYM_WHITE_SPOT"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "WS-03",
+      "description": "Bercak putih 'ya', profil alternatif (rutin)",
+      "tags": [
+        "white_spot",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "yes"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "SYM_WHITE_SPOT",
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "WS-04",
+      "description": "Bercak putih 'ya' + temuan 'perlu perhatian'",
+      "tags": [
+        "white_spot",
+        "noncavitated"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "yes"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "SYM_WHITE_SPOT",
+          "DET_NONCAV_ATTENTION"
+        ],
+        "advice_ids": [
+          "ADV_ATTENTION_AREA",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "WS-05",
+      "description": "Bercak putih 'ya' + lubang kecil",
+      "tags": [
+        "white_spot"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "yes"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "SYM_WHITE_SPOT",
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-01",
+      "description": "Nyeri 0, tanpa temuan",
+      "tags": [
+        "pain"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-02",
+      "description": "Nyeri 1 (tepat di bawah batas terjadwal 2)",
+      "tags": [
+        "pain",
+        "boundary"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 1,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-03",
+      "description": "Nyeri 2 (tepat di batas terjadwal)",
+      "tags": [
+        "pain",
+        "boundary"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 2,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "PAIN_MODERATE"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-04",
+      "description": "Nyeri 5 (tepat di bawah batas segera 6)",
+      "tags": [
+        "pain",
+        "boundary"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 5,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "PAIN_MODERATE"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-05",
+      "description": "Nyeri 6 (tepat di batas segera)",
+      "tags": [
+        "pain",
+        "boundary"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 6,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "PAIN_HIGH"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-06",
+      "description": "Nyeri 7 (di atas batas segera)",
+      "tags": [
+        "pain",
+        "boundary"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 7,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "PAIN_HIGH"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-07",
+      "description": "Nyeri 10 (maksimum skala)",
+      "tags": [
+        "pain",
+        "boundary"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 10,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "PAIN_HIGH"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-08",
+      "description": "Nyeri 'tidak tahu' (profil uji: terjadwal)",
+      "tags": [
+        "pain",
+        "unknown"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": "unknown",
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "PAIN_UNKNOWN"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-09",
+      "description": "Nyeri 'tidak tahu' (profil alternatif: segera)",
+      "tags": [
+        "pain",
+        "unknown",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": "unknown",
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "PAIN_UNKNOWN"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-10",
+      "description": "Nyeri 1, params kosong: sakit sekecil apa pun = segera",
+      "tags": [
+        "pain",
+        "unset_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 1,
+        "params_profile": "unset"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "PAIN_HIGH",
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-11",
+      "description": "Nyeri 0, params kosong: usia dianggap belum teruji",
+      "tags": [
+        "pain",
+        "unset_params",
+        "age"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "unset"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-12",
+      "description": "Nyeri 'tidak tahu', params kosong",
+      "tags": [
+        "pain",
+        "unknown",
+        "unset_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": "unknown",
+        "params_profile": "unset"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "PAIN_UNKNOWN",
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-13",
+      "description": "Nyeri 6 + lubang kecil",
+      "tags": [
+        "pain",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 6,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "PAIN_HIGH",
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-14",
+      "description": "Nyeri 3 + lubang besar: saran obat tidak ikut (bukan level akhir)",
+      "tags": [
+        "pain",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 3,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "PAIN_MODERATE",
+          "DET_CAVITY_LARGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PAIN-15",
+      "description": "Nyeri 10 tanpa foto",
+      "tags": [
+        "pain",
+        "photo"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 10,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "PAIN_HIGH",
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_ASK_MEDICATION",
+          "ADV_DENTIST_SOON",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-01",
+      "description": "Foto dinilai, tidak ada temuan (deteksi kosong)",
+      "tags": [
+        "detection",
+        "empty"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE",
+        "lesions": []
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-02",
+      "description": "1 lubang, ukuran tepat di bawah X",
+      "tags": [
+        "detection",
+        "boundary_x"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.625,
+              "y_max": 0.624
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-03",
+      "description": "1 lubang, ukuran tepat = X",
+      "tags": [
+        "detection",
+        "boundary_x"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.625,
+              "y_max": 0.625
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_LARGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-04",
+      "description": "1 lubang, ukuran tepat di atas X",
+      "tags": [
+        "detection",
+        "boundary_x"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.625,
+              "y_max": 0.626
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_LARGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-05",
+      "description": "Lubang besar dengan keyakinan 0.4999 (< ambang 0.5): tidak dihitung",
+      "tags": [
+        "detection",
+        "boundary_confidence"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.4999,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": false,
+            "size": null
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-06",
+      "description": "Lubang kecil dengan keyakinan tepat 0.5",
+      "tags": [
+        "detection",
+        "boundary_confidence"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.5,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-07",
+      "description": "Lubang kecil dengan keyakinan 0.5001",
+      "tags": [
+        "detection",
+        "boundary_confidence"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.5001,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-08",
+      "description": "2 lubang kecil (N-1)",
+      "tags": [
+        "detection",
+        "boundary_n"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.8,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-09",
+      "description": "3 lubang kecil (= N)",
+      "tags": [
+        "detection",
+        "boundary_n"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL",
+          "DET_CAVITY_MANY"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-10",
+      "description": "4 lubang kecil (N+1)",
+      "tags": [
+        "detection",
+        "boundary_n"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL",
+          "DET_CAVITY_MANY"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 3,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-11",
+      "description": "3 lubang, satu di bawah ambang keyakinan: hanya 2 dihitung",
+      "tags": [
+        "detection",
+        "boundary_n",
+        "boundary_confidence"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.3,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.7,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 1,
+            "counted": false,
+            "size": null
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-12",
+      "description": "1 lubang besar + 1 lubang kecil",
+      "tags": [
+        "detection"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_LARGE",
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-13",
+      "description": "3 lubang besar",
+      "tags": [
+        "detection"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_LARGE",
+          "DET_CAVITY_MANY"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-14",
+      "description": "Kotak sangat kecil, keyakinan 1.0",
+      "tags": [
+        "detection",
+        "edge"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 1.0,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.501,
+              "y_max": 0.501
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-15",
+      "description": "Kotak seluas foto",
+      "tags": [
+        "detection",
+        "edge"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.0,
+              "y_min": 0.0,
+              "x_max": 1.0,
+              "y_max": 1.0
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_LARGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "DET-16",
+      "description": "Keyakinan 0 (profil uji): tidak dihitung",
+      "tags": [
+        "detection",
+        "edge"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.0,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": false,
+            "size": null
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NC-01",
+      "description": "1 temuan 'perlu perhatian' besar, yakin 0.9: tidak menaikkan level",
+      "tags": [
+        "noncavitated"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DET_NONCAV_ATTENTION",
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_ATTENTION_AREA",
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NC-02",
+      "description": "10 temuan 'perlu perhatian' besar: tetap rutin",
+      "tags": [
+        "noncavitated",
+        "boundary_n"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DET_NONCAV_ATTENTION",
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_ATTENTION_AREA",
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 3,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 4,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 5,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 6,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 7,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 8,
+            "counted": true,
+            "size": "large"
+          },
+          {
+            "detection_index": 9,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NC-03",
+      "description": "'Perlu perhatian' dengan keyakinan 0.2499 (< 0.25): tidak ditampilkan",
+      "tags": [
+        "noncavitated",
+        "boundary_confidence"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.2499,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": false,
+            "size": null
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NC-04",
+      "description": "'Perlu perhatian' dengan keyakinan tepat 0.25",
+      "tags": [
+        "noncavitated",
+        "boundary_confidence"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.25,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DET_NONCAV_ATTENTION",
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_ATTENTION_AREA",
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NC-05",
+      "description": "'Perlu perhatian' + lubang kecil",
+      "tags": [
+        "noncavitated",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL",
+          "DET_NONCAV_ATTENTION"
+        ],
+        "advice_ids": [
+          "ADV_ATTENTION_AREA",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NC-06",
+      "description": "3 'perlu perhatian' + 2 lubang kecil: non-kavitas tidak dihitung untuk N",
+      "tags": [
+        "noncavitated",
+        "boundary_n"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          },
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL",
+          "DET_NONCAV_ATTENTION"
+        ],
+        "advice_ids": [
+          "ADV_ATTENTION_AREA",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 1,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 2,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 3,
+            "counted": true,
+            "size": "small"
+          },
+          {
+            "detection_index": 4,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NC-07",
+      "description": "'Perlu perhatian' saja, params kosong: level dari usia, bukan dari temuan",
+      "tags": [
+        "noncavitated",
+        "unset_params"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_noncavitated",
+            "confidence": 0.01,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "unset"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_NONCAV_ATTENTION",
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_ATTENTION_AREA",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "NC-08",
+      "description": "Lubang kecil yakin 0.01, params kosong: semua lubang dihitung besar & banyak",
+      "tags": [
+        "detection",
+        "unset_params"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.01,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "unset"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_LARGE",
+          "DET_CAVITY_MANY",
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "FR-01",
+      "description": "Ukuran relatif bingkai: tepat = X -> besar",
+      "tags": [
+        "frame",
+        "boundary_x",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.25,
+              "y_min": 0.25,
+              "x_max": 0.3125,
+              "y_max": 0.3125
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": {
+          "x_min": 0.0,
+          "y_min": 0.0,
+          "x_max": 0.5,
+          "y_max": 0.5
+        },
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_LARGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "FR-02",
+      "description": "Ukuran relatif bingkai: tepat di bawah X -> kecil",
+      "tags": [
+        "frame",
+        "boundary_x",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.25,
+              "y_min": 0.25,
+              "x_max": 0.3125,
+              "y_max": 0.3124
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": {
+          "x_min": 0.0,
+          "y_min": 0.0,
+          "x_max": 0.5,
+          "y_max": 0.5
+        },
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "FR-03",
+      "description": "Lesi yang sama dengan FR-01, acuan seluruh foto: kecil (bingkai diabaikan)",
+      "tags": [
+        "frame",
+        "boundary_x"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.25,
+              "y_min": 0.25,
+              "x_max": 0.3125,
+              "y_max": 0.3125
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": {
+          "x_min": 0.0,
+          "y_min": 0.0,
+          "x_max": 0.5,
+          "y_max": 0.5
+        },
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "DET_CAVITY_SMALL"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "small"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "FR-04",
+      "description": "Acuan bingkai tanpa deteksi: bingkai tidak wajib",
+      "tags": [
+        "frame",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE",
+        "lesions": []
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "AGE-01",
+      "description": "Usia 71 bln (tepat di bawah rentang uji 72–155)",
+      "tags": [
+        "age",
+        "boundary"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 71,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "AGE-02",
+      "description": "Usia 72 bln (batas bawah)",
+      "tags": [
+        "age",
+        "boundary"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 72,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "AGE-03",
+      "description": "Usia 155 bln (batas atas)",
+      "tags": [
+        "age",
+        "boundary"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 155,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "AGE-04",
+      "description": "Usia 156 bln (tepat di atas batas atas)",
+      "tags": [
+        "age",
+        "boundary"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 156,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "AGE-05",
+      "description": "Usia kosong (null) diperlakukan sebagai belum teruji",
+      "tags": [
+        "age",
+        "unknown"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": null,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "AGE-06",
+      "description": "Usia 0 bln",
+      "tags": [
+        "age",
+        "edge"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 0,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "AGE-07",
+      "description": "Usia 300 bln (batas input)",
+      "tags": [
+        "age",
+        "edge"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 300,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "AGE-08",
+      "description": "Usia kosong tanpa foto: aturan usia tidak berlaku",
+      "tags": [
+        "age",
+        "photo"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": null,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_RETAKE_OR_VISIT",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "AGE-09",
+      "description": "Usia 71 bln, profil alternatif (rutin)",
+      "tags": [
+        "age",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 71,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE",
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "AGE-10",
+      "description": "Usia 71 bln + lubang besar",
+      "tags": [
+        "age",
+        "combination"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.1,
+              "y_min": 0.1,
+              "x_max": 0.35,
+              "y_max": 0.35
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 71,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "urgent",
+        "reasons_ids": [
+          "DET_CAVITY_LARGE",
+          "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
+        ],
+        "advice_ids": [
+          "ADV_DENTIST_SOON",
+          "ADV_PHOTO_LIMITATION",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_URGENT",
+        "lesions": [
+          {
+            "detection_index": 0,
+            "counted": true,
+            "size": "large"
+          }
+        ]
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PH-01",
+      "description": "Foto tidak diambil, tanpa gejala",
+      "tags": [
+        "photo"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_RETAKE_OR_VISIT",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PH-02",
+      "description": "Foto gagal pemeriksaan kualitas",
+      "tags": [
+        "photo"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "quality_failed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_RETAKE_OR_VISIT",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PH-03",
+      "description": "Foto gagal kualitas, profil alternatif (rutin)",
+      "tags": [
+        "photo",
+        "alt_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "quality_failed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "level": "routine",
+        "reasons_ids": [
+          "CTX_PHOTO_NOT_ASSESSED",
+          "DEFAULT_ROUTINE"
+        ],
+        "advice_ids": [
+          "ADV_RETAKE_OR_VISIT",
+          "ADV_RESCREEN_3_6_MONTHS",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_ROUTINE"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "PH-04",
+      "description": "Foto tidak diambil, params kosong",
+      "tags": [
+        "photo",
+        "unset_params"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "unset"
+      },
+      "expected": {
+        "level": "scheduled",
+        "reasons_ids": [
+          "CTX_PHOTO_NOT_ASSESSED"
+        ],
+        "advice_ids": [
+          "ADV_RETAKE_OR_VISIT",
+          "ADV_DENTIST_SCHEDULED",
+          "ADV_DISCLAIMER_NOT_DIAGNOSIS",
+          "ADV_REFERRAL_CTA"
+        ],
+        "referral_template_id": "REF_SCHEDULED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-01",
+      "description": "Jawaban tanda bahaya hilang (kunci tidak ada) != 'tidak'",
+      "tags": [
+        "error",
+        "unknown"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "MISSING_SYMPTOM"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-02",
+      "description": "Jawaban null",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": null,
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "INVALID_ANSWER"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-03",
+      "description": "Jawaban 'maybe'",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "maybe",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "INVALID_ANSWER"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-04",
+      "description": "Jawaban boolean true (jebakan YAML yes->true)",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": true,
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "INVALID_ANSWER"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-05",
+      "description": "Gejala tidak dikenal",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no",
+          "headache": "yes"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "UNKNOWN_SYMPTOM"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-06",
+      "description": "Keyakinan 1.2",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 1.2,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "CONFIDENCE_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-07",
+      "description": "Kelas 'tooth' belum didukung",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "tooth",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "UNKNOWN_CLASS"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-08",
+      "description": "Kotak x_min >= x_max",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.6,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.7
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "BOX_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-09",
+      "description": "Koordinat kotak 1.5",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 1.5,
+              "y_max": 0.7
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "BOX_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-10",
+      "description": "Nyeri 11",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 11,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "PAIN_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-11",
+      "description": "Nyeri null (harus 'unknown')",
+      "tags": [
+        "error",
+        "unknown"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": null,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "PAIN_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-12",
+      "description": "Nyeri berupa teks '5'",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": "5",
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "PAIN_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-13",
+      "description": "Usia -1",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": -1,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "AGE_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-14",
+      "description": "Usia 301 (di atas batas input)",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 301,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "AGE_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-15",
+      "description": "Usia 96.5 (bukan bilangan bulat)",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96.5,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "AGE_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-16",
+      "description": "Field 'pain' hilang",
+      "tags": [
+        "error",
+        "unknown"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "MISSING_FIELD"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-17",
+      "description": "Field tambahan tidak dikenal",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test",
+        "notes": "x"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "UNKNOWN_FIELD"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-18",
+      "description": "Deteksi ada tetapi foto 'not_taken'",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "not_taken",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "DETECTIONS_WITHOUT_PHOTO"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-19",
+      "description": "photo_status tidak dikenal",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "blurry",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "PHOTO_STATUS_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-20",
+      "description": "Acuan bingkai + deteksi tanpa reference_frame",
+      "tags": [
+        "error",
+        "frame"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9,
+            "box": {
+              "x_min": 0.5,
+              "y_min": 0.5,
+              "x_max": 0.6,
+              "y_max": 0.6
+            }
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test_alt"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "REFERENCE_FRAME_REQUIRED"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-21",
+      "description": "Tanda bahaya 'ya' + nyeri tidak valid: tetap error (app tampilkan layar rujukan)",
+      "tags": [
+        "error",
+        "red_flag"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "yes",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 11,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "PAIN_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-22",
+      "description": "Deteksi tanpa 'box'",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [
+          {
+            "class": "caries_cavitated",
+            "confidence": 0.9
+          }
+        ],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "DETECTION_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-23",
+      "description": "reference_frame dengan luas nol",
+      "tags": [
+        "error",
+        "frame"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": {
+          "x_min": 0.2,
+          "y_min": 0.2,
+          "x_max": 0.2,
+          "y_max": 0.4
+        },
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "REFERENCE_FRAME_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-24",
+      "description": "symptoms bukan objek",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": [],
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": [
+          "no",
+          "no",
+          "no",
+          "no",
+          "no",
+          "no",
+          "no",
+          "no",
+          "no"
+        ],
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "SYMPTOMS_INVALID"
+      },
+      "graded_by_drg": false
+    },
+    {
+      "id": "ERR-25",
+      "description": "detections bukan array",
+      "tags": [
+        "error"
+      ],
+      "input": {
+        "detections": {
+          "class": "caries_cavitated"
+        },
+        "photo_status": "assessed",
+        "reference_frame": null,
+        "symptoms": {
+          "airway_or_swallowing": "no",
+          "lethargy": "no",
+          "trismus": "no",
+          "facial_swelling": "no",
+          "fever_with_toothache": "no",
+          "pus_or_fistula": "no",
+          "dental_trauma": "no",
+          "night_pain": "no",
+          "white_spot": "no"
+        },
+        "age_months": 96,
+        "pain": 0,
+        "params_profile": "test"
+      },
+      "expected": {
+        "error": "TriageInputError",
+        "error_code": "DETECTIONS_INVALID"
+      },
+      "graded_by_drg": false
+    }
+  ]
+}

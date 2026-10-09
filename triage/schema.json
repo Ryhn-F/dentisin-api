@@ -1,0 +1,331 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dentisai.local/triage/schema.json",
+  "title": "DentisAI triage rules (rules.yaml / dist/rules.json)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "version", "status", "title", "notice", "texts_review",
+    "release_requirements", "levels", "answers", "questions", "photo_statuses",
+    "pain_scale", "input_limits", "detection_classes", "lesion_size", "contacts",
+    "params", "advice", "always_advice", "photo_assessed_advice", "rules"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.]+)?$"},
+    "status": {"enum": ["DRAFT", "APPROVED"]},
+    "title": {"type": "string", "minLength": 1},
+    "notice": {"type": "string"},
+    "texts_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "reviewed_by", "reviewed_at"],
+      "properties": {
+        "description": {"type": "string"},
+        "reviewed_by": {"$ref": "#/$defs/reviewed_by"},
+        "reviewed_at": {"$ref": "#/$defs/reviewed_at"}
+      }
+    },
+    "release_requirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_graded_cases"],
+      "properties": {"min_graded_cases": {"type": "integer", "minimum": 30}}
+    },
+    "levels": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "rank", "icon", "color", "label", "referral_template_id", "advice"],
+        "properties": {
+          "id": {"$ref": "#/$defs/level_id"},
+          "rank": {"type": "integer", "minimum": 0},
+          "icon": {"type": "string"},
+          "color": {"type": "string"},
+          "label": {"type": "string", "minLength": 1},
+          "referral_template_id": {"type": "string", "pattern": "^REF_[A-Z0-9_]+$"},
+          "advice": {"$ref": "#/$defs/advice_id_list"}
+        }
+      }
+    },
+    "answers": {
+      "type": "array",
+      "items": {"enum": ["yes", "no", "unknown"]},
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "group", "question"],
+        "properties": {
+          "id": {"$ref": "#/$defs/snake_id"},
+          "group": {"enum": ["red_flag", "symptom"]},
+          "question": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "photo_statuses": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "assessed", "description"],
+        "properties": {
+          "id": {"$ref": "#/$defs/snake_id"},
+          "assessed": {"type": "boolean"},
+          "description": {"type": "string"}
+        }
+      }
+    },
+    "pain_scale": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "min", "max"],
+      "properties": {
+        "name": {"type": "string"},
+        "min": {"type": "integer"},
+        "max": {"type": "integer"}
+      }
+    },
+    "input_limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["age_months_min", "age_months_max"],
+      "properties": {
+        "age_months_min": {"type": "integer", "minimum": 0},
+        "age_months_max": {"type": "integer", "minimum": 0}
+      }
+    },
+    "detection_classes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "label", "min_confidence_param"],
+        "properties": {
+          "id": {"$ref": "#/$defs/snake_id"},
+          "label": {"type": "string"},
+          "min_confidence_param": {"$ref": "#/$defs/snake_id"}
+        }
+      }
+    },
+    "lesion_size": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "large_min_rel_area_param", "area_reference_param"],
+      "properties": {
+        "description": {"type": "string"},
+        "large_min_rel_area_param": {"$ref": "#/$defs/snake_id"},
+        "area_reference_param": {"$ref": "#/$defs/snake_id"}
+      }
+    },
+    "contacts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["value", "status", "note"],
+        "properties": {
+          "value": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+          "status": {"enum": ["PERLU_VERIFIKASI", "VERIFIED"]},
+          "note": {"type": "string"}
+        }
+      }
+    },
+    "params": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {"$ref": "#/$defs/snake_id"},
+      "additionalProperties": {"$ref": "#/$defs/param"}
+    },
+    "advice": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text"],
+        "properties": {
+          "id": {"$ref": "#/$defs/advice_id"},
+          "text": {"type": "string", "minLength": 1},
+          "uses_contact": {"$ref": "#/$defs/snake_id"}
+        }
+      }
+    },
+    "always_advice": {"$ref": "#/$defs/advice_id_list"},
+    "photo_assessed_advice": {"$ref": "#/$defs/advice_id_list"},
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/rule"}
+    }
+  },
+  "$defs": {
+    "snake_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "level_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "advice_id": {"type": "string", "pattern": "^ADV_[A-Z0-9_]+$"},
+    "advice_id_list": {"type": "array", "items": {"$ref": "#/$defs/advice_id"}, "uniqueItems": true},
+    "reviewed_by": {
+      "description": "Name/ID of the reviewing dentist, or PENDING_DRG / null while unreviewed.",
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "reviewed_at": {
+      "description": "ISO date (YYYY-MM-DD) of the dentist review, or null.",
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "review_fields": {
+      "type": "object",
+      "required": ["source", "reviewed_by", "reviewed_at"],
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "reviewed_by": {"$ref": "#/$defs/reviewed_by"},
+        "reviewed_at": {"$ref": "#/$defs/reviewed_at"}
+      }
+    },
+    "param": {
+      "allOf": [
+        {"$ref": "#/$defs/review_fields"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value", "status", "if_unset", "if_unset_text", "description", "source", "reviewed_by", "reviewed_at"],
+          "properties": {
+            "symbol": {"type": "string"},
+            "type": {"enum": ["number", "integer", "level", "enum"]},
+            "min": {"type": "number"},
+            "max": {"type": "number"},
+            "allowed": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+            "value": {"type": ["number", "string", "null"]},
+            "status": {"enum": ["PLACEHOLDER", "PROPOSED", "SET"]},
+            "if_unset": {"type": ["number", "string"]},
+            "if_unset_text": {"type": "string"},
+            "description": {"type": "string"},
+            "source": {"type": "string"},
+            "reviewed_by": true,
+            "reviewed_at": true
+          }
+        },
+        {
+          "if": {"properties": {"type": {"enum": ["number", "integer"]}}},
+          "then": {
+            "required": ["min", "max"],
+            "not": {"required": ["allowed"]},
+            "properties": {"value": {"type": ["number", "null"]}, "if_unset": {"type": "number"}}
+          },
+          "else": {
+            "required": ["allowed"],
+            "not": {"anyOf": [{"required": ["min"]}, {"required": ["max"]}]},
+            "properties": {"value": {"type": ["string", "null"]}, "if_unset": {"type": "string"}}
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "PLACEHOLDER"}}},
+          "then": {"properties": {"value": {"type": "null"}}}
+        }
+      ]
+    },
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "symptom", "answers"],
+          "properties": {
+            "type": {"const": "symptom_answer"},
+            "symptom": {"$ref": "#/$defs/snake_id"},
+            "answers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["yes", "no", "unknown"]}}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "group", "answers"],
+          "properties": {
+            "type": {"const": "any_symptom_answer"},
+            "group": {"enum": ["red_flag", "symptom"]},
+            "answers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["yes", "no", "unknown"]}}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "param"],
+          "properties": {"type": {"const": "pain_score_at_least"}, "param": {"$ref": "#/$defs/snake_id"}}
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "min_param", "below_param"],
+          "properties": {
+            "type": {"const": "pain_score_in_range"},
+            "min_param": {"$ref": "#/$defs/snake_id"},
+            "below_param": {"$ref": "#/$defs/snake_id"}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type"],
+          "properties": {"type": {"enum": ["pain_unknown", "photo_not_assessed", "no_higher_level_rule_fired"]}}
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "class", "size"],
+          "oneOf": [{"required": ["count"]}, {"required": ["count_param"]}],
+          "properties": {
+            "type": {"const": "lesion_count_at_least"},
+            "class": {"$ref": "#/$defs/snake_id"},
+            "size": {"enum": ["any", "small", "large"]},
+            "count": {"type": "integer", "minimum": 1},
+            "count_param": {"$ref": "#/$defs/snake_id"}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["type", "min_param", "max_param"],
+          "properties": {
+            "type": {"const": "age_outside_validated_range"},
+            "min_param": {"$ref": "#/$defs/snake_id"},
+            "max_param": {"$ref": "#/$defs/snake_id"}
+          }
+        }
+      ]
+    },
+    "rule": {
+      "allOf": [
+        {"$ref": "#/$defs/review_fields"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "stage", "effect", "when", "when_text", "message", "advice", "rationale", "source", "reviewed_by", "reviewed_at"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
+            "stage": {"enum": ["red_flag", "symptom", "detection_score", "detection_count", "context", "default"]},
+            "effect": {"enum": ["raise", "info"]},
+            "level": {"$ref": "#/$defs/level_id"},
+            "level_param": {"$ref": "#/$defs/snake_id"},
+            "when": {"$ref": "#/$defs/condition"},
+            "when_text": {"type": "string", "minLength": 1},
+            "message": {"type": "string", "minLength": 1},
+            "advice": {"$ref": "#/$defs/advice_id_list"},
+            "rationale": {"type": "string", "minLength": 1},
+            "source": {"type": "string"},
+            "reviewed_by": true,
+            "reviewed_at": true
+          }
+        },
+        {
+          "if": {"properties": {"effect": {"const": "raise"}}},
+          "then": {"oneOf": [{"required": ["level"]}, {"required": ["level_param"]}]},
+          "else": {"not": {"anyOf": [{"required": ["level"]}, {"required": ["level_param"]}]}}
+        }
+      ]
+    }
+  }
+}

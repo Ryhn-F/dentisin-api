@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dentisai.local/ml/detection/report.schema.json",
+  "title": "DentisAI detector evaluation report (eval.py)",
+  "type": "object",
+  "required": ["schema_version", "tool", "created_at", "inputs", "settings", "counts", "overall", "subgroups", "warnings", "disclaimer"],
+  "additionalProperties": false,
+  "$defs": {
+    "ratio": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "ci": {
+      "type": ["object", "null"],
+      "required": ["lo", "hi", "n_valid"],
+      "properties": {"lo": {"$ref": "#/$defs/ratio"}, "hi": {"$ref": "#/$defs/ratio"}, "n_valid": {"type": "integer", "minimum": 0}}
+    },
+    "image_level": {
+      "type": "object",
+      "required": ["tp", "fp", "fn", "tn", "sensitivity", "specificity", "ppv", "npv", "ci95"],
+      "properties": {
+        "tp": {"type": "integer", "minimum": 0}, "fp": {"type": "integer", "minimum": 0},
+        "fn": {"type": "integer", "minimum": 0}, "tn": {"type": "integer", "minimum": 0},
+        "sensitivity": {"$ref": "#/$defs/ratio"}, "specificity": {"$ref": "#/$defs/ratio"},
+        "ppv": {"$ref": "#/$defs/ratio"}, "npv": {"$ref": "#/$defs/ratio"},
+        "ci95": {
+          "type": ["object", "null"],
+          "properties": {
+            "sensitivity": {"$ref": "#/$defs/ci"}, "specificity": {"$ref": "#/$defs/ci"},
+            "ppv": {"$ref": "#/$defs/ci"}, "npv": {"$ref": "#/$defs/ci"}
+          }
+        }
+      }
+    },
+    "box_level": {
+      "type": "object",
+      "required": ["tp", "fp", "fn", "sensitivity", "ppv", "specificity", "npv", "ci95"],
+      "properties": {
+        "tp": {"type": "integer", "minimum": 0}, "fp": {"type": "integer", "minimum": 0}, "fn": {"type": "integer", "minimum": 0},
+        "sensitivity": {"$ref": "#/$defs/ratio"}, "ppv": {"$ref": "#/$defs/ratio"},
+        "specificity": {"type": "null", "description": "undefined at box level (no true negatives)"},
+        "npv": {"type": "null", "description": "undefined at box level (no true negatives)"},
+        "ci95": {
+          "type": ["object", "null"],
+          "properties": {"sensitivity": {"$ref": "#/$defs/ci"}, "ppv": {"$ref": "#/$defs/ci"}}
+        }
+      }
+    },
+    "class_block": {
+      "type": "object",
+      "required": ["n_gt_boxes", "n_positive_images", "image_level", "box_level", "ap50", "ap50_ci95"],
+      "properties": {
+        "n_gt_boxes": {"type": "integer", "minimum": 0},
+        "n_positive_images": {"type": "integer", "minimum": 0},
+        "image_level": {"$ref": "#/$defs/image_level"},
+        "box_level": {"$ref": "#/$defs/box_level"},
+        "ap50": {"$ref": "#/$defs/ratio"},
+        "ap50_ci95": {"$ref": "#/$defs/ci"}
+      }
+    },
+    "metrics_block": {
+      "type": "object",
+      "required": ["n_images", "n_units", "per_class", "map50", "map50_ci95"],
+      "properties": {
+        "n_images": {"type": "integer", "minimum": 0},
+        "n_units": {"type": "integer", "minimum": 0},
+        "per_class": {
+          "type": "object",
+          "required": ["caries_cavitated", "caries_noncavitated", "any_lesion"],
+          "additionalProperties": {"$ref": "#/$defs/class_block"}
+        },
+        "map50": {"$ref": "#/$defs/ratio"},
+        "map50_ci95": {"$ref": "#/$defs/ci"},
+        "box_confusion_matrix": {
+          "type": "object",
+          "required": ["labels", "rows", "cols", "matrix"],
+          "properties": {
+            "labels": {"type": "array", "items": {"type": "string"}},
+            "rows": {"const": "ground_truth"},
+            "cols": {"const": "prediction"},
+            "matrix": {"type": "array", "items": {"type": "array", "items": {"type": "integer", "minimum": 0}}}
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {"const": "1.0.0"},
+    "tool": {"type": "string"},
+    "created_at": {"type": "string"},
+    "inputs": {
+      "type": "object",
+      "required": ["gt_path", "gt_sha256", "predictions_path", "predictions_sha256", "split", "split_sha256"],
+      "properties": {
+        "gt_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "predictions_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "split": {"enum": ["train", "val", "test", null]},
+        "split_sha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+        "candidate": {"type": ["string", "null"]},
+        "model_version": {"type": ["string", "null"]}
+      }
+    },
+    "settings": {
+      "type": "object",
+      "required": ["classes", "iou_threshold", "score_thresholds", "score_threshold_status", "matching", "ap_method", "bootstrap"],
+      "properties": {
+        "iou_threshold": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "score_thresholds": {"type": "object", "additionalProperties": {"type": "number"}},
+        "score_threshold_status": {"type": "string"},
+        "bootstrap": {
+          "type": "object",
+          "required": ["n", "seed", "ci", "method"],
+          "properties": {"n": {"type": "integer", "minimum": 0}, "seed": {"type": "integer"}}
+        }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "required": ["n_images", "n_units", "bootstrap_unit", "n_pred_boxes"],
+      "properties": {"bootstrap_unit": {"enum": ["patient", "image"]}}
+    },
+    "overall": {"$ref": "#/$defs/metrics_block"},
+    "subgroups": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": {"enum": ["ok", "column_missing"]},
+          "groups": {"type": "object", "additionalProperties": {"$ref": "#/$defs/metrics_block"}}
+        }
+      }
+    },
+    "warnings": {"type": "array", "items": {"type": "string"}},
+    "disclaimer": {"type": "string"}
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "products_version": "0.1.0-placeholder",
+  "readme": "BERKAS INI BERISI CONTOH PLACEHOLDER/SINTETIS, BUKAN PRODUK NYATA. Semua entri synthetic=true, verified=false. Merek hanya boleh ada di berkas ini (bukan di rules.json). Pemilik produk mengganti entri dengan produk nyata lewat prosedur di how_to_fill, lalu mengisi verified=true dan verified_at. Nilai null berarti belum diketahui dan diperlakukan konservatif oleh filter (produk dibuang bila filter terkait aktif).",
+  "how_to_fill": [
+    "1. Pilih produk nyata menurut kandungan (kadar fluoride ppm pada kemasan), bukan menurut merek. Siapkan minimal 2 produk berbeda untuk tiap kelas ppm yang dipakai.",
+    "2. Buka https://cekbpom.pom.go.id, pilih pencarian Kosmetik, cari nama produk atau nomor notifikasi (diawali NA...). Salin nomor notifikasi ke bpom_notification_no. [PERLU VERIFIKASI mekanisme dan format nomor]",
+    "3. Dari kemasan/situs BPOM catat: kadar fluoride (ppm), apakah memuat SLS (contains_sls), daftar bahan pemicu alergi (allergens, kode dari rules.json filters.allergen_codes), dan status sertifikat halal (halal_certified; cek di https://cekhalal.halal.go.id; null bila tidak diketahui).",
+    "4. Isi source dengan tautan/situs yang dipakai, isi verified_at (YYYY-MM-DD) dan ubah verified=true, synthetic=false. Ganti brand dari 'CONTOH-...' ke nama produk.",
+    "5. Jalankan: python -m recommender.release_check  lalu  python -m recommender.build_bundle."
+  ],
+  "products": [
+    {
+      "id": "placeholder-500-a",
+      "brand": "CONTOH-A (isi manual)",
+      "ppm": 500,
+      "bpom_notification_no": null,
+      "contains_sls": null,
+      "halal_certified": null,
+      "allergens": null,
+      "verified": false,
+      "verified_at": null,
+      "source": null,
+      "synthetic": true
+    },
+    {
+      "id": "placeholder-500-b",
+      "brand": "CONTOH-B (isi manual)",
+      "ppm": 500,
+      "bpom_notification_no": null,
+      "contains_sls": null,
+      "halal_certified": null,
+      "allergens": null,
+      "verified": false,
+      "verified_at": null,
+      "source": null,
+      "synthetic": true
+    },
+    {
+      "id": "placeholder-1000-a",
+      "brand": "CONTOH-C (isi manual)",
+      "ppm": 1000,
+      "bpom_notification_no": null,
+      "contains_sls": null,
+      "halal_certified": null,
+      "allergens": null,
+      "verified": false,
+      "verified_at": null,
+      "source": null,
+      "synthetic": true
+    },
+    {
+      "id": "placeholder-1000-b",
+      "brand": "CONTOH-D (isi manual)",
+      "ppm": 1000,
+      "bpom_notification_no": null,
+      "contains_sls": null,
+      "halal_certified": null,
+      "allergens": null,
+      "verified": false,
+      "verified_at": null,
+      "source": null,
+      "synthetic": true
+    },
+    {
+      "id": "placeholder-1450-a",
+      "brand": "CONTOH-E (isi manual)",
+      "ppm": 1450,
+      "bpom_notification_no": null,
+      "contains_sls": null,
+      "halal_certified": null,
+      "allergens": null,
+      "verified": false,
+      "verified_at": null,
+      "source": null,
+      "synthetic": true
+    },
+    {
+      "id": "placeholder-1450-b",
+      "brand": "CONTOH-F (isi manual)",
+      "ppm": 1450,
+      "bpom_notification_no": null,
+      "contains_sls": null,
+      "halal_certified": null,
+      "allergens": null,
+      "verified": false,
+      "verified_at": null,
+      "source": null,
+      "synthetic": true
+    }
+  ]
+}

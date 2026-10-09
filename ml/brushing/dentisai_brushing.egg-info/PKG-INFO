@@ -1,0 +1,21 @@
+Metadata-Version: 2.4
+Name: dentisai-brushing
+Version: 0.1.0
+Summary: DentisAI brushing prototype: rule-based scorer on landmark feature streams (no video, no frames).
+Requires-Python: >=3.11
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: jsonschema>=4.18
+Requires-Dist: tzdata>=2024.1; sys_platform == "win32"
+Provides-Extra: fast
+Requires-Dist: numpy>=1.26; extra == "fast"
+Provides-Extra: prototype
+Requires-Dist: mediapipe; extra == "prototype"
+Requires-Dist: opencv-python; extra == "prototype"
+Requires-Dist: numpy>=1.26; extra == "prototype"
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: pytest-cov>=5; extra == "dev"
+Requires-Dist: ruff>=0.5; extra == "dev"
+Requires-Dist: mypy>=1.10; extra == "dev"
+Requires-Dist: types-PyYAML; extra == "dev"
+Requires-Dist: types-jsonschema; extra == "dev"

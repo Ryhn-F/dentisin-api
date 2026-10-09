@@ -1,0 +1,148 @@
+# Brushing prototype rules (DentisAI, Phase 4). EVERY threshold lives here, not in code.
+#
+# status:
+#   FIXED_BY_GUIDELINE - taken from a guideline/consensus cited in rationale
+#   PLACEHOLDER        - engineering guess; NOT validated against observers or any dentist.
+#                        Must be re-fitted on observer-labelled landmark sessions (label_format.md)
+#                        before any claim beyond "game feedback".
+#
+# Coordinates: normalised image units of the MIRRORED front-camera preview (x right, y down).
+# Distances are divided by face_scale (face height), so 1.0 == one face height.
+# Scope (ADR 003 sec.4): duration + presence + coarse coverage + enthusiasm score.
+# This is NOT clinical technique scoring and makes no accuracy claim.
+schema: brushing_rules/1
+version: "0.1.0"
+status: PLACEHOLDER
+reviewed_by: null      # dentist sign-off pending [PENDING]
+reviewed_at: null
+
+params:
+  # ---- presence gating (FR-60) -------------------------------------------------------------
+  min_face_conf:
+    value: 0.5
+    status: PLACEHOLDER
+    rationale: Minimum face detection confidence for a frame to count as "face present".
+  min_hand_conf:
+    value: 0.5
+    status: PLACEHOLDER
+    rationale: Minimum hand detection confidence for a frame to count as "hand present".
+  near_mouth_max_rel:
+    value: 1.0
+    status: PLACEHOLDER
+    rationale: Max hand-to-mouth distance (face heights) for the hand/brush to count as at the mouth.
+  hand_dropout_grace_ms:
+    value: 400
+    status: PLACEHOLDER
+    rationale: The brush often occludes the hand landmarks; keep crediting up to this long after the last active frame if the face is still present.
+
+  # ---- anti-cheat: motion must vary (FR-64) ------------------------------------------------
+  window_ms:
+    value: 1500
+    status: PLACEHOLDER
+    rationale: Sliding window for motion statistics.
+  min_window_samples:
+    value: 5
+    status: PLACEHOLDER
+    rationale: Minimum hand samples in the window before motion can be judged (startup lag).
+  min_motion_variance:
+    value: 0.0004
+    status: PLACEHOLDER
+    rationale: Min total positional variance (x+y, face-height^2) of the hand relative to the mouth within the window. A static hand holding a brush stays below this.
+  min_direction_reversals:
+    value: 2
+    status: PLACEHOLDER
+    rationale: Brushing is back-and-forth; a slow one-way drift must not count.
+  reversal_min_amplitude:
+    value: 0.01
+    status: PLACEHOLDER
+    rationale: Hysteresis (face heights) so landmark jitter is not counted as a stroke.
+  max_mean_speed:
+    value: 4.0
+    status: PLACEHOLDER
+    rationale: Mean hand speed (face heights/s) above which motion is treated as shaking/waving, not brushing.
+
+  # ---- timer (FR-60) -----------------------------------------------------------------------
+  target_duration_s:
+    value: 120
+    status: FIXED_BY_GUIDELINE
+    rationale: Two-minute brushing consensus (../docs/research/03_ai_components.md sec.3.4). [PERLU VERIFIKASI] primary source.
+  max_frame_gap_ms:
+    value: 500
+    status: PLACEHOLDER
+    rationale: Gaps longer than this between frames earn no credit and reset the motion window (app paused, camera stall).
+
+  # ---- coarse coverage (FR-62): game guidance only -----------------------------------------
+  min_sextant_ms:
+    value: 8000
+    status: PLACEHOLDER
+    rationale: Active time needed in a sextant to mark it "covered".
+  hand_x_weight:
+    value: 1.0
+    status: PLACEHOLDER
+    rationale: Weight of window-mean hand x offset (face heights) in the left/front/right score.
+  head_yaw_weight:
+    value: 1.0
+    status: PLACEHOLDER
+    rationale: Weight of head yaw (yaw_deg / yaw_ref_deg) in the left/front/right score. Positive yaw = head turned toward the right of the mirrored preview.
+  yaw_ref_deg:
+    value: 30.0
+    status: PLACEHOLDER
+    rationale: Yaw that counts as 1.0 unit in the horizontal score.
+  h_side_threshold:
+    value: 0.25
+    status: PLACEHOLDER
+    rationale: Absolute horizontal score above this means left or right, else front.
+  hand_y_weight:
+    value: 1.0
+    status: PLACEHOLDER
+    rationale: Weight of window-mean hand y offset (positive = below mouth) in the upper/lower score.
+  head_pitch_weight:
+    value: 0.5
+    status: PLACEHOLDER
+    rationale: Weight of head pitch (pitch_deg / pitch_ref_deg) in the upper/lower score. Positive pitch = chin down.
+  pitch_ref_deg:
+    value: 30.0
+    status: PLACEHOLDER
+    rationale: Pitch that counts as 1.0 unit in the vertical score.
+  v_split:
+    value: 0.0
+    status: PLACEHOLDER
+    rationale: Vertical score below this = upper arch, else lower arch.
+
+  # ---- enthusiasm score (rule-based, game only) --------------------------------------------
+  w_duration:
+    value: 0.5
+    status: PLACEHOLDER
+    rationale: Weight of active-time fraction.
+  w_vigor:
+    value: 0.2
+    status: PLACEHOLDER
+    rationale: Weight of motion vigour.
+  w_coverage:
+    value: 0.3
+    status: PLACEHOLDER
+    rationale: Weight of sextant coverage fraction.
+  vigor_min_speed:
+    value: 0.2
+    status: PLACEHOLDER
+    rationale: Mean active speed (face heights/s) mapped to vigour 0.
+  vigor_max_speed:
+    value: 1.2
+    status: PLACEHOLDER
+    rationale: Mean active speed mapped to vigour 1 (capped; faster is not better).
+
+  # ---- check-in windows / streak (FR-63) ---------------------------------------------------
+  timezone:
+    value: Asia/Jakarta
+    status: PLACEHOLDER
+    rationale: Default IANA zone; the app lets the user pick Asia/Makassar or Asia/Jayapura. Timestamps are stored in UTC.
+  windows:
+    value:
+      - {name: morning, start: "06:00", end: "10:00"}
+      - {name: evening, start: "19:00", end: "23:00"}
+    status: PLACEHOLDER
+    rationale: "Morning after breakfast / evening before bed (SKI 2023 'waktu yang benar' definition, ../docs/research/01_problem.md). Local wall-clock, start inclusive, end exclusive; end < start means the window crosses midnight; start == end is invalid. User-configurable."
+  streak_requires:
+    value: both
+    status: PLACEHOLDER
+    rationale: '"both" = morning and evening check-ins both needed for a streak day; "any" = one is enough. Product decision.'

@@ -1,0 +1,97 @@
+# CI for the DentisAI backend. Jobs for modules that other engineers own are guarded with
+# hashFiles(...) so this workflow stays green until those modules exist.
+# Python projects are discovered by their pyproject.toml; each one is its own uv project.
+#
+# LAYOUT: paths are relative to BACKEND_ROOT. If backend/ is its own repository, keep
+# BACKEND_DIR empty. If this file is copied to the root `.github/workflows/` of a monorepo
+# (GitHub only reads the root .github), set BACKEND_DIR to "backend/" (trailing slash).
+# The shared docs/style/forbidden_phrases.md at the monorepo root is then picked up
+# automatically and compared with the vendored copy (backend/docs/style).
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BACKEND_DIR: "" # "" standalone repo | "backend/" monorepo
+  UV_PYTHON: "3.12"
+
+jobs:
+  secrets-scan:
+    # Fails if .env / key-like files are tracked or a service_role/age/PEM key appears in text.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Scan tracked files (values are never printed)
+        run: python "${BACKEND_DIR}tools/check_secrets.py" --root "${BACKEND_DIR:-.}"
+
+  forbidden-phrases:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Shared and vendored forbidden_phrases.md must not differ
+        run: python "${BACKEND_DIR}tools/lint_forbidden_phrases.py" --check-sync
+      - name: Lint forbidden phrases
+        if: ${{ hashFiles(format('{0}docs/style/forbidden_phrases.md', env.BACKEND_DIR)) != '' || hashFiles('docs/style/forbidden_phrases.md') != '' }}
+        run: python "${BACKEND_DIR}tools/lint_forbidden_phrases.py"
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax check and shellcheck
+        run: |
+          bash -n "${BACKEND_DIR}tools/backup_db.sh"
+          shellcheck "${BACKEND_DIR}tools/backup_db.sh"
+
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # tools = ops project; tools/manifest = Ed25519 manifest project (separate pyproject)
+        module: [tools, tools/manifest, triage, recommender, ml/detection, ml/brushing, api]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v6
+        if: ${{ hashFiles(format('{0}{1}/pyproject.toml', env.BACKEND_DIR, matrix.module)) != '' }}
+      - name: Install dependencies
+        if: ${{ hashFiles(format('{0}{1}/pyproject.toml', env.BACKEND_DIR, matrix.module)) != '' }}
+        working-directory: ${{ env.BACKEND_DIR }}${{ matrix.module }}
+        # ml/brushing keeps pytest in its `dev` extra (the `prototype` extra is heavy, so not --all-extras)
+        run: uv sync ${{ matrix.module == 'ml/brushing' && '--extra dev' || '' }}
+      - name: pytest
+        if: ${{ hashFiles(format('{0}{1}/pyproject.toml', env.BACKEND_DIR, matrix.module)) != '' }}
+        working-directory: ${{ env.BACKEND_DIR }}${{ matrix.module }}
+        run: uv run ${{ matrix.module == 'ml/brushing' && '--extra dev' || '' }} pytest -q
+      - name: ruff
+        if: ${{ matrix.module == 'tools' }}
+        working-directory: ${{ env.BACKEND_DIR }}tools
+        run: uv run ruff check .
+      - name: mypy
+        if: ${{ matrix.module == 'tools' }}
+        working-directory: ${{ env.BACKEND_DIR }}tools
+        run: uv run mypy .

@@ -1,0 +1,16 @@
+# Class map for Ahmed 2025 (Zenodo 14827784) -> DentisAI canonical classes.
+# STATUS: PLACEHOLDER. The real label names/ids were NOT inspected (dataset not downloaded here).
+# Steps (see ../scripts/fetch_ahmed2025.md):
+#   1. Download, then read classes from the COCO 'categories' / YOLO classes file / data.yaml.
+#   2. Put the YOLO id order into `yolo_names` and list every source name under `map`.
+#   3. Decide each mapping WITH the supervising dentist (drg): which source labels mean
+#      cavitated vs non-cavitated? If the dataset has a single "caries" label, mapping it to
+#      caries_cavitated is a clinical decision and `caries_noncavitated` will have NO training data.
+#   4. Values: caries_cavitated | caries_noncavitated | __drop__ ; null = undecided -> converter refuses.
+#   5. Set status: reviewed, reviewed_by, reviewed_at.
+status: PLACEHOLDER
+reviewed_by: null
+reviewed_at: null
+yolo_names: []          # [PERLU VERIFIKASI] fill from the dataset in id order
+map:
+  caries: null          # [PERLU VERIFIKASI] placeholder name; replace with the real label names

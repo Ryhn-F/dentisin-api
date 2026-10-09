@@ -1,0 +1,117 @@
+# Machine-readable license gate. Human-readable version with sources: LICENSES.md (keep in sync;
+# ml/detection/tests/test_license_gate.py checks that every id below appears in LICENSES.md).
+# Read by ml/detection/train.py and export.py. ADR 001 / ADR 008 / backend/CLAUDE.md §3.4.
+#
+# status (datasets):  allowed | blocked_unverified | internal_only | forbidden
+# status (models):    candidate | forbidden_in_product
+# "verified: true" ONLY when a person (or agent) actually read the LICENSE / record page; cite it.
+schema_version: 1
+updated_at: "2026-10-08"
+
+datasets:
+  ahmed2025:
+    name: "Annotated intraoral image dataset for dental caries detection"
+    url: "https://zenodo.org/records/14827784"
+    doi: "10.5281/zenodo.14827784"
+    version: "v1"
+    license: "CC-BY-4.0"
+    license_url: "https://creativecommons.org/licenses/by/4.0/"
+    license_verified: true
+    verified_source: "Zenodo record page https://zenodo.org/records/14827784 (read 2026-10-08)"
+    status: allowed
+    may_upload_to_third_party_compute: true   # public data -> Kaggle/Colab allowed
+    attribution_en: >-
+      Contains data from "Annotated intraoral image dataset for dental caries detection" by
+      S. M. F. Ahmed, H. Ghori, A. Khalid, A. Nooruddin, N. Adnan, A. Lal and F. Umer
+      (Aga Khan University), Zenodo, doi:10.5281/zenodo.14827784, licensed under CC BY 4.0
+      (https://creativecommons.org/licenses/by/4.0/). Changes: annotations re-mapped to DentisAI
+      classes, images resized; the dataset was used to train a model.
+    attribution_id: >-
+      Model ini dilatih memakai data dari "Annotated intraoral image dataset for dental caries
+      detection" oleh S. M. F. Ahmed, H. Ghori, A. Khalid, A. Nooruddin, N. Adnan, A. Lal dan
+      F. Umer (Aga Khan University), Zenodo, doi:10.5281/zenodo.14827784, lisensi CC BY 4.0
+      (https://creativecommons.org/licenses/by/4.0/). Perubahan: label dipetakan ulang ke kelas
+      DentisAI dan ukuran gambar diubah.
+  dentalai:
+    name: "DENTALAI"
+    url: "https://datasetninja.com/dentalai"
+    license: "CC-BY-4.0 (per Dataset Ninja listing only)"
+    license_verified: false   # [PERLU VERIFIKASI] original publisher/license not checked
+    status: blocked_unverified
+    may_upload_to_third_party_compute: true
+  alphadent:
+    name: "AlphaDent"
+    url: "https://arxiv.org/abs/2507.22512"
+    license: "CC-BY-SA-4.0"
+    license_verified: false   # [PERLU VERIFIKASI] per-file license; arXiv page only
+    status: internal_only     # share-alike: never used for a shipped model (ADR 008)
+    may_upload_to_third_party_compute: true
+  kaggle_oral_diseases:
+    name: "Kaggle 'oral diseases' (web-scraped images)"
+    license: null
+    license_verified: false
+    status: forbidden         # images from dental websites without permission
+    may_upload_to_third_party_compute: false
+  local_children_id:
+    name: "DentisAI local pediatric photos (future, KEPK + consent (c) required)"
+    license: "n/a (personal health data of children, UU PDP 27/2022)"
+    license_verified: false
+    status: blocked_unverified   # until KEPK approval + consent (c)
+    may_upload_to_third_party_compute: false   # NEVER Kaggle/Colab; team PC / campus lab only
+
+models:
+  mediapipe_modelmaker_mobilenetv2_ssd:
+    code:
+      license: "Apache-2.0"
+      verified: true
+      source: "https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE (read 2026-10-08); PyPI mediapipe-model-maker 0.2.1.4 license 'Apache 2.0'"
+    weights:
+      license: null
+      verified: false   # [PERLU VERIFIKASI] pretrained MobileNetV2/MultiHW-AVG checkpoint terms not stated on docs page
+      source: "https://developers.google.com/edge/mediapipe/solutions/customization/object_detector"
+    status: candidate
+    notes: "Docs page marked Deprecated ('no longer actively maintained'); last PyPI release 2024-04-22; classifiers Python 3.8-3.10."
+  yolox_nano:
+    code:
+      license: "Apache-2.0"
+      verified: true
+      source: "https://github.com/Megvii-BaseDetection/YOLOX/blob/main/LICENSE (read 2026-10-08; 'Copyright (c) 2021-2022 Megvii Inc.')"
+    weights:
+      license: null
+      verified: false   # [PERLU VERIFIKASI] yolox_nano.pth in GitHub releases; COCO-pretrained
+      source: "https://github.com/Megvii-BaseDetection/YOLOX/releases"
+    status: candidate
+    notes: "PyPI 'yolox' 0.3.0 last uploaded 2022-04-22 -> install from a pinned git commit."
+  efficientdet_lite0:
+    code:
+      license: "Apache-2.0"
+      verified: true
+      source: "https://github.com/google/automl/blob/master/LICENSE (read 2026-10-08; 'Copyright 2020 Google Research')"
+    weights:
+      license: null
+      verified: false   # [PERLU VERIFIKASI] Kaggle Models / TF Hub efficientdet-lite0 page did not render
+      source: "https://www.kaggle.com/models/tensorflow/efficientdet"
+    status: candidate
+  rfdetr_nano:
+    code:
+      license: "Apache-2.0"
+      verified: false   # README license section read; LICENSE file URL returned 404 -> [PERLU VERIFIKASI]
+      source: "https://github.com/roboflow/rf-detr README (read 2026-10-08): Nano/Small/Medium/Large Apache-2.0; XL/2XL (and per tables Atto/Femto/Pico) PML 1.0"
+    weights:
+      license: "Apache-2.0 (README table)"
+      verified: false
+      source: "https://github.com/roboflow/rf-detr"
+    status: candidate
+  ultralytics_yolov8:
+    code:
+      license: "AGPL-3.0"
+      verified: false
+      source: "docs/research/03_ai_components.md §3.1.3"
+    weights:
+      license: "AGPL-3.0"
+      verified: false
+      source: "docs/research/03_ai_components.md §3.1.3"
+    status: forbidden_in_product   # ADR 001/008; never in this pipeline
+
+# Package names that must never appear as dependencies or imports of shipped/pipeline code.
+forbidden_packages: ["ultralytics", "yolov5", "yolov8", "ultralyticsplus"]

@@ -1,0 +1,61 @@
+# Bake-off candidate 2 (ADR 001): YOLOX-Nano (Apache-2.0 code; weights license [PERLU VERIFIKASI]).
+# NOT RUN in this repo. Install YOLOX from a pinned git commit (PyPI 'yolox' 0.3.0 is from 2022):
+#   git clone https://github.com/Megvii-BaseDetection/YOLOX && cd YOLOX && git checkout <pinned-sha> && pip install -v -e .
+# Export route: torch -> ONNX (decode_in_inference=False, decoder runs in the app) -> onnx2tf INT8.
+schema_version: 1
+candidate: yolox_nano
+trainer: yolox
+priority: high
+license_verified: false
+data:
+  canonical: ../data/processed/ahmed2025/canonical.jsonl
+  splits: ../data/processed/ahmed2025/splits/splits.json
+  images_root: ../data/raw/ahmed2025
+  datasets: [ahmed2025]
+  classes: [caries_cavitated, caries_noncavitated]
+model:
+  variant: yolox_nano          # depth 0.33, width 0.25, depthwise conv
+  input_size: [416, 416]
+  pretrained: yolox_nano.pth   # COCO-pretrained, from GitHub releases
+  output_format: yolox_raw     # [1, sum(HW/stride^2), 5 + num_classes]
+  output_format_verified: false
+  preprocess:            # YOLOX ValTransform(legacy=False): cv2 BGR, no mean/std, top-left letterbox pad 114
+    color_order: BGR
+    input_dtype: float32  # onnx2tf INT8 models may keep float32 I/O; replaced by interpreter values when available
+    pixel_range: [0, 255]
+    mean: [0, 0, 0]
+    std: [1, 1, 1]
+    resize_method: letterbox
+    align: top_left
+    pad_value: 114
+    interpolation: bilinear
+  decode:
+    strides: [8, 16, 32]
+    sigmoid_applied: true   # YOLOXHead applies sigmoid to obj/cls in eval mode
+  output_tensors:
+    - {index: 0, role: raw, shape: [1, 3549, 7], dtype: float32}
+train:
+  seed: 20261008
+  epochs: 150
+  batch_size: 32
+  learning_rate: 0.01           # YOLOX basic_lr_per_img * 64 default scaling; tune
+augment:
+  flashlight_hotspot: true
+  white_balance_shift: true
+  motion_blur: true
+  lip_occlusion: true
+  horizontal_flip: true
+  supported_by_trainer: true
+export:
+  format: tflite
+  int8: true
+  max_size_mb: 15
+  path: "tools/export_onnx.py (no --decode_in_inference) -> onnx2tf -oiqt (INT8) ; check_int8_parity.py"
+  representative_samples: 200
+trainer_options:
+  layout: yolox
+  yolox_repo: ../../third_party/YOLOX   # local clone, NOT committed
+  devices: 1
+  fp16: true
+notes:
+  - "Mosaic/MixUp defaults of YOLOX may hide small lesions; record settings in the run."

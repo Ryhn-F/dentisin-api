@@ -1,0 +1,54 @@
+# Bake-off candidate 4 (LOW PRIORITY, ADR 001): RF-DETR Nano. README says Nano is Apache-2.0
+# (XL/2XL are PML 1.0 -> excluded); LICENSE file not read -> [PERLU VERIFIKASI].
+# No documented TFLite path; transformer + INT8 is risky. Run only if candidates 1-3 fail.
+schema_version: 1
+candidate: rfdetr_nano
+trainer: rfdetr
+priority: low
+license_verified: false
+data:
+  canonical: ../data/processed/ahmed2025/canonical.jsonl
+  splits: ../data/processed/ahmed2025/splits/splits.json
+  images_root: ../data/raw/ahmed2025
+  datasets: [ahmed2025]
+  classes: [caries_cavitated, caries_noncavitated]
+model:
+  variant: RFDETRNano
+  input_size: [384, 384]       # [PERLU VERIFIKASI] default resolution of the Nano checkpoint
+  pretrained: rfdetr_nano_default
+  output_format: detr_raw
+  output_format_verified: false
+  preprocess:            # ImageNet mean/std on [0,1] RGB [PERLU VERIFIKASI]
+    color_order: RGB
+    input_dtype: float32
+    pixel_range: [0, 1]
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+    resize_method: stretch
+    align: none
+    pad_value: null
+    interpolation: bilinear
+  decode: {}
+  output_tensors:
+    - {index: 0, role: boxes, shape: [1, 300, 4], dtype: float32}
+    - {index: 1, role: logits, shape: [1, 300, 2], dtype: float32}
+train:
+  seed: 20261008
+  epochs: 50
+  batch_size: 8
+  learning_rate: 0.0001
+augment:
+  flashlight_hotspot: true
+  white_balance_shift: true
+  motion_blur: true
+  lip_occlusion: true
+  horizontal_flip: true
+  supported_by_trainer: false
+export:
+  format: tflite
+  int8: true
+  max_size_mb: 15
+  path: "rfdetr export (ONNX) -> onnx2tf INT8 [undocumented route]"
+  representative_samples: 200
+trainer_options:
+  layout: roboflow

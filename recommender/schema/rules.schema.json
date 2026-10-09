@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dentisai.local/schema/recommender-rules.schema.json",
+  "title": "DentisAI recommender rules (fluoride-only v1)",
+  "type": "object",
+  "required": [
+    "rules_version", "scope", "language", "readme", "valid_age_months", "regulatory_ceiling_ppm",
+    "min_products", "age_bands", "risk_levels", "risk_note_ids", "filters",
+    "mandatory_disclaimer_ids", "product_note_ids", "messages"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "rules_version": { "type": "string", "minLength": 1 },
+    "scope": { "const": "fluoride_only_v1" },
+    "language": { "const": "id" },
+    "readme": { "type": "string", "minLength": 1 },
+    "valid_age_months": {
+      "allOf": [{ "$ref": "#/$defs/review" }],
+      "type": "object",
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 0 }
+      },
+      "unevaluatedProperties": false
+    },
+    "regulatory_ceiling_ppm": {
+      "allOf": [{ "$ref": "#/$defs/review" }],
+      "type": "object",
+      "required": ["value"],
+      "properties": { "value": { "type": "integer", "minimum": 1 } },
+      "unevaluatedProperties": false
+    },
+    "min_products": { "type": "integer", "minimum": 1 },
+    "age_bands": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/band" } },
+    "risk_levels": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+    "risk_note_ids": {
+      "type": "object",
+      "additionalProperties": { "type": "array", "items": { "type": "string" } }
+    },
+    "filters": {
+      "allOf": [{ "$ref": "#/$defs/review" }],
+      "type": "object",
+      "required": ["allergen_codes", "allergy_implies_pref", "semantics"],
+      "properties": {
+        "allergen_codes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "label"],
+            "additionalProperties": false,
+            "properties": {
+              "code": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+              "label": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "allergy_implies_pref": {
+          "type": "object",
+          "additionalProperties": { "enum": ["halal", "no_sls"] }
+        },
+        "semantics": {
+          "type": "object",
+          "required": ["allergy", "halal", "no_sls"],
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "unevaluatedProperties": false
+    },
+    "mandatory_disclaimer_ids": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "product_note_ids": {
+      "type": "object",
+      "required": ["examples", "fewer_than_two", "allergy_unverified"],
+      "additionalProperties": { "type": "string" }
+    },
+    "messages": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "$ref": "#/$defs/message" }
+    }
+  },
+  "$defs": {
+    "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "review": {
+      "type": "object",
+      "required": ["status", "rationale", "source", "reviewed_by", "reviewed_at"],
+      "properties": {
+        "status": { "enum": ["needs_review", "draft", "approved"] },
+        "rationale": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "reviewed_by": { "type": ["string", "null"], "minLength": 1 },
+        "reviewed_at": { "oneOf": [{ "$ref": "#/$defs/date" }, { "type": "null" }] }
+      },
+      "if": { "properties": { "status": { "const": "approved" } }, "required": ["status"] },
+      "then": {
+        "properties": {
+          "reviewed_by": { "type": "string", "minLength": 1 },
+          "reviewed_at": { "$ref": "#/$defs/date" }
+        }
+      }
+    },
+    "message": {
+      "allOf": [{ "$ref": "#/$defs/review" }],
+      "type": "object",
+      "required": ["kind", "text"],
+      "properties": {
+        "kind": { "enum": ["disclaimer", "note", "amount", "generic", "product_note"] },
+        "text": { "type": "string", "minLength": 1 }
+      },
+      "unevaluatedProperties": false
+    },
+    "candidate": {
+      "type": "object",
+      "required": ["id", "label", "ppm_min", "ppm_max", "rationale", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "label": { "type": "string", "minLength": 1 },
+        "ppm_min": { "type": "integer", "minimum": 0 },
+        "ppm_max": { "type": "integer", "minimum": 0 },
+        "rationale": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 }
+      }
+    },
+    "band": {
+      "type": "object",
+      "required": [
+        "id", "label", "age_months", "fluoride_ppm", "amount", "supervision", "note_ids",
+        "generic_message_id"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+        "label": { "type": "string", "minLength": 1 },
+        "age_months": {
+          "allOf": [{ "$ref": "#/$defs/review" }],
+          "type": "object",
+          "required": ["min", "max"],
+          "properties": {
+            "min": { "type": "integer", "minimum": 0 },
+            "max": { "type": "integer", "minimum": 0 }
+          },
+          "unevaluatedProperties": false
+        },
+        "fluoride_ppm": {
+          "allOf": [{ "$ref": "#/$defs/review" }],
+          "type": "object",
+          "required": ["candidates", "decision_pending", "selected_candidate_id"],
+          "properties": {
+            "candidates": { "type": "array", "items": { "$ref": "#/$defs/candidate" } },
+            "decision_pending": { "type": "boolean" },
+            "selected_candidate_id": { "type": ["string", "null"] }
+          },
+          "unevaluatedProperties": false
+        },
+        "amount": {
+          "allOf": [{ "$ref": "#/$defs/review" }],
+          "type": "object",
+          "required": ["code", "message_id"],
+          "properties": {
+            "code": { "enum": ["none_until_first_tooth", "smear", "pea_size"] },
+            "message_id": { "type": "string" }
+          },
+          "unevaluatedProperties": false
+        },
+        "supervision": {
+          "allOf": [{ "$ref": "#/$defs/review" }],
+          "type": "object",
+          "required": ["required", "until_age_months", "message_id"],
+          "properties": {
+            "required": { "type": "boolean" },
+            "until_age_months": { "type": "integer", "minimum": 0 },
+            "message_id": { "type": ["string", "null"] }
+          },
+          "unevaluatedProperties": false
+        },
+        "note_ids": { "type": "array", "items": { "type": "string" } },
+        "generic_message_id": { "type": "string" }
+      }
+    }
+  }
+}

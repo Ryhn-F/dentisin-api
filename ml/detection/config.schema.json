@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dentisai.local/ml/detection/config.schema.json",
+  "title": "DentisAI detector bake-off candidate config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "candidate", "trainer", "priority", "license_verified", "data", "model", "train", "export"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "candidate": {"type": "string", "pattern": "^[a-z0-9_]+$", "description": "Key in ml/data/license_gate.yaml models"},
+    "trainer": {"enum": ["mediapipe_model_maker", "yolox", "efficientdet_lite", "rfdetr"]},
+    "priority": {"enum": ["high", "medium", "low"]},
+    "license_verified": {"type": "boolean", "description": "true only if code AND weights licenses were read and recorded in LICENSES.md"},
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical", "splits", "datasets", "classes"],
+      "properties": {
+        "canonical": {"type": "string"},
+        "splits": {"type": "string"},
+        "images_root": {"type": "string"},
+        "datasets": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "classes": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+      }
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["variant", "input_size", "output_format", "preprocess", "decode", "output_tensors"],
+      "properties": {
+        "variant": {"type": "string"},
+        "input_size": {"type": "array", "items": {"type": "integer", "minimum": 32}, "minItems": 2, "maxItems": 2},
+        "pretrained": {"type": ["string", "null"]},
+        "output_format": {"enum": ["yolox_raw", "ssd_raw_anchors", "ssd_postprocessed", "detr_raw"]},
+        "output_format_verified": {"type": "boolean"},
+        "preprocess": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["color_order", "input_dtype", "pixel_range", "mean", "std", "resize_method", "align", "pad_value", "interpolation"],
+          "properties": {
+            "color_order": {"enum": ["RGB", "BGR"]},
+            "input_dtype": {"enum": ["float32", "int8", "uint8"]},
+            "pixel_range": {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2},
+            "mean": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+            "std": {"type": "array", "items": {"type": "number"}, "minItems": 3, "maxItems": 3},
+            "resize_method": {"enum": ["letterbox", "stretch"]},
+            "align": {"enum": ["top_left", "center", "none"]},
+            "pad_value": {"type": ["integer", "null"]},
+            "interpolation": {"enum": ["bilinear", "nearest", "area"]}
+          }
+        },
+        "decode": {"type": "object", "description": "format-specific decode params (anchors come from export --anchors)"},
+        "output_tensors": {
+          "type": "array",
+          "description": "EXPECTED output tensors; replaced by interpreter-read values when available",
+          "items": {
+            "type": "object",
+            "required": ["index", "role", "shape", "dtype"],
+            "properties": {
+              "index": {"type": "integer"}, "role": {"type": "string"},
+              "shape": {"type": "array", "items": {"type": "integer"}}, "dtype": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "train": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["seed", "epochs", "batch_size", "learning_rate"],
+      "properties": {
+        "seed": {"type": "integer"},
+        "epochs": {"type": "integer", "minimum": 1},
+        "batch_size": {"type": "integer", "minimum": 1},
+        "learning_rate": {"type": "number", "exclusiveMinimum": 0},
+        "qat_epochs": {"type": "integer", "minimum": 0}
+      }
+    },
+    "augment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "flashlight_hotspot": {"type": "boolean"},
+        "white_balance_shift": {"type": "boolean"},
+        "motion_blur": {"type": "boolean"},
+        "lip_occlusion": {"type": "boolean"},
+        "horizontal_flip": {"type": "boolean"},
+        "supported_by_trainer": {"type": "boolean"}
+      }
+    },
+    "export": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "int8", "max_size_mb"],
+      "properties": {
+        "format": {"const": "tflite"},
+        "int8": {"type": "boolean"},
+        "max_size_mb": {"type": "number", "exclusiveMinimum": 0},
+        "path": {"type": "string", "description": "conversion route, documentation only"},
+        "representative_samples": {"type": "integer", "minimum": 1}
+      }
+    },
+    "trainer_options": {"type": "object"},
+    "notes": {"type": "array", "items": {"type": "string"}}
+  }
+}

@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dentisai.local/triage/input.schema.json",
+  "title": "Triage engine input (rules 0.1.0-draft)",
+  "description": "Generated from rules.yaml by triage.export. Cross-field rules (detections require an assessed photo; reference_frame required when lesion_area_reference is 'frame' and detections exist) are enforced by the engine.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "detections",
+    "photo_status",
+    "reference_frame",
+    "symptoms",
+    "age_months",
+    "pain"
+  ],
+  "properties": {
+    "detections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "class",
+          "confidence",
+          "box"
+        ],
+        "properties": {
+          "class": {
+            "enum": [
+              "caries_cavitated",
+              "caries_noncavitated"
+            ]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "box": {
+            "$ref": "#/$defs/box"
+          }
+        }
+      }
+    },
+    "photo_status": {
+      "enum": [
+        "assessed",
+        "not_taken",
+        "quality_failed"
+      ]
+    },
+    "reference_frame": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/box"
+        }
+      ]
+    },
+    "symptoms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "airway_or_swallowing",
+        "lethargy",
+        "trismus",
+        "facial_swelling",
+        "fever_with_toothache",
+        "pus_or_fistula",
+        "dental_trauma",
+        "night_pain",
+        "white_spot"
+      ],
+      "properties": {
+        "airway_or_swallowing": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ]
+        },
+        "lethargy": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ]
+        },
+        "trismus": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ]
+        },
+        "facial_swelling": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ]
+        },
+        "fever_with_toothache": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ]
+        },
+        "pus_or_fistula": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ]
+        },
+        "dental_trauma": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ]
+        },
+        "night_pain": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ]
+        },
+        "white_spot": {
+          "enum": [
+            "yes",
+            "no",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "age_months": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300
+        }
+      ]
+    },
+    "pain": {
+      "oneOf": [
+        {
+          "const": "unknown"
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "box": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x_min",
+        "y_min",
+        "x_max",
+        "y_max"
+      ],
+      "description": "Normalised [0,1] image coordinates; x_min < x_max and y_min < y_max (cross-field rule enforced by the engine).",
+      "properties": {
+        "x_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "y_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "x_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "y_max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    }
+  }
+}

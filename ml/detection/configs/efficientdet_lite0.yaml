@@ -1,0 +1,59 @@
+# Bake-off candidate 3 (ADR 001): EfficientDet-Lite0. google/automl code Apache-2.0 (verified);
+# pretrained weights license [PERLU VERIFIKASI]. NOT RUN in this repo.
+# Training route: tflite-model-maker (archived; needs an old Python/TF env) -> export with
+# TFLite_Detection_PostProcess (outputs already decoded + NMS'd). Export difficulty is part of the bake-off.
+schema_version: 1
+candidate: efficientdet_lite0
+trainer: efficientdet_lite
+priority: medium
+license_verified: false
+data:
+  canonical: ../data/processed/ahmed2025/canonical.jsonl
+  splits: ../data/processed/ahmed2025/splits/splits.json
+  images_root: ../data/raw/ahmed2025
+  datasets: [ahmed2025]
+  classes: [caries_cavitated, caries_noncavitated]
+model:
+  variant: efficientdet_lite0
+  input_size: [320, 320]
+  pretrained: efficientdet_lite0_default
+  output_format: ssd_postprocessed   # boxes/classes/scores/count; tensor ORDER [PERLU VERIFIKASI]
+  output_format_verified: false
+  preprocess:            # quantized uint8 input, no normalization [PERLU VERIFIKASI]
+    color_order: RGB
+    input_dtype: uint8
+    pixel_range: [0, 255]
+    mean: [0, 0, 0]
+    std: [1, 1, 1]
+    resize_method: stretch
+    align: none
+    pad_value: null
+    interpolation: bilinear
+  decode:
+    class_id_offset: 0
+  output_tensors:          # order differs between TF versions [PERLU VERIFIKASI]
+    - {index: 0, role: boxes, shape: [1, 25, 4], dtype: float32}
+    - {index: 1, role: classes, shape: [1, 25], dtype: float32}
+    - {index: 2, role: scores, shape: [1, 25], dtype: float32}
+    - {index: 3, role: count, shape: [1], dtype: float32}
+train:
+  seed: 20261008
+  epochs: 50
+  batch_size: 8
+  learning_rate: 0.08
+augment:
+  flashlight_hotspot: true
+  white_balance_shift: true
+  motion_blur: true
+  lip_occlusion: true
+  horizontal_flip: true
+  supported_by_trainer: false
+export:
+  format: tflite
+  int8: true
+  max_size_mb: 15
+  path: "tflite_model_maker object_detector.create -> model.export(quantization_config=int8)"
+  representative_samples: 200
+trainer_options:
+  layout: voc
+  train_whole_model: true

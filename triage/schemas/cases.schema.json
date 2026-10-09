@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dentisai.local/triage/cases.schema.json",
+  "title": "Shared triage test table (tests/cases.json)",
+  "description": "Case inputs are validated separately: valid cases against dist/input.schema.json (after removing params_profile); error cases may be invalid on purpose.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "description", "graded_by_drg_note", "rules_file", "params_profiles_file", "how_to_run", "cases"],
+  "properties": {
+    "format_version": {"const": 1},
+    "description": {"type": "string"},
+    "graded_by_drg_note": {"type": "string"},
+    "rules_file": {"type": "string"},
+    "params_profiles_file": {"type": "string"},
+    "how_to_run": {"type": "string"},
+    "cases": {
+      "type": "array",
+      "minItems": 60,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "description", "tags", "input", "expected", "graded_by_drg"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[A-Z]+-[0-9]{2}$"},
+          "description": {"type": "string", "minLength": 1},
+          "tags": {"type": "array", "items": {"type": "string"}},
+          "input": {
+            "type": "object",
+            "required": ["params_profile"],
+            "properties": {"params_profile": {"type": "string"}}
+          },
+          "expected": {
+            "oneOf": [
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["level", "reasons_ids", "advice_ids", "referral_template_id"],
+                "properties": {
+                  "level": {"type": "string"},
+                  "reasons_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+                  "advice_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+                  "referral_template_id": {"type": "string"},
+                  "lesions": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["detection_index", "counted", "size"],
+                      "properties": {
+                        "detection_index": {"type": "integer", "minimum": 0},
+                        "counted": {"type": "boolean"},
+                        "size": {"enum": ["small", "large", null]}
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["error", "error_code"],
+                "properties": {
+                  "error": {"const": "TriageInputError"},
+                  "error_code": {"type": "string", "pattern": "^[A-Z_]+$"}
+                }
+              }
+            ]
+          },
+          "graded_by_drg": {"type": "boolean"},
+          "graded_by": {"type": ["string", "null"]},
+          "graded_at": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

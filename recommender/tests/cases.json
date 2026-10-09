@@ -1,0 +1,1481 @@
+{
+  "format_version": 1,
+  "description": "Shared table of test cases for recommend(). Used by pytest (reference) and must be used by Jest (TypeScript runtime in app/src/domain). Expectations are LITERAL values written by hand; they describe the DRAFT rules and must be revisited once a dentist approves rules.json. product_set names a catalogue in product_sets; 'shipped' means products.json.",
+  "input_defaults": {
+    "allergies": [],
+    "prefs": null,
+    "risk_level": null
+  },
+  "expect_keys": {
+    "error": "typed error code: invalid_age | invalid_input",
+    "band_id": "fluoride.band_id",
+    "ppm_options": "list of [min, max] in order",
+    "amount_code": "fluoride.amount.code",
+    "supervision_required": "fluoride.supervision.required",
+    "decision_pending": "fluoride.decision_pending",
+    "needs_review": "status.needs_review",
+    "product_ids": "ids of products in output order (exact)",
+    "disclaimer_ids": "exact list",
+    "fluoride_note_ids_include": "ids that must be in fluoride.notes",
+    "fluoride_note_ids_exclude": "ids that must not be in fluoride.notes",
+    "top_note_ids_include": "ids that must be in notes (product notes)",
+    "top_note_ids_exclude": "ids that must not be in notes",
+    "reasons_include": "values that must be in status.reasons",
+    "reasons_exclude": "values that must not be in status.reasons",
+    "generic_message_present": "status.generic_message is not null"
+  },
+  "product_sets": {
+    "fixture": [
+      {
+        "id": "FX-500-A",
+        "brand": "FIXTURE-FX-500-A",
+        "ppm": 500,
+        "bpom_notification_no": null,
+        "contains_sls": false,
+        "halal_certified": true,
+        "allergens": [],
+        "verified": false,
+        "verified_at": null,
+        "source": null,
+        "synthetic": true
+      },
+      {
+        "id": "FX-500-B",
+        "brand": "FIXTURE-FX-500-B",
+        "ppm": 500,
+        "bpom_notification_no": null,
+        "contains_sls": true,
+        "halal_certified": null,
+        "allergens": [
+          "flavor_mint"
+        ],
+        "verified": false,
+        "verified_at": null,
+        "source": null,
+        "synthetic": true
+      },
+      {
+        "id": "FX-1000-A",
+        "brand": "FIXTURE-FX-1000-A",
+        "ppm": 1000,
+        "bpom_notification_no": null,
+        "contains_sls": false,
+        "halal_certified": true,
+        "allergens": [],
+        "verified": false,
+        "verified_at": null,
+        "source": null,
+        "synthetic": true
+      },
+      {
+        "id": "FX-1000-B",
+        "brand": "FIXTURE-FX-1000-B",
+        "ppm": 1000,
+        "bpom_notification_no": null,
+        "contains_sls": true,
+        "halal_certified": false,
+        "allergens": [
+          "flavor_mint"
+        ],
+        "verified": false,
+        "verified_at": null,
+        "source": null,
+        "synthetic": true
+      },
+      {
+        "id": "FX-1450-A",
+        "brand": "FIXTURE-FX-1450-A",
+        "ppm": 1450,
+        "bpom_notification_no": null,
+        "contains_sls": false,
+        "halal_certified": true,
+        "allergens": [
+          "cinnamon"
+        ],
+        "verified": false,
+        "verified_at": null,
+        "source": null,
+        "synthetic": true
+      },
+      {
+        "id": "FX-1450-B",
+        "brand": "FIXTURE-FX-1450-B",
+        "ppm": 1450,
+        "bpom_notification_no": null,
+        "contains_sls": true,
+        "halal_certified": null,
+        "allergens": null,
+        "verified": false,
+        "verified_at": null,
+        "source": null,
+        "synthetic": true
+      }
+    ],
+    "none": [],
+    "single": [
+      {
+        "id": "FX-1000-A",
+        "brand": "FIXTURE-FX-1000-A",
+        "ppm": 1000,
+        "bpom_notification_no": null,
+        "contains_sls": false,
+        "halal_certified": true,
+        "allergens": [],
+        "verified": false,
+        "verified_at": null,
+        "source": null,
+        "synthetic": true
+      }
+    ],
+    "too_strong": [
+      {
+        "id": "FX-2000-A",
+        "brand": "FIXTURE-FX-2000-A",
+        "ppm": 2000,
+        "bpom_notification_no": null,
+        "contains_sls": false,
+        "halal_certified": true,
+        "allergens": [],
+        "verified": false,
+        "verified_at": null,
+        "source": null,
+        "synthetic": true
+      }
+    ],
+    "shipped": "products.json"
+  },
+  "cases": [
+    {
+      "id": "edge-000-lowest",
+      "description": "Lowest valid age, before first tooth",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 0
+      },
+      "expect": {
+        "band_id": "pre_eruption",
+        "ppm_options": [],
+        "amount_code": "none_until_first_tooth",
+        "supervision_required": true,
+        "decision_pending": false,
+        "product_ids": [],
+        "top_note_ids_exclude": [
+          "fewer_than_two_products",
+          "products_are_examples"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "edge-005-top-of-pre-eruption",
+      "description": "Last month of the pre-eruption band",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 5
+      },
+      "expect": {
+        "band_id": "pre_eruption",
+        "ppm_options": [],
+        "amount_code": "none_until_first_tooth",
+        "supervision_required": true,
+        "decision_pending": false,
+        "product_ids": [],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "edge-006-bottom-of-toddler",
+      "description": "First month of the toddler band",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 6
+      },
+      "expect": {
+        "band_id": "toddler_6_35m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "smear",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "edge-018-mid-toddler",
+      "description": "Mid toddler band",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 18
+      },
+      "expect": {
+        "band_id": "toddler_6_35m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "smear",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "edge-035-top-of-toddler",
+      "description": "Last month before age 3",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 35
+      },
+      "expect": {
+        "band_id": "toddler_6_35m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "smear",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "edge-036-bottom-of-preschool",
+      "description": "Third birthday switches amount to pea size",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 36
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "edge-060-mid-preschool",
+      "description": "Mid preschool band",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 60
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "edge-083-top-of-preschool",
+      "description": "Last month before age 7",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 83
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "edge-084-bottom-of-school",
+      "description": "Seventh birthday ends required supervision",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 84
+      },
+      "expect": {
+        "band_id": "school_84_216m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": false,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "edge-132-mid-school",
+      "description": "Mid school band",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 132
+      },
+      "expect": {
+        "band_id": "school_84_216m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": false,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "edge-216-highest",
+      "description": "Highest valid age",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 216
+      },
+      "expect": {
+        "band_id": "school_84_216m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": false,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "invalid-negative",
+      "description": "Negative age",
+      "product_set": "fixture",
+      "input": {
+        "age_months": -1
+      },
+      "expect": {
+        "error": "invalid_age",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "invalid-217",
+      "description": "One month above the valid range",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 217
+      },
+      "expect": {
+        "error": "invalid_age",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "invalid-absurd",
+      "description": "Absurdly large age",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 10000
+      },
+      "expect": {
+        "error": "invalid_age",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "invalid-fraction",
+      "description": "Non-integer age",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 12.5
+      },
+      "expect": {
+        "error": "invalid_age",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "invalid-boolean",
+      "description": "Boolean is not an age",
+      "product_set": "fixture",
+      "input": {
+        "age_months": true
+      },
+      "expect": {
+        "error": "invalid_age",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "invalid-string",
+      "description": "String is not an age",
+      "product_set": "fixture",
+      "input": {
+        "age_months": "12"
+      },
+      "expect": {
+        "error": "invalid_age",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "invalid-null",
+      "description": "Missing age",
+      "product_set": "fixture",
+      "input": {
+        "age_months": null
+      },
+      "expect": {
+        "error": "invalid_age",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-halal",
+      "description": "Halal only",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "prefs": {
+          "halal": true
+        }
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1450-A",
+          "FX-500-A"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-no-sls",
+      "description": "SLS-free only",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "prefs": {
+          "no_sls": true
+        }
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1450-A",
+          "FX-500-A"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-halal-and-no-sls",
+      "description": "Halal and SLS-free",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "prefs": {
+          "halal": true,
+          "no_sls": true
+        }
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1450-A",
+          "FX-500-A"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-prefs-explicit-false",
+      "description": "Preferences explicitly false filter nothing",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "prefs": {
+          "halal": false,
+          "no_sls": false
+        }
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-allergy-mint",
+      "description": "Mint allergy drops mint and unknown-allergen products",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "allergies": [
+          "flavor_mint"
+        ]
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1450-A",
+          "FX-500-A"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-allergy-cinnamon",
+      "description": "Cinnamon allergy",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "allergies": [
+          "cinnamon"
+        ]
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-allergy-cinnamon-halal",
+      "description": "Cinnamon allergy plus halal; unknown halal is dropped",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "allergies": [
+          "cinnamon"
+        ],
+        "prefs": {
+          "halal": true
+        }
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-500-A"
+        ],
+        "top_note_ids_exclude": [
+          "fewer_than_two_products"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-allergy-two-codes-halal",
+      "description": "Two allergies plus halal",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "allergies": [
+          "flavor_mint",
+          "cinnamon"
+        ],
+        "prefs": {
+          "halal": true
+        }
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-500-A"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-allergy-sls-implies-no-sls",
+      "description": "SLS allergy also removes SLS-containing products",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "allergies": [
+          "sls"
+        ]
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1450-A",
+          "FX-500-A"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-allergy-normalised",
+      "description": "Codes are trimmed, lower-cased and de-duplicated; empty entries ignored",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "allergies": [
+          " Flavor_Mint ",
+          "FLAVOR_MINT",
+          "  "
+        ]
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1450-A",
+          "FX-500-A"
+        ],
+        "reasons_exclude": [
+          "unknown_allergy:flavor_mint"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-allergy-unknown-code",
+      "description": "Unknown allergy code is flagged and cannot be matched",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "allergies": [
+          "latex"
+        ]
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "reasons_include": [
+          "unknown_allergy:latex"
+        ],
+        "top_note_ids_include": [
+          "allergy_unverified"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-school-few-products",
+      "description": "School age with cinnamon allergy and halal leaves one product",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 100,
+        "allergies": [
+          "cinnamon"
+        ],
+        "prefs": {
+          "halal": true
+        }
+      },
+      "expect": {
+        "band_id": "school_84_216m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": false,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A"
+        ],
+        "top_note_ids_include": [
+          "fewer_than_two_products",
+          "products_are_examples"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-school-two-products",
+      "description": "School age keeps two products",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 100,
+        "allergies": [
+          "flavor_mint"
+        ],
+        "prefs": {
+          "halal": true,
+          "no_sls": true
+        }
+      },
+      "expect": {
+        "band_id": "school_84_216m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": false,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1450-A"
+        ],
+        "top_note_ids_exclude": [
+          "fewer_than_two_products"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "filter-pre-eruption-with-filters",
+      "description": "Filters never create products before the first tooth",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 3,
+        "allergies": [
+          "cinnamon"
+        ],
+        "prefs": {
+          "halal": true
+        }
+      },
+      "expect": {
+        "band_id": "pre_eruption",
+        "ppm_options": [],
+        "amount_code": "none_until_first_tooth",
+        "supervision_required": true,
+        "decision_pending": false,
+        "product_ids": [],
+        "top_note_ids_exclude": [
+          "fewer_than_two_products",
+          "products_are_examples"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "products-none-available",
+      "description": "No products in the catalogue: nothing is invented",
+      "product_set": "none",
+      "input": {
+        "age_months": 48
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [],
+        "top_note_ids_include": [
+          "fewer_than_two_products"
+        ],
+        "top_note_ids_exclude": [
+          "products_are_examples"
+        ],
+        "reasons_exclude": [
+          "products_unverified"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "products-single-available",
+      "description": "One product in the catalogue",
+      "product_set": "single",
+      "input": {
+        "age_months": 48
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A"
+        ],
+        "top_note_ids_include": [
+          "fewer_than_two_products"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "products-ppm-outside-all-ranges",
+      "description": "Catalogue only has a 2000 ppm item: it matches no candidate",
+      "product_set": "too_strong",
+      "input": {
+        "age_months": 48
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [],
+        "top_note_ids_include": [
+          "fewer_than_two_products"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "risk-low",
+      "description": "Low risk adds no extra note",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "risk_level": "low"
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "fluoride_note_ids_exclude": [
+          "high_risk_see_dentist"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "risk-moderate",
+      "description": "Moderate risk adds no extra note",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "risk_level": "moderate"
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "fluoride_note_ids_exclude": [
+          "high_risk_see_dentist"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "risk-high",
+      "description": "High risk adds the see-dentist note and keeps the ppm options",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "risk_level": "high"
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "fluoride_note_ids_include": [
+          "high_risk_see_dentist"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "risk-high-pre-eruption",
+      "description": "High risk before first tooth",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 2,
+        "risk_level": "high"
+      },
+      "expect": {
+        "band_id": "pre_eruption",
+        "ppm_options": [],
+        "amount_code": "none_until_first_tooth",
+        "supervision_required": true,
+        "decision_pending": false,
+        "product_ids": [],
+        "fluoride_note_ids_include": [
+          "high_risk_see_dentist"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "risk-null",
+      "description": "Explicit null risk level is the same as none",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "risk_level": null
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "fluoride_note_ids_exclude": [
+          "high_risk_see_dentist"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "risk-invalid",
+      "description": "Unknown risk level",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "risk_level": "extreme"
+      },
+      "expect": {
+        "error": "invalid_input",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "input-prefs-not-bool",
+      "description": "Preference must be a boolean",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "prefs": {
+          "halal": "yes"
+        }
+      },
+      "expect": {
+        "error": "invalid_input",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "input-prefs-unknown-key",
+      "description": "Unknown preference key",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "prefs": {
+          "vegan": true
+        }
+      },
+      "expect": {
+        "error": "invalid_input",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "input-prefs-not-object",
+      "description": "Preferences must be an object",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "prefs": [
+          "halal"
+        ]
+      },
+      "expect": {
+        "error": "invalid_input",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "input-allergies-string",
+      "description": "Allergies must be a list, not a string",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "allergies": "flavor_mint"
+      },
+      "expect": {
+        "error": "invalid_input",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "input-allergies-non-string-item",
+      "description": "Allergy items must be strings",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 48,
+        "allergies": [
+          1
+        ]
+      },
+      "expect": {
+        "error": "invalid_input",
+        "needs_review": true
+      }
+    },
+    {
+      "id": "mandatory-disclaimer",
+      "description": "Mandatory sentence is always present",
+      "product_set": "fixture",
+      "input": {
+        "age_months": 72
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "ppm_options": [
+          [
+            1000,
+            1450
+          ],
+          [
+            500,
+            1000
+          ]
+        ],
+        "amount_code": "pea_size",
+        "supervision_required": true,
+        "decision_pending": true,
+        "product_ids": [
+          "FX-1000-A",
+          "FX-1000-B",
+          "FX-1450-A",
+          "FX-1450-B",
+          "FX-500-A",
+          "FX-500-B"
+        ],
+        "disclaimer_ids": [
+          "toothpaste_not_filling",
+          "see_dentist_cta"
+        ],
+        "reasons_include": [
+          "ppm_decision_pending",
+          "products_unverified"
+        ],
+        "needs_review": true
+      }
+    },
+    {
+      "id": "shipped-preschool",
+      "description": "Shipped draft data is always flagged for review",
+      "product_set": "shipped",
+      "input": {
+        "age_months": 48
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "needs_review": true,
+        "reasons_include": [
+          "ppm_decision_pending",
+          "products_unverified"
+        ],
+        "disclaimer_ids": [
+          "toothpaste_not_filling",
+          "see_dentist_cta"
+        ],
+        "generic_message_present": true
+      }
+    },
+    {
+      "id": "shipped-pre-eruption",
+      "description": "Shipped draft data before first tooth",
+      "product_set": "shipped",
+      "input": {
+        "age_months": 0
+      },
+      "expect": {
+        "band_id": "pre_eruption",
+        "needs_review": true,
+        "product_ids": [],
+        "generic_message_present": true
+      }
+    },
+    {
+      "id": "shipped-unknown-properties-are-filtered",
+      "description": "Placeholder products have unknown SLS status, so no_sls drops them",
+      "product_set": "shipped",
+      "input": {
+        "age_months": 48,
+        "prefs": {
+          "no_sls": true
+        }
+      },
+      "expect": {
+        "band_id": "preschool_36_83m",
+        "needs_review": true,
+        "product_ids": [],
+        "top_note_ids_include": [
+          "fewer_than_two_products"
+        ]
+      }
+    }
+  ]
+}

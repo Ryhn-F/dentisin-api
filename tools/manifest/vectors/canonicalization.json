@@ -1,0 +1,147 @@
+{
+  "description": "DCJ-1 canonicalization (SPEC.md section 3). `canonicalize`: strict-parse input then serialize. `parse_canonical`: raw wire bytes must be accepted (OK) or rejected (E_NOT_CANONICAL).",
+  "canonicalize": [
+    {
+      "name": "sorts keys at every depth",
+      "input": "{\"b\":1,\"a\":{\"d\":[3,{\"z\":true,\"y\":null}],\"c\":\"x\"}}",
+      "canonical": "{\"a\":{\"c\":\"x\",\"d\":[3,{\"y\":null,\"z\":true}]},\"b\":1}"
+    },
+    {
+      "name": "drops insignificant whitespace",
+      "input": " {\n  \"a\" : [ 1 , 2 ] ,\t\"b\" : false }\n",
+      "canonical": "{\"a\":[1,2],\"b\":false}"
+    },
+    {
+      "name": "escapes only quote and backslash",
+      "input": "{\"s\":\"say \\\"hi\\\" \\\\ bye / ok\"}",
+      "canonical": "{\"s\":\"say \\\"hi\\\" \\\\ bye / ok\"}"
+    },
+    {
+      "name": "\\u escapes of printable ASCII are emitted literally",
+      "input": "{\"s\":\"\\u0041\\/\"}",
+      "canonical": "{\"s\":\"A/\"}"
+    },
+    {
+      "name": "negative and boundary integers",
+      "input": "{\"a\":-9007199254740991,\"b\":0,\"c\":9007199254740991}",
+      "canonical": "{\"a\":-9007199254740991,\"b\":0,\"c\":9007199254740991}"
+    },
+    {
+      "name": "empty containers",
+      "input": "{\"a\":{},\"b\":[],\"c\":\"\"}",
+      "canonical": "{\"a\":{},\"b\":[],\"c\":\"\"}"
+    }
+  ],
+  "parse_canonical": [
+    {
+      "name": "canonical object",
+      "bytes_hex": "7b2261223a312c2262223a5b747275652c66616c73652c6e756c6c5d2c2263223a2278227d",
+      "expect": "OK"
+    },
+    {
+      "name": "unsorted keys",
+      "bytes_hex": "7b2262223a312c2261223a327d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "whitespace",
+      "bytes_hex": "7b2261223a20317d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "trailing newline",
+      "bytes_hex": "7b2261223a317d0a",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "UTF-8 BOM",
+      "bytes_hex": "efbbbf7b2261223a317d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "non-ASCII UTF-8 in string",
+      "bytes_hex": "7b2261223a22c3a9227d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "duplicate key",
+      "bytes_hex": "7b2261223a312c2261223a317d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "float 0.5 (re-serializes identically in JS: must be rejected explicitly)",
+      "bytes_hex": "7b2261223a302e357d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "float 1.0",
+      "bytes_hex": "7b2261223a312e307d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "exponent",
+      "bytes_hex": "7b2261223a3165327d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "negative zero",
+      "bytes_hex": "7b2261223a2d307d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "2^53 (re-serializes identically in JS: must be rejected explicitly)",
+      "bytes_hex": "7b2261223a393030373139393235343734303939327d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "NaN",
+      "bytes_hex": "7b2261223a4e614e7d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "lone surrogate escape (must be rejected explicitly)",
+      "bytes_hex": "7b2261223a225c7564383030227d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "control char escape",
+      "bytes_hex": "7b2261223a225c6e227d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "unnecessary \\u escape",
+      "bytes_hex": "7b2261223a225c7530303431227d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "escaped slash",
+      "bytes_hex": "7b2261223a225c2f227d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "uppercase key",
+      "bytes_hex": "7b2241223a317d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "__proto__ key",
+      "bytes_hex": "7b225f5f70726f746f5f5f223a317d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "depth 16 ok",
+      "bytes_hex": "5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b7b7d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+      "expect": "OK"
+    },
+    {
+      "name": "depth 17 rejected",
+      "bytes_hex": "5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b5b7b7d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d5d",
+      "expect": "E_NOT_CANONICAL"
+    },
+    {
+      "name": "top-level string is canonical JSON (manifest schema then rejects it)",
+      "bytes_hex": "227822",
+      "expect": "OK"
+    }
+  ]
+}

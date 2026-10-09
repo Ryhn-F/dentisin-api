@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dentisai.local/schema/recommender-products.schema.json",
+  "title": "DentisAI example products (brands live ONLY in this file)",
+  "type": "object",
+  "required": ["products_version", "readme", "how_to_fill", "products"],
+  "additionalProperties": false,
+  "properties": {
+    "products_version": { "type": "string", "minLength": 1 },
+    "readme": { "type": "string", "minLength": 1 },
+    "how_to_fill": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "products": { "type": "array", "items": { "$ref": "#/$defs/product" } }
+  },
+  "$defs": {
+    "product": {
+      "type": "object",
+      "required": [
+        "id", "brand", "ppm", "bpom_notification_no", "contains_sls", "halal_certified",
+        "allergens", "verified", "verified_at", "source", "synthetic"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+        "brand": { "type": "string", "minLength": 1 },
+        "ppm": { "type": "integer", "minimum": 0 },
+        "bpom_notification_no": { "type": ["string", "null"], "minLength": 1 },
+        "contains_sls": { "type": ["boolean", "null"] },
+        "halal_certified": { "type": ["boolean", "null"] },
+        "allergens": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "uniqueItems": true
+        },
+        "verified": { "type": "boolean" },
+        "verified_at": {
+          "oneOf": [{ "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }, { "type": "null" }]
+        },
+        "source": { "type": ["string", "null"], "minLength": 1 },
+        "synthetic": { "type": "boolean" }
+      },
+      "if": { "properties": { "verified": { "const": true } }, "required": ["verified"] },
+      "then": {
+        "properties": {
+          "bpom_notification_no": { "type": "string" },
+          "verified_at": { "type": "string" },
+          "source": { "type": "string" },
+          "synthetic": { "const": false }
+        }
+      }
+    }
+  }
+}

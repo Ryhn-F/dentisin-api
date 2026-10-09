@@ -1,0 +1,87 @@
+[project]
+name = "dentisai-ml-detection"
+version = "0.1.0"
+description = "DentisAI caries bounding-box detector pipeline: data checks, splits, conversion, eval, export (permissive licenses only)."
+requires-python = ">=3.11,<3.13"
+# Base = what runs on any CPU (configs, license gate, conversion, eval, quality gate, bundle checks).
+# Licenses of every dependency: ../data/LICENSES.md. NEVER add ultralytics / AGPL / GPL packages (ADR 001/008).
+dependencies = [
+  "numpy>=1.26",
+  "pillow>=10.0",
+  "pyyaml>=6.0",
+  "jsonschema>=4.18",
+  "defusedxml>=0.7.1",
+]
+
+[project.optional-dependencies]
+# Heavy, optional; run on Kaggle/Colab (public data) or the team PC (local child data).
+# MediaPipe Model Maker (Python <= 3.10) and tflite-model-maker are NOT listed: they need their own env.
+train = [
+  "torch>=2.2",
+  "torchvision>=0.17",
+  "pycocotools>=2.0.7",
+]
+rfdetr = ["rfdetr>=1.2"]
+export = [
+  "onnx>=1.15; sys_platform == 'linux'",
+  "onnx2tf>=1.20; sys_platform == 'linux'",
+  "tensorflow>=2.15; sys_platform == 'linux'",
+  "ai-edge-litert>=1.0; sys_platform == 'linux'",
+]
+tracking = ["mlflow-skinny>=2.10"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-cov>=5",
+  "ruff>=0.5",
+  "mypy>=1.10",
+  "types-PyYAML",
+  "types-jsonschema",
+  "types-defusedxml",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+pythonpath = [".", "../data/scripts"]
+testpaths = ["tests"]
+addopts = "-q --cov=. --cov=../data/scripts --cov-report=term-missing --cov-fail-under=90"
+
+[tool.coverage.run]
+branch = true
+# Trainer adapters wrap GPU toolchains that cannot run here; their import-guard path is tested,
+# the bodies are excluded and marked UNTESTED in their docstrings.
+omit = ["tests/*", ".venv/*", "trainers/mediapipe_mm.py", "trainers/efficientdet_lite.py", "trainers/rfdetr_adapter.py"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
+
+[tool.ruff]
+line-length = 160
+target-version = "py311"
+extend-exclude = [".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4", "PT", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003"]  # Indonesian text / typographic dashes are intentional
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["PT018"]  # compact multi-condition asserts on hand-computed tuples are intentional
+
+[tool.ruff.lint.isort]
+known-first-party = ["canonical", "convert_annotations", "decode", "eval", "export", "license_gate", "quality_gate",
+                     "quality_gate_vectors", "train", "trainers", "check_int8_parity", "bake_off", "make_splits", "verify_dataset"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = [".", "../data/scripts"]
+explicit_package_bases = true
+files = ["*.py", "trainers", "bake_off", "tests", "../data/scripts"]
+
+[[tool.mypy.overrides]]
+module = ["mediapipe_model_maker.*", "tflite_model_maker.*", "rfdetr.*", "yolox.*", "torch.*", "onnx2tf.*",
+          "ai_edge_litert.*", "tensorflow.*", "mlflow.*"]
+ignore_missing_imports = true

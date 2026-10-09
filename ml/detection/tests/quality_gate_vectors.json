@@ -1,0 +1,527 @@
+{
+ "version": 1,
+ "tolerance": {
+  "abs": 1e-09,
+  "rel": 1e-09
+ },
+ "config": {
+  "version": 1,
+  "status": "PLACEHOLDER",
+  "reviewed_by": null,
+  "reviewed_at": null,
+  "source": null,
+  "working_size": {
+   "max_side": 320
+  },
+  "blur": {
+   "min_laplacian_var": 60.0
+  },
+  "brightness": {
+   "min_mean": 50.0,
+   "max_mean": 220.0,
+   "dark_level": 16,
+   "bright_level": 245,
+   "max_dark_fraction": 0.5,
+   "max_bright_fraction": 0.25
+  },
+  "teeth_visible": {
+   "roi_fraction": 0.6,
+   "tooth_min_value": 150,
+   "tooth_max_saturation_pct": 35,
+   "tissue_min_red_margin": 25,
+   "min_tooth_fraction": 0.06,
+   "max_tooth_fraction": 0.85,
+   "min_tissue_fraction": 0.03
+  }
+ },
+ "vectors": [
+  {
+   "id": "uniform_black",
+   "gen": {
+    "type": "uniform",
+    "w": 64,
+    "h": 48,
+    "rgb": [
+     0,
+     0,
+     0
+    ]
+   },
+   "expected": {
+    "passed": false,
+    "reasons": [
+     "too_dark",
+     "blurry",
+     "teeth_not_visible"
+    ],
+    "metrics": {
+     "factor": 1,
+     "working_width": 64,
+     "working_height": 48,
+     "laplacian_var": 0.0,
+     "mean_luma": 0.0,
+     "dark_fraction": 1.0,
+     "bright_fraction": 0.0,
+     "teeth_score": 0.0,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.0,
+     "tissue_fraction": 0.0
+    }
+   }
+  },
+  {
+   "id": "uniform_white",
+   "gen": {
+    "type": "uniform",
+    "w": 64,
+    "h": 48,
+    "rgb": [
+     255,
+     255,
+     255
+    ]
+   },
+   "expected": {
+    "passed": false,
+    "reasons": [
+     "too_bright",
+     "blurry",
+     "teeth_not_visible"
+    ],
+    "metrics": {
+     "factor": 1,
+     "working_width": 64,
+     "working_height": 48,
+     "laplacian_var": 0.0,
+     "mean_luma": 255.0,
+     "dark_fraction": 0.0,
+     "bright_fraction": 1.0,
+     "teeth_score": 1.0,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 1.0,
+     "tissue_fraction": 0.0
+    }
+   }
+  },
+  {
+   "id": "uniform_mid",
+   "gen": {
+    "type": "uniform",
+    "w": 64,
+    "h": 48,
+    "rgb": [
+     128,
+     128,
+     128
+    ]
+   },
+   "expected": {
+    "passed": false,
+    "reasons": [
+     "blurry",
+     "teeth_not_visible"
+    ],
+    "metrics": {
+     "factor": 1,
+     "working_width": 64,
+     "working_height": 48,
+     "laplacian_var": 0.0,
+     "mean_luma": 128.0,
+     "dark_fraction": 0.0,
+     "bright_fraction": 0.0,
+     "teeth_score": 0.0,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.0,
+     "tissue_fraction": 0.0
+    }
+   }
+  },
+  {
+   "id": "checker_1px",
+   "gen": {
+    "type": "checker",
+    "w": 6,
+    "h": 6,
+    "cell": 1,
+    "a": [
+     255,
+     255,
+     255
+    ],
+    "b": [
+     0,
+     0,
+     0
+    ]
+   },
+   "expected": {
+    "passed": false,
+    "reasons": [
+     "too_bright",
+     "teeth_not_visible"
+    ],
+    "metrics": {
+     "factor": 1,
+     "working_width": 6,
+     "working_height": 6,
+     "laplacian_var": 1040400.0,
+     "mean_luma": 127.5,
+     "dark_fraction": 0.5,
+     "bright_fraction": 0.5,
+     "teeth_score": 0.5,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.5,
+     "tissue_fraction": 0.0
+    }
+   }
+  },
+  {
+   "id": "checker_8px",
+   "gen": {
+    "type": "checker",
+    "w": 64,
+    "h": 64,
+    "cell": 8,
+    "a": [
+     200,
+     200,
+     200
+    ],
+    "b": [
+     40,
+     40,
+     40
+    ]
+   },
+   "expected": {
+    "passed": false,
+    "reasons": [
+     "teeth_not_visible"
+    ],
+    "metrics": {
+     "factor": 1,
+     "working_width": 64,
+     "working_height": 64,
+     "laplacian_var": 14171.904266389178,
+     "mean_luma": 120.0,
+     "dark_fraction": 0.0,
+     "bright_fraction": 0.0,
+     "teeth_score": 0.5,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.5,
+     "tissue_fraction": 0.0
+    }
+   }
+  },
+  {
+   "id": "hgradient",
+   "gen": {
+    "type": "hgradient",
+    "w": 256,
+    "h": 16
+   },
+   "expected": {
+    "passed": false,
+    "reasons": [
+     "blurry",
+     "teeth_not_visible"
+    ],
+    "metrics": {
+     "factor": 1,
+     "working_width": 256,
+     "working_height": 16,
+     "laplacian_var": 0.0,
+     "mean_luma": 127.5,
+     "dark_fraction": 0.06640625,
+     "bright_fraction": 0.04296875,
+     "teeth_score": 0.35714285714285715,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.35714285714285715,
+     "tissue_fraction": 0.0
+    }
+   }
+  },
+  {
+   "id": "big_checker_downsampled",
+   "gen": {
+    "type": "checker",
+    "w": 1280,
+    "h": 960,
+    "cell": 4,
+    "a": [
+     255,
+     0,
+     0
+    ],
+    "b": [
+     0,
+     0,
+     255
+    ]
+   },
+   "expected": {
+    "passed": false,
+    "reasons": [
+     "teeth_not_visible"
+    ],
+    "metrics": {
+     "factor": 4,
+     "working_width": 320,
+     "working_height": 240,
+     "laplacian_var": 36864.0,
+     "mean_luma": 53.0,
+     "dark_fraction": 0.0,
+     "bright_fraction": 0.0,
+     "teeth_score": 0.0,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.0,
+     "tissue_fraction": 0.5
+    }
+   }
+  },
+  {
+   "id": "mouth_sharp",
+   "gen": {
+    "type": "mouth",
+    "w": 320,
+    "h": 240,
+    "lip": [
+     170,
+     60,
+     70
+    ],
+    "tooth": [
+     235,
+     228,
+     210
+    ],
+    "gap": [
+     70,
+     25,
+     30
+    ],
+    "rect": [
+     0.25,
+     0.35,
+     0.75,
+     0.65
+    ],
+    "period": 16,
+    "gap_w": 2
+   },
+   "expected": {
+    "passed": true,
+    "reasons": [],
+    "metrics": {
+     "factor": 1,
+     "working_width": 320,
+     "working_height": 240,
+     "laplacian_var": 1504.2809576660852,
+     "mean_luma": 110.55625,
+     "dark_fraction": 0.0,
+     "bright_fraction": 0.0,
+     "teeth_score": 0.3645833333333333,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.3645833333333333,
+     "tissue_fraction": 0.6354166666666666
+    }
+   }
+  },
+  {
+   "id": "mouth_soft",
+   "gen": {
+    "type": "mouth_soft",
+    "w": 320,
+    "h": 240,
+    "lip": [
+     170,
+     60,
+     70
+    ],
+    "tooth": [
+     235,
+     228,
+     210
+    ],
+    "rect": [
+     0.25,
+     0.35,
+     0.75,
+     0.65
+    ],
+    "period": 32,
+    "drop": 30
+   },
+   "expected": {
+    "passed": true,
+    "reasons": [],
+    "metrics": {
+     "factor": 1,
+     "working_width": 320,
+     "working_height": 240,
+     "laplacian_var": 163.7543470218276,
+     "mean_luma": 111.915625,
+     "dark_fraction": 0.0,
+     "bright_fraction": 0.0,
+     "teeth_score": 0.4166666666666667,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.4166666666666667,
+     "tissue_fraction": 0.5833333333333334
+    }
+   }
+  },
+  {
+   "id": "mouth_blurred",
+   "gen": {
+    "type": "mouth",
+    "w": 160,
+    "h": 120,
+    "lip": [
+     170,
+     60,
+     70
+    ],
+    "tooth": [
+     235,
+     228,
+     210
+    ],
+    "gap": [
+     70,
+     25,
+     30
+    ],
+    "rect": [
+     0.25,
+     0.35,
+     0.75,
+     0.65
+    ],
+    "period": 16,
+    "gap_w": 2,
+    "blur": {
+     "radius": 2,
+     "passes": 3
+    }
+   },
+   "expected": {
+    "passed": false,
+    "reasons": [
+     "blurry"
+    ],
+    "metrics": {
+     "factor": 1,
+     "working_width": 160,
+     "working_height": 120,
+     "laplacian_var": 3.7223771722806265,
+     "mean_luma": 110.5646875,
+     "dark_fraction": 0.0,
+     "bright_fraction": 0.0,
+     "teeth_score": 0.421875,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.421875,
+     "tissue_fraction": 0.671875
+    }
+   }
+  },
+  {
+   "id": "mouth_dark",
+   "gen": {
+    "type": "mouth",
+    "w": 320,
+    "h": 240,
+    "lip": [
+     30,
+     10,
+     12
+    ],
+    "tooth": [
+     45,
+     44,
+     40
+    ],
+    "gap": [
+     10,
+     4,
+     5
+    ],
+    "rect": [
+     0.25,
+     0.35,
+     0.75,
+     0.65
+    ],
+    "period": 16,
+    "gap_w": 2
+   },
+   "expected": {
+    "passed": false,
+    "reasons": [
+     "too_dark",
+     "teeth_not_visible"
+    ],
+    "metrics": {
+     "factor": 1,
+     "working_width": 320,
+     "working_height": 240,
+     "laplacian_var": 61.28640135299403,
+     "mean_luma": 19.4875,
+     "dark_fraction": 0.86875,
+     "bright_fraction": 0.0,
+     "teeth_score": 0.0,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.0,
+     "tissue_fraction": 0.0
+    }
+   }
+  },
+  {
+   "id": "mouth_large_odd",
+   "gen": {
+    "type": "mouth",
+    "w": 1001,
+    "h": 755,
+    "lip": [
+     180,
+     70,
+     80
+    ],
+    "tooth": [
+     240,
+     235,
+     220
+    ],
+    "gap": [
+     60,
+     20,
+     25
+    ],
+    "rect": [
+     0.2,
+     0.3,
+     0.8,
+     0.7
+    ],
+    "period": 40,
+    "gap_w": 5
+   },
+   "expected": {
+    "passed": true,
+    "reasons": [],
+    "metrics": {
+     "factor": 4,
+     "working_width": 250,
+     "working_height": 188,
+     "laplacian_var": 4415.4644467568505,
+     "mean_luma": 129.47063829787234,
+     "dark_fraction": 0.0,
+     "bright_fraction": 0.0,
+     "teeth_score": 0.6,
+     "teeth_method": "heuristic_color_v1",
+     "tooth_fraction": 0.6,
+     "tissue_fraction": 0.40789473684210525
+    }
+   }
+  }
+ ]
+}

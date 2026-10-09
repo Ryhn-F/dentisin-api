@@ -1,0 +1,69 @@
+{
+  "format_version": 1,
+  "WARNING": "TEST VALUES ONLY. These numbers are NOT clinical values and were NOT set by a dentist. They exist so the engine logic can be tested before a dentist fills in rules.yaml params. Never copy them into rules.yaml.",
+  "profiles": {
+    "test": {
+      "clinical": false,
+      "description": "Primary test profile: image-area reference; exact binary fractions so boundary cases are exact in IEEE-754 (Python and JS).",
+      "values": {
+        "small_lesion_rel_area": 0.015625,
+        "many_lesions_n": 3,
+        "cavitated_min_confidence": 0.5,
+        "noncavitated_min_confidence": 0.25,
+        "pain_scheduled_min_score": 2,
+        "pain_urgent_min_score": 6,
+        "night_pain_level": "urgent",
+        "unknown_red_flag_level": "emergency",
+        "white_spot_level": "scheduled",
+        "pain_unknown_level": "scheduled",
+        "validated_age_months_min": 72,
+        "validated_age_months_max": 155,
+        "age_out_of_range_level": "scheduled",
+        "photo_not_assessed_level": "scheduled",
+        "lesion_area_reference": "image"
+      }
+    },
+    "test_alt": {
+      "clinical": false,
+      "description": "Alternative choices for every level param and frame-relative lesion area, to exercise the other branches.",
+      "values": {
+        "small_lesion_rel_area": 0.015625,
+        "many_lesions_n": 3,
+        "cavitated_min_confidence": 0.5,
+        "noncavitated_min_confidence": 0.25,
+        "pain_scheduled_min_score": 2,
+        "pain_urgent_min_score": 6,
+        "night_pain_level": "emergency",
+        "unknown_red_flag_level": "urgent",
+        "white_spot_level": "routine",
+        "pain_unknown_level": "urgent",
+        "validated_age_months_min": 72,
+        "validated_age_months_max": 155,
+        "age_out_of_range_level": "routine",
+        "photo_not_assessed_level": "routine",
+        "lesion_area_reference": "frame"
+      }
+    },
+    "unset": {
+      "clinical": false,
+      "description": "Every param null: exercises the fail-safe if_unset fallbacks declared in rules.yaml (what the app does today with the PLACEHOLDER rules).",
+      "values": {
+        "small_lesion_rel_area": null,
+        "many_lesions_n": null,
+        "cavitated_min_confidence": null,
+        "noncavitated_min_confidence": null,
+        "pain_scheduled_min_score": null,
+        "pain_urgent_min_score": null,
+        "night_pain_level": null,
+        "unknown_red_flag_level": null,
+        "white_spot_level": null,
+        "pain_unknown_level": null,
+        "validated_age_months_min": null,
+        "validated_age_months_max": null,
+        "age_out_of_range_level": null,
+        "photo_not_assessed_level": null,
+        "lesion_area_reference": null
+      }
+    }
+  }
+}
