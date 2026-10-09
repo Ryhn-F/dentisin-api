@@ -5,7 +5,7 @@
 # BACKEND_DIR empty. If this file is copied to the root `.github/workflows/` of a monorepo
 # (GitHub only reads the root .github), set BACKEND_DIR to "backend/" (trailing slash).
 #
-# Repository secrets (Settings > Secrets and variables > Actions):
+# Secrets in the GitHub Environment `development` (Settings > Environments > development):
 #   KEEPALIVE_URL       e.g. https://<project-ref>.supabase.co/rest/v1/rpc/keepalive
 #   SUPABASE_ANON_KEY   the ANON / publishable key ONLY. Never the service_role / secret key
 #                       (ping.py refuses privileged keys and the secrets-scan CI job flags them).
@@ -30,6 +30,7 @@ env:
 jobs:
   ping:
     runs-on: ubuntu-latest
+    environment: development # secrets live in the `development` environment
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
