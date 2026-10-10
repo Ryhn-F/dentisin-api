@@ -63,7 +63,7 @@
         "n_units": {"type": "integer", "minimum": 0},
         "per_class": {
           "type": "object",
-          "required": ["caries_cavitated", "caries_noncavitated", "any_lesion"],
+          "required": ["caries_permanent", "caries_primary", "any_caries"],
           "additionalProperties": {"$ref": "#/$defs/class_block"}
         },
         "map50": {"$ref": "#/$defs/ratio"},

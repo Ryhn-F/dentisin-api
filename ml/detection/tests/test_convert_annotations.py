@@ -14,7 +14,7 @@ from canonical import AnnotationError, Box, ImageAnnotation, read_jsonl, write_j
 CMAP = {
     "status": "PLACEHOLDER",
     "yolo_names": ["cavity", "white_spot", "tooth"],
-    "map": {"cavity": "caries_cavitated", "white_spot": "caries_noncavitated", "tooth": "__drop__"},
+    "map": {"cavity": "caries_permanent", "white_spot": "caries_primary", "tooth": "__drop__"},
 }
 
 
@@ -28,7 +28,7 @@ def test_classmap_resolution(tmp_path: Path) -> None:
     p = tmp_path / "m.yaml"
     p.write_text(yaml.safe_dump(CMAP), encoding="utf-8")
     m = ca.ClassMap.load(p)
-    assert m.resolve("cavity") == "caries_cavitated"
+    assert m.resolve("cavity") == "caries_permanent"
     assert m.resolve("tooth") is None
     with pytest.raises(AnnotationError, match="not in the class map"):
         m.resolve("plaque")
@@ -42,11 +42,13 @@ def test_classmap_resolution(tmp_path: Path) -> None:
         ca.ClassMap.from_dict({"map": ["x"]})
 
 
-def test_repo_class_map_is_placeholder_and_blocks() -> None:
+def test_repo_class_map_follows_adr_014() -> None:
     path = Path(__file__).resolve().parents[2] / "data" / "class_maps" / "ahmed2025.yaml"
     m = ca.ClassMap.load(path)
-    assert m.status == "PLACEHOLDER"
-    assert m.unresolved(), "ahmed2025 map must stay undecided until the real labels + drg review"
+    assert m.unresolved() == []
+    assert m.yolo_names[:2] == ["D", "d"]  # YOLO id 0 = D (permanent), id 1 = d (primary)
+    assert (m.resolve("D"), m.resolve("d")) == ("caries_permanent", "caries_primary")
+    assert all(m.resolve(k) is None for k in m.mapping if k not in ("D", "d"))  # everything else dropped
 
 
 def _yolo_dataset(root: Path, make_image: Callable[..., Path]) -> None:
@@ -68,8 +70,8 @@ def test_read_yolo(tmp_path: Path, make_image: Callable[..., Path]) -> None:
     assert set(by) == {"images/Frontal/Frontal/p1.jpg", "images/Frontal/Frontal/p2.jpg", "images/Lateral/p3.png"}
     p1 = by["images/Frontal/Frontal/p1.jpg"]
     assert (p1.width, p1.height) == (100, 50)
-    assert p1.boxes[0] == Box("caries_cavitated", 40.0, 15.0, 60.0, 35.0)
-    assert p1.boxes[1].cls == "caries_noncavitated"
+    assert p1.boxes[0] == Box("caries_permanent", 40.0, 15.0, 60.0, 35.0)
+    assert p1.boxes[1].cls == "caries_primary"
     assert pytest.approx(p1.boxes[1].x1) == 5.0
     assert res.dropped_boxes == 1  # 'tooth' dropped
     assert by["images/Frontal/Frontal/p2.jpg"].boxes == []
@@ -121,7 +123,7 @@ def test_read_coco(tmp_path: Path) -> None:
     res = ca.read_coco(tmp_path, p, cmap(), source="s", images_prefix="imgs")
     assert [r.image for r in res.records] == ["imgs/a.jpg", "imgs/b.jpg"]
     assert res.records[0].boxes == []
-    assert res.records[1].boxes == [Box("caries_cavitated", 2, 3, 12, 8)]
+    assert res.records[1].boxes == [Box("caries_permanent", 2, 3, 12, 8)]
     assert res.dropped_boxes == 1
     assert ca.read_coco(tmp_path, p, cmap(), source="s").records[0].image == "a.jpg"
     coco["annotations"].append({"id": 3, "image_id": 1, "category_id": 99, "bbox": [0, 0, 1, 1]})
@@ -145,7 +147,7 @@ def test_read_voc(tmp_path: Path, make_image: Callable[..., Path]) -> None:
     (ann / "b.xml").write_text(VOC.format(name="b.jpg", size=""), encoding="utf-8")  # size from image header
     res = ca.read_voc(tmp_path, ann, tmp_path / "img", cmap(), source="s")
     assert [r.image for r in res.records] == ["img/a.jpg", "img/b.jpg"]
-    assert all(r.boxes == [Box("caries_cavitated", 1, 2, 8, 9)] for r in res.records)
+    assert all(r.boxes == [Box("caries_permanent", 1, 2, 8, 9)] for r in res.records)
     assert res.dropped_boxes == 2
     (ann / "c.xml").write_text(VOC.format(name="missing.jpg", size=""), encoding="utf-8")
     with pytest.raises(AnnotationError, match="matched 0 files"):
@@ -165,7 +167,7 @@ def test_voc_rejects_entity_expansion(tmp_path: Path, make_image: Callable[..., 
 
 def _records() -> list[ImageAnnotation]:
     return [
-        ImageAnnotation("d/x/a.jpg", 20, 10, [Box("caries_cavitated", 1, 1, 5, 6), Box("caries_noncavitated", 6, 1, 9, 4)]),
+        ImageAnnotation("d/x/a.jpg", 20, 10, [Box("caries_permanent", 1, 1, 5, 6), Box("caries_primary", 6, 1, 9, 4)]),
         ImageAnnotation("d/y/a.jpg", 20, 10, []),
     ]
 
@@ -209,7 +211,7 @@ def test_voc_writer_roundtrip(tmp_path: Path, make_image: Callable[..., Path]) -
     make_image(root / "d" / "y" / "a.jpg")
     ca.write_voc_layout(_records(), tmp_path / "voc", split="train", images_root=root)
     back = ca.read_voc(tmp_path / "voc", tmp_path / "voc" / "train" / "Annotations", tmp_path / "voc" / "train" / "images",
-                       ca.ClassMap.from_dict({"map": {"caries_cavitated": "caries_cavitated", "caries_noncavitated": "caries_noncavitated"}}),
+                       ca.ClassMap.from_dict({"map": {"caries_permanent": "caries_permanent", "caries_primary": "caries_primary"}}),
                        source="s")
     assert back.records[0].boxes == _records()[0].boxes
 
@@ -241,7 +243,7 @@ def test_cli_end_to_end(tmp_path: Path, make_image: Callable[..., Path], capsys:
     coco = tmp_path / "ds" / "c.json"
     coco.write_text(json.dumps(ca.to_coco_dict(recs)), encoding="utf-8")
     cm2 = tmp_path / "map2.yaml"
-    cm2.write_text(yaml.safe_dump({"map": {"caries_cavitated": "caries_cavitated", "caries_noncavitated": "caries_noncavitated"}}), encoding="utf-8")
+    cm2.write_text(yaml.safe_dump({"map": {"caries_permanent": "caries_permanent", "caries_primary": "caries_primary"}}), encoding="utf-8")
     assert ca.main(["to-canonical", "--in-format", "coco", "--root", str(tmp_path / "ds"), "--coco-json", "c.json",
                     "--class-map", str(cm2), "--source", "s", "--out", str(tmp_path / "c2.jsonl")]) == 0
     write_jsonl(recs, tmp_path / "unused.jsonl")
@@ -256,3 +258,40 @@ def test_cli_refuses_placeholder_map(tmp_path: Path, capsys: pytest.CaptureFixtu
                   "--class-map", str(m), "--source", "s", "--out", str(tmp_path / "o.jsonl")])
     assert rc == 2
     assert "undecided" in capsys.readouterr().err
+
+
+def test_resized_copy_scales_boxes_and_strips_exif(tmp_path: Path, make_image: Callable[..., Path]) -> None:
+    from PIL import Image
+
+    src = tmp_path / "src"
+    make_image(src / "a" / "big.png", w=200, h=100)
+    make_image(src / "small.jpg", w=20, h=10)
+    recs = [ImageAnnotation("a/big.png", 200, 100, [Box("caries_permanent", 20.0, 10.0, 100.0, 50.0)]),
+            ImageAnnotation("small.jpg", 20, 10, [])]
+    out = ca.resized_copy(recs, src, tmp_path / "out", max_side=50)
+    assert out[0].image == "a/big.jpg" and (out[0].width, out[0].height) == (50, 25)
+    assert out[0].boxes[0] == Box("caries_permanent", 5.0, 2.5, 25.0, 12.5)
+    assert (out[1].width, out[1].height) == (20, 10)  # never upscaled
+    with Image.open(tmp_path / "out" / "a" / "big.jpg") as im:
+        assert im.size == (50, 25) and not im.getexif()
+    ca.resized_copy(recs, src, tmp_path / "out", max_side=50)  # idempotent (existing copies reused)
+    with pytest.raises(AnnotationError, match="annotation says"):
+        ca.resized_copy([ImageAnnotation("small.jpg", 21, 10, [])], src, tmp_path / "out2", max_side=50)
+
+
+def test_coco_layout_link_and_cli_resize(tmp_path: Path, make_image: Callable[..., Path]) -> None:
+    src = tmp_path / "src"
+    make_image(src / "x.png", w=40, h=20)
+    recs = [ImageAnnotation("x.png", 40, 20, [Box("caries_permanent", 1.0, 1.0, 9.0, 9.0)])]
+    ca.write_coco_layout(recs, tmp_path / "lay", layout="yolox", split="train", images_root=src, link=True)
+    ca.write_coco_layout(recs, tmp_path / "lay", layout="yolox", split="train", images_root=src, link=True)  # re-run replaces
+    assert (tmp_path / "lay" / "train" / "x.png").exists()
+    write_jsonl(recs, tmp_path / "c.jsonl")
+    (tmp_path / "s.json").write_text(json.dumps({"images": {"x.png": "train"}}), encoding="utf-8")
+    base = ["export", "--canonical", str(tmp_path / "c.jsonl"), "--splits", str(tmp_path / "s.json"), "--layout", "yolox",
+            "--out", str(tmp_path / "lay2")]
+    assert ca.main([*base, "--resize-max-side", "20"]) == 2  # needs --images-root and --resized-dir
+    assert ca.main([*base, "--images-root", str(src), "--resize-max-side", "20", "--resized-dir", str(tmp_path / "rs")]) == 0
+    coco = json.loads((tmp_path / "lay2" / "annotations" / "instances_train.json").read_text())
+    assert coco["images"][0]["width"] == 20 and coco["annotations"][0]["bbox"] == [0.5, 0.5, 4.0, 4.0]
+    assert (tmp_path / "lay2" / "train" / "x.jpg").is_file()

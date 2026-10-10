@@ -1,18 +1,22 @@
-# Bake-off candidate 3 (ADR 001): EfficientDet-Lite0. google/automl code Apache-2.0 (verified);
-# pretrained weights license [PERLU VERIFIKASI]. NOT RUN in this repo.
+# Bake-off candidate 3 (FALLBACK, ADR 001): EfficientDet-Lite0. Licences verified 2026-10-09
+# (WEIGHT_LICENSES.md): google/automl + tensorflow/examples (tflite-model-maker) code Apache-2.0;
+# Kaggle Models tensorflow/efficientdet 'lite0-feature-vector' (the backbone tflite-model-maker
+# loads from tfhub.dev) licence 'Apache 2.0'. NOT RUN in this repo. Not a primary candidate: the
+# training toolchain is the deprecated tflite-model-maker 0.4.3 (old Python/TF), the highest
+# install-failure risk of all routes.
 # Training route: tflite-model-maker (archived; needs an old Python/TF env) -> export with
 # TFLite_Detection_PostProcess (outputs already decoded + NMS'd). Export difficulty is part of the bake-off.
 schema_version: 1
 candidate: efficientdet_lite0
 trainer: efficientdet_lite
 priority: medium
-license_verified: false
+license_verified: true    # needs the license_gate.yaml patch in WEIGHT_LICENSES.md §4
 data:
   canonical: ../data/processed/ahmed2025/canonical.jsonl
   splits: ../data/processed/ahmed2025/splits/splits.json
   images_root: ../data/raw/ahmed2025
   datasets: [ahmed2025]
-  classes: [caries_cavitated, caries_noncavitated]
+  classes: [caries_permanent, caries_primary]
 model:
   variant: efficientdet_lite0
   input_size: [320, 320]

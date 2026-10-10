@@ -1,4 +1,4 @@
-# DECODE_SPEC — running `model.tflite` and decoding its outputs (v1.0.0)
+# DECODE_SPEC — running `model.tflite` and decoding its outputs (v1.0.0; labels.json schema 2.0.0)
 
 Contract between `backend/ml/exports/<semver>/` and the app (`app/src/...`, TypeScript). The
 reference implementation is [`decode.py`](decode.py); port parity is checked against
@@ -73,15 +73,20 @@ Boxes `[cx, cy, w, h]` normalised; `σ` on logits (no background column); `class
 - `stretch`: `x = x_in·W/Win`, `y = y_in·H/Hin`.
 Clamp to `[0, W] × [0, H]`.
 
-## 6. Use in triage (pointer, not part of decode)
-`classes[i].may_raise_triage_level` is `false` for `caries_noncavitated` (FR-32: shown as "perlu
-perhatian", never raises the level alone). Triage uses lesion **count** and **relative box area**
-(`box area / photo area`) — parameters live in `triage/rules.yaml` (PLACEHOLDER until drg).
-All UI wording: "indikasi / perlu diperiksa", never a diagnosis.
+## 6. Use in triage and UI (pointer, not part of decode) — ADR 014
+- Classes (`labels.classes`, `labels.json` schema 2.0.0): `caries_permanent` (id 0, `dentition: permanent`, Ahmed
+  label "D") and `caries_primary` (id 1, `dentition: primary`, label "d"). There is **no** cavitated/non-cavitated
+  class. UI wording: "indikasi karies pada gigi tetap/ sulung — perlu diperiksa", never a diagnosis.
+- A box surrounds the **whole tooth** with visible decay. `labels.box_use == "ui_overlay_only"`: draw it, but
+  **never derive severity from box size or area** (tooth size varies). Triage reads only class, score and the
+  **number** of findings (N = PLACEHOLDER in `triage/rules.yaml` until drg); red flags come from the questionnaire.
+- `may_raise_triage_level` is `true` for both classes (both count as findings).
 
 ## 7. Open items `[PERLU VERIFIKASI]` (spike S1)
 - MediaPipe Model Maker export: real output tensors (raw vs post-processed), anchor extraction
   from metadata, input dtype/normalisation.
 - EfficientDet-Lite: output tensor order of TFLite_Detection_PostProcess for the TF version used.
-- YOLOX via onnx2tf: whether INT8 keeps float32 I/O; NCHW→NHWC transposition of the output.
+- YOLOX via onnx2tf: the exported head now emits obj/cls **logits** (`sigmoid_applied: false`, §3.1 applies σ) because
+  onnx2tf's flatbuffer_direct INT8 rejects LOGISTIC outputs. On a tiny test graph `*_integer_quant.tflite` kept float32 I/O and
+  the [1, N, 7] output layout (no transposition needed); INT8 numerical parity of the real model is still open.
 `labels.output.tensors_verified` is `true` only when shapes/dtypes were read by an interpreter at export.

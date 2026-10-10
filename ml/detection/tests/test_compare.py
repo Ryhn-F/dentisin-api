@@ -20,8 +20,9 @@ def fake_report(sens: float | None = 0.8, split_sha: str | None = "s" * 64, with
         "overall": {
             "map50": 0.42, "map50_ci95": ci,
             "per_class": {
-                "caries_cavitated": {"image_level": lvl, "box_level": {"sensitivity": 0.6, "ci95": None}},
-                "caries_noncavitated": {"image_level": {"sensitivity": None, "ci95": None}},
+                "caries_permanent": {"image_level": lvl, "box_level": {"sensitivity": 0.6, "ci95": None}, "ap50": 0.55},
+                "caries_primary": {"image_level": {"sensitivity": None, "ci95": None}, "ap50": None},
+                "any_caries": {"image_level": lvl, "ap50": 0.5},
             },
         },
         "warnings": warnings or [],
@@ -43,7 +44,8 @@ def test_render_table() -> None:
     assert "0.80 (0.70–0.90)" in rows["`yolox_nano`"] and "lolos" in rows["`yolox_nano`"]
     assert "gagal" in rows["`mediapipe_modelmaker_mobilenetv2_ssd`"]  # 16 MB > 15
     assert "belum diukur" in rows["`efficientdet_lite0`"] and "belum dinilai" in rows["`efficientdet_lite0`"]
-    assert "| — |" in rows["`yolox_nano`"]  # non-cavitated sensitivity undefined
+    assert "| — |" in rows["`yolox_nano`"]  # primary-tooth sensitivity undefined (no positives)
+    assert "| 0.55 | — |" in rows["`yolox_nano`"]  # AP50 permanent | AP50 primary
     assert "decoder outside graph" in md and "patient_id missing" in md
 
 
@@ -90,3 +92,32 @@ def test_template(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     rows = [ln for ln in text.splitlines() if ln.startswith("| `")]
     assert all(ln.count("|") == len(cmp.HEADER) + 1 for ln in rows)
     assert cmp.main(["--template"]) == 0 and "TEMPLATE" in capsys.readouterr().out
+
+
+def test_parity_and_license_columns() -> None:
+    meta = {"yolox_nano": {"parity_passed": False}, "efficientdet_lite0": {"parity_passed": True}}
+    md = cmp.render_markdown({"yolox_nano": fake_report(), "efficientdet_lite0": fake_report(), "rfdetr_nano": fake_report()}, meta)
+    rows = {ln.split("|")[1].strip(): ln for ln in md.splitlines() if ln.startswith("| `")}
+    assert "| gagal | owner_accepted_risk |" in rows["`yolox_nano`"] and "| lulus | clear |" in rows["`efficientdet_lite0`"]
+    assert "| belum diukur | clear |" in rows["`rfdetr_nano`"]
+    assert set(cmp.LICENSES) == set(cmp.CANDIDATES)
+
+
+def test_render_adr(tmp_path: Path) -> None:
+    template = cmp.ADR_TEMPLATE.read_text(encoding="utf-8")
+    reports = {"yolox_nano": fake_report(), "mediapipe_modelmaker_mobilenetv2_ssd": fake_report(0.7)}
+    adr = cmp.render_adr(reports, META, template)
+    assert "<!-- compare:" not in adr and "| " + " | ".join(cmp.HEADER) + " |" in adr
+    assert f"`{'s' * 64}`" in adr and "TF Model Garden QAT" in adr and "Catatan ekspor" in adr
+    assert adr.count("| `yolox_nano` |") == 2  # results table + licence table
+    with pytest.raises(cmp.CompareError, match="marker"):
+        cmp.render_adr(reports, META, "no markers")
+    r = tmp_path / "r.json"
+    r.write_text(json.dumps(fake_report()), encoding="utf-8")
+    m1, m2 = tmp_path / "m1.yaml", tmp_path / "m2.json"
+    m1.write_text(yaml.safe_dump({"yolox_nano": {"int8_size_mb": 3.0, "export_difficulty": "medium"}}), encoding="utf-8")
+    m2.write_text(json.dumps({"yolox_nano": {"int8_size_mb": 4.0, "parity_passed": True}}), encoding="utf-8")
+    assert cmp.load_meta([m1, m2]) == {"yolox_nano": {"int8_size_mb": 4.0, "export_difficulty": "medium", "parity_passed": True}}
+    out = tmp_path / "adr.md"
+    assert cmp.main(["--adr", "--report", f"yolox_nano={r}", "--meta", str(m1), "--meta", str(m2), "--out", str(out)]) == 0
+    assert "4.0" in out.read_text(encoding="utf-8")

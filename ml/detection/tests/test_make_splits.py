@@ -22,7 +22,7 @@ def synthetic_records(n_patients: int = 60, views: int = 4, seed: int = 1) -> li
         positive = bool(rng.random() < 0.4)
         for v in range(int(rng.integers(1, views + 1))):
             recs.append({"image": f"Images/view{v}/P{p:03d}_v{v}.jpg", "width": 10, "height": 10, "patient_id": f"P{p:03d}",
-                         "boxes": [{"cls": "caries_cavitated", "x1": 1, "y1": 1, "x2": 3, "y2": 3}] if positive and v == 0 else []})
+                         "boxes": [{"cls": "caries_permanent", "x1": 1, "y1": 1, "x2": 3, "y2": 3}] if positive and v == 0 else []})
     return recs
 
 

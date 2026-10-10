@@ -155,6 +155,26 @@ def compare(
     )
 
 
+#: Technical score floor used ONLY to compare float vs INT8 detections (not an operating threshold).
+AGREEMENT_SCORE = 0.3
+
+
+def labels_decoder(labels: dict[str, Any], *, score: float = AGREEMENT_SCORE) -> DecodeFn:
+    """Decode + postprocess per labels.json (DECODE_SPEC §3-4) with a fixed technical score floor."""
+    from decode import postprocess
+    from predict import make_decoder
+
+    raw = make_decoder(labels)
+    post = labels["output"]["postprocess"]
+    n_cls = len(labels["classes"])
+
+    def run(outputs: Sequence[npt.NDArray[Any]]) -> Decoded:
+        return postprocess(raw(outputs), [score] * n_cls, float(post["nms_iou_threshold"]), int(post["max_detections"]),
+                           class_agnostic=bool(post["class_agnostic_nms"]))
+
+    return run
+
+
 def tflite_runner(model_path: Path) -> Runner:  # pragma: no cover - needs a LiteRT interpreter
     """Build a runner from a .tflite file using ai-edge-litert, else tensorflow.lite."""
     try:
@@ -193,11 +213,17 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI over o
     p.add_argument("--int8-model", type=Path, required=True)
     p.add_argument("--samples", type=Path, required=True, help=".npy file of preprocessed inputs, shape (N, H, W, 3)")
     p.add_argument("--min-cosine", type=float, default=DEFAULT_MIN_COSINE)
+    p.add_argument("--min-agreement", type=float, default=DEFAULT_MIN_AGREEMENT)
+    p.add_argument("--labels", type=Path, help="labels.json of the INT8 bundle -> also detection-level agreement")
+    p.add_argument("--agreement-score", type=float, default=AGREEMENT_SCORE)
     p.add_argument("--report", type=Path)
     args = p.parse_args(argv)
     xs = np.load(args.samples)
+    decode = None
+    if args.labels:
+        decode = labels_decoder(json.loads(args.labels.read_text(encoding="utf-8")), score=args.agreement_score)
     rep = compare(tflite_runner(args.float_model), tflite_runner(args.int8_model), (x[None, ...] for x in xs),
-                  min_cosine=args.min_cosine)
+                  decode=decode, min_cosine=args.min_cosine, min_agreement=args.min_agreement)
     text = json.dumps(rep.to_dict(), indent=1)
     if args.report:
         args.report.write_text(text + "\n", encoding="utf-8")

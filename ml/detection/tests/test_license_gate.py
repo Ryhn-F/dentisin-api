@@ -9,7 +9,16 @@ from typing import Any
 
 import pytest
 
-from license_gate import LicenseGateError, detect_compute_env, evaluate_gate, load_gate, model_fully_verified
+from license_gate import (
+    OWNER_ACCEPTED_RISK,
+    LicenseGateError,
+    detect_compute_env,
+    evaluate_gate,
+    load_gate,
+    model_basis,
+    model_fully_verified,
+    weights_basis,
+)
 
 DETECTION = Path(__file__).resolve().parents[1]
 DATA = DETECTION.parent / "data"
@@ -144,3 +153,36 @@ def test_real_gate_alphadent_and_child_data(gate: dict[str, Any]) -> None:
 )
 def test_detect_compute_env(env: dict[str, str], mods: list[str], expected: str) -> None:
     assert detect_compute_env(env, mods) == expected
+
+
+@pytest.mark.parametrize(
+    ("weights", "expected"),
+    [({"verified": True}, "verified"), ({"verified": False}, "unverified"), ({"verified": False, "owner_accepted_risk": True}, OWNER_ACCEPTED_RISK),
+     ({"verified": True, "basis": OWNER_ACCEPTED_RISK}, OWNER_ACCEPTED_RISK), ({"license_note": OWNER_ACCEPTED_RISK}, OWNER_ACCEPTED_RISK)],
+)
+def test_weights_basis(weights: dict[str, Any], expected: str) -> None:
+    model = {"code": {"verified": True}, "weights": weights}
+    assert weights_basis(model) == expected == model_basis(model)
+    assert model_fully_verified(model) is (expected == "verified")
+    assert model_basis({"code": {"verified": False}, "weights": weights}) == "unverified"
+
+
+def test_real_gate_yolox_owner_accepted_risk(gate: dict[str, Any]) -> None:
+    """ADR 014 §5: allowed like a verified licence, but recorded distinctly + warned; never 'verified'."""
+    assert weights_basis(gate["models"]["yolox_nano"]) == OWNER_ACCEPTED_RISK
+    d = evaluate_gate(gate, candidate="yolox_nano", datasets=["ahmed2025"], cfg_license_verified=True, allow_unverified=False,
+                      cfg_license_note=OWNER_ACCEPTED_RISK)
+    assert d.allowed and not d.internal_experiment_only and d.license_basis == OWNER_ACCEPTED_RISK
+    assert d.warnings and "owner_accepted_risk" in d.warnings[0]
+    for note in (None, "weird"):  # missing / unknown note -> hard refusal even with the flag
+        bad = evaluate_gate(gate, candidate="yolox_nano", datasets=["ahmed2025"], cfg_license_verified=True, allow_unverified=True,
+                            cfg_license_note=note)
+        assert not bad.allowed
+    soft = evaluate_gate(gate, candidate="yolox_nano", datasets=["ahmed2025"], cfg_license_verified=False, allow_unverified=True)
+    assert soft.allowed and soft.internal_experiment_only and soft.license_basis == "unverified"
+
+
+def test_note_without_gate_acceptance_is_refused() -> None:
+    g = _gate()
+    d = evaluate_gate(g, candidate="m", datasets=["d"], cfg_license_verified=True, allow_unverified=True, cfg_license_note=OWNER_ACCEPTED_RISK)
+    assert not d.allowed and any("mismatch" in r for r in d.reasons)

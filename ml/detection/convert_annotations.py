@@ -2,9 +2,9 @@
 trainer-specific layouts (MediaPipe Model Maker COCO, YOLOX COCO, Roboflow/RF-DETR COCO, VOC).
 
 Class mapping is ALWAYS explicit (``--class-map``): a source class name maps to a canonical
-class, to ``__drop__``, or is left ``null`` (= undecided -> conversion refuses to run). Mapping a
-source label such as "caries" to cavitated/non-cavitated is a clinical decision (drg), not an
-engineering default.
+class, to ``__drop__``, or is left ``null`` (= undecided -> conversion refuses to run). For Ahmed 2025
+(ADR 014) the map is ``D: caries_permanent``, ``d: caries_primary`` (straight through, by NAME -- the COCO files use
+different category ids per file); nothing is inferred about severity or cavitation.
 
 Usage::
 
@@ -361,16 +361,65 @@ def write_coco_layout(
     layout: Layout,
     split: str,
     images_root: Path | None = None,
+    link: bool = False,
 ) -> Path:
-    """Write one split. If ``images_root`` is given, images are copied (never moved) into the layout."""
+    """Write one split. If ``images_root`` is given, images are copied (never moved) into the layout,
+    or symlinked when ``link`` (falls back to copying where symlinks are not permitted)."""
     ann_path, img_dir = _layout_paths(out_dir, layout, split)
     ann_path.parent.mkdir(parents=True, exist_ok=True)
     img_dir.mkdir(parents=True, exist_ok=True)
     ann_path.write_text(json.dumps(to_coco_dict(records), indent=1), encoding="utf-8")
     if images_root is not None:
         for rec in records:
-            shutil.copy2(images_root / rec.image, img_dir / flat_name(rec.image))
+            src, dst = images_root / rec.image, img_dir / flat_name(rec.image)
+            if dst.exists() or dst.is_symlink():
+                dst.unlink()
+            if link:
+                try:
+                    dst.symlink_to(src.resolve())
+                    continue
+                except OSError:  # e.g. Windows without developer mode
+                    pass
+            shutil.copy2(src, dst)
     return ann_path
+
+
+def resized_copy(
+    records: list[ImageAnnotation],
+    images_root: Path,
+    out_dir: Path,
+    *,
+    max_side: int,
+    quality: int = 95,
+) -> list[ImageAnnotation]:
+    """Write training copies (longest side <= ``max_side``, JPEG, NO EXIF) under ``out_dir`` and
+    return records with scaled boxes/sizes (same relative ``image`` paths, now rooted at ``out_dir``).
+
+    Why: (1) hosted-notebook dataloaders decode 12 MP JPEGs slowly; (2) stripping EXIF makes
+    OpenCV-based trainers (which honour EXIF orientation) see the same pixel frame as the
+    annotations. Pixels are decoded WITHOUT EXIF rotation; a decoded size that differs from the
+    annotated size is an error. Evaluation always uses the ORIGINAL photos (predict.py).
+    ``out_dir`` must be scratch space that is never exported (e.g. /kaggle/tmp)."""
+    from PIL import Image
+
+    out: list[ImageAnnotation] = []
+    for rec in records:
+        dst = out_dir / rec.image
+        with Image.open(images_root / rec.image) as im:
+            if (im.width, im.height) != (rec.width, rec.height):
+                raise AnnotationError(f"{rec.image}: file is {im.width}x{im.height}, annotation says {rec.width}x{rec.height}")
+            r = min(1.0, max_side / max(rec.width, rec.height))
+            w, h = max(1, round(rec.width * r)), max(1, round(rec.height * r))
+            if not dst.is_file():
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                img = im.convert("RGB")
+                img = img.resize((w, h), resample=Image.Resampling.BILINEAR) if r < 1.0 else img
+                img.save(dst.with_suffix(".jpg") if dst.suffix.lower() not in (".jpg", ".jpeg") else dst, "JPEG", quality=quality)
+        sx, sy = w / rec.width, h / rec.height
+        boxes = [Box(b.cls, b.x1 * sx, b.y1 * sy, min(b.x2 * sx, float(w)), min(b.y2 * sy, float(h))) for b in rec.boxes]
+        image = rec.image if Path(rec.image).suffix.lower() in (".jpg", ".jpeg") else str(Path(rec.image).with_suffix(".jpg").as_posix())
+        out.append(ImageAnnotation(image=image, width=w, height=h, boxes=boxes, source=rec.source, patient_id=rec.patient_id))
+    return out
 
 
 def write_voc_layout(records: list[ImageAnnotation], out_dir: Path, *, split: str, images_root: Path | None = None) -> Path:
@@ -439,6 +488,9 @@ def _build_parser() -> argparse.ArgumentParser:
     e.add_argument("--layout", choices=["mediapipe", "yolox", "roboflow", "voc"], required=True)
     e.add_argument("--images-root", type=Path)
     e.add_argument("--copy-images", action="store_true")
+    e.add_argument("--link-images", action="store_true", help="symlink instead of copying (Linux notebooks)")
+    e.add_argument("--resize-max-side", type=int, help="write EXIF-free training copies (longest side <= N) first")
+    e.add_argument("--resized-dir", type=Path, help="scratch dir for --resize-max-side copies (never exported)")
     e.add_argument("--out", type=Path, required=True)
     return p
 
@@ -467,12 +519,18 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     records = read_jsonl(args.canonical)
     parts = partition(records, load_split_assignments(args.splits))
-    images_root = args.images_root if args.copy_images else None
+    images_root = args.images_root if (args.copy_images or args.link_images) else None
+    if args.resize_max_side:
+        if args.images_root is None or args.resized_dir is None:
+            print("--resize-max-side needs --images-root and --resized-dir", file=sys.stderr)
+            return 2
+        parts = {s: resized_copy(r, args.images_root, args.resized_dir, max_side=args.resize_max_side) for s, r in parts.items()}
+        images_root = args.resized_dir
     for split, recs in sorted(parts.items()):
         if args.layout == "voc":
             write_voc_layout(recs, args.out, split=split, images_root=images_root)
         else:
-            write_coco_layout(recs, args.out, layout=args.layout, split=split, images_root=images_root)
+            write_coco_layout(recs, args.out, layout=args.layout, split=split, images_root=images_root, link=args.link_images)
     print(json.dumps({s: len(r) for s, r in sorted(parts.items())}))
     return 0
 

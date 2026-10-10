@@ -45,15 +45,16 @@ dev = [
 package = false
 
 [tool.pytest.ini_options]
-pythonpath = [".", "../data/scripts"]
-testpaths = ["tests"]
+pythonpath = [".", "../data/scripts", "kaggle"]
+testpaths = ["tests", "../data/scripts/tests"]  # data-script tests live next to the scripts (data engineer)
 addopts = "-q --cov=. --cov=../data/scripts --cov-report=term-missing --cov-fail-under=90"
 
 [tool.coverage.run]
 branch = true
 # Trainer adapters wrap GPU toolchains that cannot run here; their import-guard path is tested,
 # the bodies are excluded and marked UNTESTED in their docstrings.
-omit = ["tests/*", ".venv/*", "trainers/mediapipe_mm.py", "trainers/efficientdet_lite.py", "trainers/rfdetr_adapter.py"]
+omit = ["tests/*", ".venv/*", "trainers/efficientdet_lite.py", "trainers/rfdetr_adapter.py",
+        "kaggle/*_kaggle.py"]  # notebooks run only on Kaggle/Colab (compiled + rule-checked by tests)
 
 [tool.coverage.report]
 exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
@@ -61,7 +62,7 @@ exclude_lines = ["pragma: no cover", "if __name__ == .__main__.:"]
 [tool.ruff]
 line-length = 160
 target-version = "py311"
-extend-exclude = [".venv"]
+extend-exclude = [".venv", "kaggle/*.ipynb"]  # .ipynb are generated from kaggle/*_kaggle.py
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4", "PT", "RUF"]
@@ -69,19 +70,22 @@ ignore = ["RUF001", "RUF002", "RUF003"]  # Indonesian text / typographic dashes 
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["PT018"]  # compact multi-condition asserts on hand-computed tuples are intentional
+"kaggle/*_kaggle.py" = ["E402", "PT018"]  # notebook cells: imports after setup code, compact asserts
 
 [tool.ruff.lint.isort]
 known-first-party = ["canonical", "convert_annotations", "decode", "eval", "export", "license_gate", "quality_gate",
-                     "quality_gate_vectors", "train", "trainers", "check_int8_parity", "bake_off", "make_splits", "verify_dataset"]
+                     "quality_gate_vectors", "train", "trainers", "check_int8_parity", "bake_off", "make_splits", "verify_dataset",
+                     "preprocess", "predict", "thresholds", "artifacts", "nbkit", "make_ipynb", "mm_train_py310"]
 
 [tool.mypy]
 python_version = "3.11"
 strict = true
-mypy_path = [".", "../data/scripts"]
+mypy_path = [".", "../data/scripts", "kaggle"]
 explicit_package_bases = true
-files = ["*.py", "trainers", "bake_off", "tests", "../data/scripts"]
+# Notebooks (kaggle/*_kaggle.py) are excluded from mypy (top-level notebook code); ruff + tests cover them.
+files = ["*.py", "trainers", "bake_off", "tests", "../data/scripts", "kaggle/nbkit.py", "kaggle/make_ipynb.py", "kaggle/mm_train_py310.py"]
 
 [[tool.mypy.overrides]]
 module = ["mediapipe_model_maker.*", "tflite_model_maker.*", "rfdetr.*", "yolox.*", "torch.*", "onnx2tf.*",
-          "ai_edge_litert.*", "tensorflow.*", "mlflow.*"]
+          "ai_edge_litert.*", "tensorflow.*", "mlflow.*", "onnxruntime.*"]
 ignore_missing_imports = true

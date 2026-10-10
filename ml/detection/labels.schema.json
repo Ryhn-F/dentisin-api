@@ -5,7 +5,7 @@
   "description": "Everything the app needs to run model.tflite and decode its outputs. Decode algorithms: ml/detection/DECODE_SPEC.md; reference implementation: ml/detection/decode.py.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "model", "validation_status", "intended_use", "distribution", "classes", "input", "output", "thresholds", "licenses", "attribution", "decode_spec"],
+  "required": ["schema_version", "model", "validation_status", "intended_use", "distribution", "classes", "input", "output", "thresholds", "licenses", "attribution", "decode_spec", "box_use"],
   "$defs": {
     "quant": {
       "type": ["object", "null"],
@@ -31,7 +31,8 @@
       "required": ["license", "verified", "source"],
       "properties": {
         "license": {"type": ["string", "null"]},
-        "verified": {"type": "boolean"},
+        "verified": {"type": "boolean", "description": "true ONLY for a primary-source verification"},
+        "basis": {"enum": ["verified", "owner_accepted_risk", "unverified"], "description": "owner_accepted_risk = implied licence accepted by the product owner (ADR 014 §5), NOT verified"},
         "source": {"type": ["string", "null"]}
       }
     },
@@ -84,7 +85,7 @@
     }
   },
   "properties": {
-    "schema_version": {"const": "1.0.0"},
+    "schema_version": {"const": "2.0.0"},
     "model": {
       "type": "object",
       "additionalProperties": false,
@@ -111,10 +112,11 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name", "may_raise_triage_level", "ui_label_key"],
+        "required": ["id", "name", "dentition", "may_raise_triage_level", "ui_label_key"],
         "properties": {
           "id": {"type": "integer", "minimum": 0},
-          "name": {"enum": ["caries_cavitated", "caries_noncavitated"]},
+          "name": {"enum": ["caries_permanent", "caries_primary"]},
+          "dentition": {"enum": ["permanent", "primary"], "description": "ADR 014: tooth type of the caries indication (Ahmed labels D / d)"},
           "may_raise_triage_level": {"type": "boolean"},
           "ui_label_key": {"type": "string"}
         }
@@ -189,10 +191,10 @@
         "score": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["caries_cavitated", "caries_noncavitated"],
+          "required": ["caries_permanent", "caries_primary"],
           "properties": {
-            "caries_cavitated": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
-            "caries_noncavitated": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+            "caries_permanent": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+            "caries_primary": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
           }
         },
         "status": {"enum": ["PLACEHOLDER", "set_on_val", "reviewed_by_drg"]},
@@ -228,6 +230,7 @@
       }
     },
     "int8_parity": {"type": ["object", "null"]},
+    "box_use": {"const": "ui_overlay_only", "description": "ADR 014 §2: boxes surround whole teeth; never derive severity from box size/area"},
     "decode_spec": {
       "type": "object",
       "additionalProperties": false,
@@ -248,8 +251,8 @@
      "then": {"properties": {
        "validation_status": {"const": "VALIDATED"},
        "thresholds": {"properties": {"status": {"const": "reviewed_by_drg"},
-         "score": {"properties": {"caries_cavitated": {"type": "number"}, "caries_noncavitated": {"type": "number"}}}}},
-       "licenses": {"properties": {"code": {"properties": {"verified": {"const": true}}}, "weights": {"properties": {"verified": {"const": true}}}}},
+         "score": {"properties": {"caries_permanent": {"type": "number"}, "caries_primary": {"type": "number"}}}}},
+       "licenses": {"properties": {"code": {"properties": {"verified": {"const": true}}}, "weights": {"properties": {"verified": {"const": true}, "basis": {"const": "verified"}}}}},
        "output": {"properties": {"tensors_verified": {"const": true}}}
      }}}
   ]

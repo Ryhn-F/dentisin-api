@@ -48,9 +48,13 @@ REQUIRED_ROLES = {
     "detr_raw": {"boxes", "logits"},
 }
 DEFAULT_POSTPROCESS = {"nms_iou_threshold": 0.45, "class_agnostic_nms": False, "max_detections": 20, "status": "technical_default"}
-UI_LABEL_KEYS = {"caries_cavitated": "finding.caries_cavitated", "caries_noncavitated": "finding.caries_noncavitated"}
-#: FR-32: non-cavitated findings never raise the triage level on their own.
-MAY_RAISE = {"caries_cavitated": True, "caries_noncavitated": False}
+UI_LABEL_KEYS = {"caries_permanent": "finding.caries_permanent", "caries_primary": "finding.caries_primary"}
+#: ADR 014 §3: triage reads class, confidence and the NUMBER of findings (never box geometry); both classes count.
+MAY_RAISE = {"caries_permanent": True, "caries_primary": True}
+#: ADR 014: classes encode the DENTITION of the tooth with a caries indication (Ahmed labels D / d).
+DENTITION = {"caries_permanent": "permanent", "caries_primary": "primary"}
+#: ADR 014 §2: boxes surround whole teeth; their size/area must never be used for severity.
+BOX_USE = "ui_overlay_only"
 
 
 class ExportError(RuntimeError):
@@ -138,7 +142,7 @@ def build_labels(
                 attribution.append({"lang": lang, "text": " ".join(str(text).split())})
     model_lic = decision.model_license
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "2.0.0",  # 2.0.0: ADR 014 classes (dentition), box_use, licenses.weights.basis
         "model": {
             "name": "dentisai-caries-detector",
             "version": version,
@@ -155,7 +159,7 @@ def build_labels(
         "intended_use": "screening_only",
         "distribution": distribution,
         "classes": [
-            {"id": i, "name": n, "may_raise_triage_level": MAY_RAISE[n], "ui_label_key": UI_LABEL_KEYS[n]}
+            {"id": i, "name": n, "dentition": DENTITION[n], "may_raise_triage_level": MAY_RAISE[n], "ui_label_key": UI_LABEL_KEYS[n]}
             for i, n in enumerate(CLASS_NAMES)
         ],
         "input": {
@@ -190,11 +194,14 @@ def build_labels(
         },
         "licenses": {
             "code": {k: model_lic.get("code", {}).get(k) for k in ("license", "verified", "source")},
-            "weights": {k: model_lic.get("weights", {}).get(k) for k in ("license", "verified", "source")},
+            "weights": {**{k: model_lic.get("weights", {}).get(k) for k in ("license", "source")},
+                        # 'verified' is true ONLY for a primary-source verification; owner_accepted_risk stays false
+                        "verified": decision.license_basis == "verified", "basis": decision.license_basis},
             "datasets": [{k: ds.get(k) for k in ("id", "license", "url", "doi")} for ds in decision.dataset_licenses],
             "model_artifact": "Proprietary DentisAI model (closed repo, ADR 008); third-party terms above apply.",
         },
         "attribution": attribution,
+        "box_use": BOX_USE,
         "int8_parity": dict(parity) if parity else None,
         "decode_spec": {"document": "ml/detection/DECODE_SPEC.md", "version": SPEC_VERSION, "reference_impl": "ml/detection/decode.py"},
     }
@@ -253,11 +260,16 @@ def render_model_card(labels: Mapping[str, Any], *, eval_summary: Mapping[str, A
         "> **⚠ NOT VALIDATED — BELUM DIVALIDASI.** Model ini belum divalidasi secara klinis pada anak Indonesia.",
         "> Hasil hanya **indikasi** untuk skrining, **bukan diagnosis**; selalu rujuk ke dokter gigi/ puskesmas.",
         f"> Distribusi: `{labels['distribution']}` · Status validasi: `{labels['validation_status']}`",
+        *(["> **⚠ LISENSI BOBOT PRA-LATIH TIDAK TERVERIFIKASI — `owner_accepted_risk`.** Pemilik produk menerima risiko lisensi",
+           "> implisit (Apache-2.0 tersirat) untuk kompetisi (ADR 014 §5). Wajib ditinjau ulang sebelum rilis komersial/ publik."]
+          if lic["weights"].get("basis") == "owner_accepted_risk" else []),
         "",
         "## Ringkasan (Bahasa Indonesia)",
-        "- **Fungsi:** menandai *indikasi* gigi berlubang (`caries_cavitated`) dan area yang *perlu perhatian* "
-        "(`caries_noncavitated`, kepercayaan rendah, tidak menaikkan level triase sendirian) pada foto gigi depan.",
-        "- **Bukan untuk:** diagnosis, sela-sela gigi, bagian dalam gigi, gigi belakang yang tidak terlihat.",
+        "- **Fungsi:** menandai **indikasi karies pada gigi sulung/ tetap** (`caries_primary` / `caries_permanent`) pada foto "
+        "gigi depan — hasilnya \"perlu diperiksa\", bukan diagnosis.",
+        "- **Kotak** melingkupi seluruh gigi yang tampak berlubang/ bernoda; **ukuran kotak tidak menunjukkan keparahan** dan "
+        "hanya dipakai untuk penanda di layar (ADR 014). Model tidak membedakan berlubang vs belum berlubang.",
+        "- **Bukan untuk:** diagnosis, menilai keparahan, sela-sela gigi, bagian dalam gigi, gigi belakang yang tidak terlihat.",
         "- **Data latih:** dataset publik (lihat Lisensi); **belum ada data anak Indonesia**.",
         f"- **Ambang skor:** `{thr['status']}`" + (" — belum ditetapkan; tidak boleh dipakai untuk rilis." if thr["status"] == "PLACEHOLDER" else ""),
         "",
@@ -289,7 +301,8 @@ def render_model_card(labels: Mapping[str, Any], *, eval_summary: Mapping[str, A
         "",
         "## Licenses",
         f"- Code: {lic['code']['license']} (verified: {lic['code']['verified']}; {lic['code']['source']})",
-        f"- Pretrained weights: {lic['weights']['license']} (verified: {lic['weights']['verified']}; {lic['weights']['source']})",
+        f"- Pretrained weights: {lic['weights']['license']} (verified: {lic['weights']['verified']}; basis: "
+        f"`{lic['weights'].get('basis')}`; {lic['weights']['source']})",
         *[f"- Dataset `{d['id']}`: {d['license']} ({d.get('doi') or d.get('url')})" for d in lic["datasets"]],
         f"- This model: {lic['model_artifact']}",
         "",
@@ -302,8 +315,10 @@ def render_model_card(labels: Mapping[str, Any], *, eval_summary: Mapping[str, A
 
 DEFAULT_LIMITATIONS = (
     "Training data from a single smartphone model, ages 10-24, Sindh (Pakistan); no Indonesian pediatric data.",
-    "Bounding boxes only; no `tooth` class -> triage uses lesion count and relative box size (ADR 003).",
-    "Non-cavitated (early) lesions are unreliable from smartphone photos (literature sensitivity 0-38%).",
+    "Boxes surround whole teeth with visible decay (Ahmed labels D/d); box size says nothing about severity and is "
+    "used only for the UI overlay -- triage uses class, confidence and the number of findings (ADR 014).",
+    "No cavitated vs non-cavitated distinction exists in the training data; early (non-cavitated) lesions are unreliable "
+    "from smartphone photos (literature sensitivity 0-38%).",
     "Primary-dentition children under 10 are outside the training age range.",
     "Photos of front teeth only; interproximal and posterior surfaces are not assessed.",
     "Thresholds and quality-gate limits are PLACEHOLDER until set on validation data and reviewed by a dentist.",
@@ -352,6 +367,8 @@ def release_blockers(cfg: Mapping[str, Any], decision: GateDecision, labels: Map
     b: list[str] = []
     if decision.internal_experiment_only or not decision.allowed:
         b.append("license gate not fully passed")
+    if decision.license_basis == "owner_accepted_risk":
+        b.append("weights licence basis is owner_accepted_risk (not verified): re-review required before commercial/public release (ADR 014 §5)")
     if labels["thresholds"]["status"] != "reviewed_by_drg":
         b.append("thresholds not reviewed by a dentist (PLACEHOLDER)")
     if not labels["output"]["tensors_verified"]:
@@ -428,9 +445,12 @@ def build_bundle(
     if not cfg["export"]["int8"]:
         raise ExportError("config export.int8 must be true for the shipped model")
     decision = evaluate_gate(load_gate(gate_path), candidate=cfg["candidate"], datasets=cfg["data"]["datasets"],
-                             cfg_license_verified=cfg["license_verified"], allow_unverified=allow_unverified_license and not release)
+                             cfg_license_verified=cfg["license_verified"], allow_unverified=allow_unverified_license and not release,
+                             cfg_license_note=cfg.get("license_note"))
     if not decision.allowed:
         raise ExportError("license gate refused: " + "; ".join(decision.reasons))
+    for w in decision.warnings:  # owner_accepted_risk is never silent (ADR 014 §5)
+        print(f"WARNING{' (RELEASE)' if release else ''}: {w}", file=sys.stderr)
     limit = float(max_size_mb if max_size_mb is not None else cfg["export"]["max_size_mb"])
     with tempfile.TemporaryDirectory() as tmp_s:
         tmp = Path(tmp_s)
@@ -461,8 +481,9 @@ def build_bundle(
             rep = json.loads(eval_report.read_text(encoding="utf-8"))
             eval_summary = {"split": rep["inputs"]["split"], "split_sha256": rep["inputs"]["split_sha256"],
                             "map50": rep["overall"]["map50"],
-                            "caries_cavitated_image_level": {k: rep["overall"]["per_class"]["caries_cavitated"]["image_level"][k]
-                                                             for k in ("sensitivity", "specificity")}}
+                            **{f"{c}_image_level": {k: pc[c]["image_level"].get(k) for k in ("sensitivity", "specificity")}
+                               for c in (*CLASS_NAMES, "any_caries") if c in (pc := rep["overall"]["per_class"])},
+                            "ap50": {c: rep["overall"]["per_class"].get(c, {}).get("ap50") for c in CLASS_NAMES}}
         parity = json.loads(parity_report.read_text(encoding="utf-8")) if parity_report else None
         distribution = "release" if release else ("internal_experiment_only" if decision.internal_experiment_only else "pilot")
         labels = build_labels(

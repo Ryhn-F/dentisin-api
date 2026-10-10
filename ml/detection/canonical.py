@@ -6,7 +6,7 @@ One JSON object per line (JSONL), one line per image::
      "width": 1080, "height": 1440,
      "source": "ahmed2025",
      "patient_id": null,
-     "boxes": [{"cls": "caries_cavitated", "x1": 10.0, "y1": 20.0, "x2": 50.0, "y2": 70.0}]}
+     "boxes": [{"cls": "caries_permanent", "x1": 10.0, "y1": 20.0, "x2": 50.0, "y2": 70.0}]}
 
 Conventions (shared by every reader/writer, eval and decode):
 - Box coordinates are absolute pixels in the ORIGINAL image, continuous, top-left origin,
@@ -29,8 +29,10 @@ from typing import Any
 
 FORMAT_ID = "dentis-canonical-v1"
 
-#: Model classes, in model output order. ADR 001/003: boxes only, no ``tooth`` class in v1.
-CLASS_NAMES: tuple[str, ...] = ("caries_cavitated", "caries_noncavitated")
+#: Model classes, in model output order (ADR 014): caries indication on a PERMANENT tooth (Ahmed label "D", YOLO id 0)
+#: and on a PRIMARY tooth ("d", id 1). A box surrounds the TOOTH with visible decay, not a lesion; box size must never be
+#: used for severity. No cavitated/non-cavitated distinction exists in the data (removed in v1).
+CLASS_NAMES: tuple[str, ...] = ("caries_permanent", "caries_primary")
 CLASS_TO_ID: dict[str, int] = {name: i for i, name in enumerate(CLASS_NAMES)}
 
 #: Minimum box side (pixels) below which a box is considered degenerate.

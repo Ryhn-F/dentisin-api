@@ -11,6 +11,7 @@
     "trainer": {"enum": ["mediapipe_model_maker", "yolox", "efficientdet_lite", "rfdetr"]},
     "priority": {"enum": ["high", "medium", "low"]},
     "license_verified": {"type": "boolean", "description": "true only if code AND weights licenses were read and recorded in LICENSES.md"},
+    "license_note": {"enum": ["owner_accepted_risk"], "description": "ADR 014 §5: weights licence NOT verified; the product owner accepted the risk (competition use). Must match the gate; recorded distinctly in run.json/labels.json/MODEL_CARD"},
     "data": {
       "type": "object",
       "additionalProperties": false,

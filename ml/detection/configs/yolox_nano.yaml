@@ -1,18 +1,24 @@
-# Bake-off candidate 2 (ADR 001): YOLOX-Nano (Apache-2.0 code; weights license [PERLU VERIFIKASI]).
-# NOT RUN in this repo. Install YOLOX from a pinned git commit (PyPI 'yolox' 0.3.0 is from 2022):
-#   git clone https://github.com/Megvii-BaseDetection/YOLOX && cd YOLOX && git checkout <pinned-sha> && pip install -v -e .
-# Export route: torch -> ONNX (decode_in_inference=False, decoder runs in the app) -> onnx2tf INT8.
+# Bake-off candidate (PRIMARY #1, ADR 001): YOLOX-Nano. Code Apache-2.0 (verified). Pretrained
+# yolox_nano.pth: NO explicit weights licence (only the repo's Apache-2.0; maintainer question
+# YOLOX#1865 unanswered). ADR 014 §5: the product owner ACCEPTS the risk (implied Apache-2.0, competition use) ->
+# license_verified: true WITH license_note: owner_accepted_risk. This is NOT a verification: run.json, labels.json
+# (licenses.weights.basis) and the MODEL_CARD banner say owner_accepted_risk; --release stays blocked until re-review.
+# NOT RUN in this repo. Install YOLOX from the pinned commit trainers/yolox_adapter.YOLOX_COMMIT
+# (after the GPL code removal, YOLOX#765/#781). Notebook: kaggle/yolox_nano_kaggle.py.
+# Export route: torch -> ONNX (decode_in_inference=False, head Sigmoid stripped, decoder runs in the app) ->
+# onnx2tf 2.6.9 -oiqt, tf_converter backend first (flatbuffer_direct INT8 broke parity on a tiny test graph), pick by parity.
 schema_version: 1
 candidate: yolox_nano
 trainer: yolox
 priority: high
-license_verified: false
+license_verified: true
+license_note: owner_accepted_risk   # ADR 014 §5 -- must match ml/data/license_gate.yaml
 data:
   canonical: ../data/processed/ahmed2025/canonical.jsonl
   splits: ../data/processed/ahmed2025/splits/splits.json
   images_root: ../data/raw/ahmed2025
   datasets: [ahmed2025]
-  classes: [caries_cavitated, caries_noncavitated]
+  classes: [caries_permanent, caries_primary]
 model:
   variant: yolox_nano          # depth 0.33, width 0.25, depthwise conv
   input_size: [416, 416]
@@ -31,7 +37,8 @@ model:
     interpolation: bilinear
   decode:
     strides: [8, 16, 32]
-    sigmoid_applied: true   # YOLOXHead applies sigmoid to obj/cls in eval mode
+    sigmoid_applied: false  # export_onnx strips the head obj/cls Sigmoid (onnx2tf flatbuffer_direct INT8 rejects LOGISTIC
+                            # outputs; proven 2026-10-10 on a tiny graph) -> the app applies the sigmoid
   output_tensors:
     - {index: 0, role: raw, shape: [1, 3549, 7], dtype: float32}
 train:
@@ -54,8 +61,13 @@ export:
   representative_samples: 200
 trainer_options:
   layout: yolox
-  yolox_repo: ../../third_party/YOLOX   # local clone, NOT committed
+  yolox_repo: ../../third_party/YOLOX   # local clone, NOT committed (notebook overrides the path)
   devices: 1
   fp16: true
+  act: silu               # silu = matches COCO-pretrained weights; relu = INT8-friendlier fallback if parity fails
+  max_side: 832           # EXIF-free training copies, longest side (2x input)
+  workers: 4
+  eval_interval: 10
+  resume: auto            # latest_ckpt.pth in output_dir / resume_from (Kaggle session resets)
 notes:
   - "Mosaic/MixUp defaults of YOLOX may hide small lesions; record settings in the run."

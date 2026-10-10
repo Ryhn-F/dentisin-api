@@ -1,5 +1,8 @@
-# Bake-off candidate 1 (ADR 001): MediaPipe Model Maker object detector, MobileNetV2 SSD.
-# NOT RUN in this repo (no GPU). Toolchain caveats (verified 2026-10-08, see ml/data/LICENSES.md):
+# Bake-off candidate (PRIMARY #2, ADR 001): MediaPipe Model Maker object detector, MobileNetV2 (RetinaNet/SSD head), QAT INT8.
+# Licences verified 2026-10-09 from primary sources (WEIGHT_LICENSES.md): code Apache-2.0; the
+# MOBILENET_V2 i256 checkpoint is published by the Apache-2.0 TF Model Garden QAT project.
+# MULTI_AVG checkpoints are NOT listed there -> not verified -> do not switch variant without re-checking.
+# NOT RUN in this repo (no GPU). Notebook: kaggle/mediapipe_ssd_kaggle.py. Toolchain caveats (see ml/data/LICENSES.md):
 #   - Model Maker docs page is marked "Deprecated ... no longer actively maintained".
 #   - PyPI mediapipe-model-maker 0.2.1.4 (2024-04-22), classifiers Python 3.8-3.10 -> use a
 #     separate Python 3.10 env on Colab/Kaggle: `pip install mediapipe-model-maker==0.2.1.4`.
@@ -8,22 +11,28 @@ schema_version: 1
 candidate: mediapipe_modelmaker_mobilenetv2_ssd
 trainer: mediapipe_model_maker
 priority: high
-license_verified: false   # weights license of the pretrained checkpoint [PERLU VERIFIKASI]
+license_verified: true    # MOBILENET_V2 only; needs the license_gate.yaml patch in WEIGHT_LICENSES.md §4
 data:   # identical for every candidate (same canonical file + same splits.json -> same split hash)
   canonical: ../data/processed/ahmed2025/canonical.jsonl
   splits: ../data/processed/ahmed2025/splits/splits.json
   images_root: ../data/raw/ahmed2025
   datasets: [ahmed2025]
-  classes: [caries_cavitated, caries_noncavitated]
+  classes: [caries_permanent, caries_primary]
 model:
-  variant: MOBILENET_V2          # SupportedModels enum; alt MOBILENET_V2_I320 / MOBILENET_MULTI_AVG(_I384)
+  variant: MOBILENET_V2          # SupportedModels enum; ONLY this variant has a verified weights licence
   input_size: [256, 256]
   pretrained: model_maker_default
-  output_format: ssd_raw_anchors  # [PERLU VERIFIKASI] confirm tensor layout + anchors via spike S1
+  # Read from Model Maker 0.2.1.4 SOURCE (object_detector.py export_model + TF Model Garden
+  # detection_generator tflite path, omit_nms=True), NOT yet from an exported model:
+  #   outputs = [raw_boxes (dy,dx,dh,dw), raw_scores (sigmoid applied, column 0 = background)],
+  #   box coder scales 1,1,1,1 with exp on h/w, anchors from the preprocessor (anchors.json),
+  #   QAT export uses uint8 input AND uint8 outputs (dequantised by the runner / app).
+  # i256: levels 3-7, 9 anchors/location -> 9*(32^2+16^2+8^2+4^2+2^2) = 12276 rows [to confirm with an interpreter].
+  output_format: ssd_raw_anchors
   output_format_verified: false
-  preprocess:            # [PERLU VERIFIKASI] read from the exported model's metadata in spike S1
+  preprocess:            # mean/stddev_rgb 127.5 per ModelSpec; uint8 input after QAT (scale/zero_point read by export.py)
     color_order: RGB
-    input_dtype: float32
+    input_dtype: uint8
     pixel_range: [0, 255]
     mean: [127.5, 127.5, 127.5]
     std: [127.5, 127.5, 127.5]
@@ -31,14 +40,14 @@ model:
     align: none
     pad_value: null
     interpolation: bilinear
-  decode:                # anchors are passed to export.py --anchors (extracted from model metadata)
-    scales: [10.0, 10.0, 5.0, 5.0]
+  decode:                # anchors.json written by kaggle/mm_train_py310.py -> export.py --anchors
+    scales: [1.0, 1.0, 1.0, 1.0]
     box_order: yxhw
-    score_activation: sigmoid
+    score_activation: none   # sigmoid is inside the graph (sigmoid_score=False in the MediaPipe metadata)
     background_class: true
   output_tensors:
-    - {index: 0, role: raw_boxes, shape: [1, -1, 4], dtype: float32}
-    - {index: 1, role: raw_scores, shape: [1, -1, 3], dtype: float32}
+    - {index: 0, role: raw_boxes, shape: [1, -1, 4], dtype: uint8}     # expected 12276 rows (i256)
+    - {index: 1, role: raw_scores, shape: [1, -1, 3], dtype: uint8}
 train:
   seed: 20261008
   epochs: 30
@@ -56,10 +65,12 @@ export:
   format: tflite
   int8: true
   max_size_mb: 15
-  path: "Model Maker QAT -> export_model() (TFLite with metadata)"
+  path: "Model Maker QAT -> export_model() (TFLite with metadata). PTQ INT8 is NOT offered (TF Model Garden: PTQ mAP 0.04 vs QAT 21.7 on COCO)"
   representative_samples: 200
 trainer_options:
   layout: mediapipe
-  cache_dir: /tmp/mm_cache
+  max_side: 640            # EXIF-free training copies
+  qat_learning_rate: 0.3
+  # python: /kaggle/tmp/venv-mm/bin/python   # Python 3.10 env; set by the notebook
 notes:
   - "Layout produced by: convert_annotations.py export --layout mediapipe"

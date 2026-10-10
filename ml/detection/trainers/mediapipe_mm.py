@@ -1,51 +1,75 @@
-"""MediaPipe Model Maker object detector adapter (MobileNetV2 SSD family).
+"""MediaPipe Model Maker object detector adapter (MobileNetV2 SSD/RetinaNet, QAT INT8).
 
-UNTESTED HERE. Written against the documented API
-(https://developers.google.com/edge/mediapipe/solutions/customization/object_detector, read
-2026-10-08): Dataset.from_coco_folder, SupportedModels, HParams, ObjectDetectorOptions,
-ObjectDetector.create, evaluate, quantization_aware_training(QATHParams), export_model.
-Requires a Python 3.10 environment (package classifiers stop at 3.10).
+Model Maker 0.2.1.4 (last release 2024-04-22, docs: "no longer actively maintained") needs
+Python <= 3.10 and TensorFlow < 2.16, while this pipeline needs Python >= 3.11. The adapter
+therefore runs in the pipeline's Python, writes the COCO layout, and launches
+``kaggle/mm_train_py310.py`` in a SEPARATE Python 3.10 environment (``trainer_options.python``),
+which trains, runs QAT, exports ``model_fp32.tflite`` + ``model_int8_qat.tflite`` and writes the
+anchors (``anchors.json``, [yc, xc, h, w] normalised -> ``export.py --anchors``).
+
+UNTESTED HERE (no Python 3.10/TF 2.15 env, no GPU). Pure helpers are unit-tested.
+
+Licences (WEIGHT_LICENSES.md): only ``MOBILENET_V2`` (i256) is verified -- its checkpoint is the one
+listed by the Apache-2.0 TF Model Garden QAT project; MULTI_AVG checkpoints are not listed there.
 """
 
 from __future__ import annotations
 
+import json
+import subprocess
+from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
-from trainers.base import TrainContext, require
+from trainers.base import MissingOptionalDependencyError, TrainContext
 
-INSTALL_HINT = "a Python 3.10 env (Colab/Kaggle): pip install mediapipe-model-maker==0.2.1.4"
+HERE = Path(__file__).resolve().parent.parent
+SCRIPT = HERE / "kaggle" / "mm_train_py310.py"
+INSTALL_HINT = ("a Python 3.10 env: uv venv --python 3.10 /kaggle/tmp/venv-mm && "
+                "uv pip install --python /kaggle/tmp/venv-mm mediapipe-model-maker==0.2.1.4 'tensorflow[and-cuda]==2.15.1'")
+VERIFIED_VARIANTS = ("MOBILENET_V2",)
 
 
-def train(ctx: TrainContext) -> dict[str, Any]:  # pragma: no cover - needs mediapipe-model-maker
-    mm = require("mediapipe_model_maker", INSTALL_HINT)
+def options(ctx: TrainContext) -> dict[str, Any]:
+    opts: dict[str, Any] = dict(ctx.cfg.get("trainer_options", {}))
+    opts.setdefault("work_dir", str(ctx.run_dir / "work"))
+    opts.setdefault("max_side", 640)
+    opts.setdefault("cache_dir", str(Path(str(opts["work_dir"])) / "mm_cache"))
+    return opts
+
+
+def build_command(ctx: TrainContext, opts: Mapping[str, Any], layout_dir: Path, export_dir: Path) -> list[str]:
+    python = opts.get("python")
+    if not python:
+        raise MissingOptionalDependencyError(f"trainer_options.python (Python 3.10 interpreter) not set; create it with: {INSTALL_HINT}")
+    t = ctx.cfg["train"]
+    return [str(python), str(SCRIPT), "--train", str(layout_dir / "train"), "--val", str(layout_dir / "val"),
+            "--export-dir", str(export_dir), "--variant", str(ctx.cfg["model"]["variant"]), "--epochs", str(t["epochs"]),
+            "--batch-size", str(t["batch_size"]), "--learning-rate", str(t["learning_rate"]), "--qat-epochs", str(t.get("qat_epochs", 0)),
+            "--qat-learning-rate", str(opts.get("qat_learning_rate", t["learning_rate"])), "--cache-dir", str(opts["cache_dir"]),
+            "--seed", str(ctx.seed)]
+
+
+def train(ctx: TrainContext) -> dict[str, Any]:  # pragma: no cover - needs a Python 3.10 Model Maker env + GPU
     from canonical import read_jsonl
-    from convert_annotations import load_split_assignments, partition, write_coco_layout
+    from convert_annotations import load_split_assignments, partition, resized_copy, write_coco_layout
 
-    od = mm.object_detector
-    layout_dir = ctx.run_dir / "data_mediapipe"
+    variant = ctx.cfg["model"]["variant"]
+    if variant not in VERIFIED_VARIANTS:
+        raise MissingOptionalDependencyError(f"variant {variant!r}: pretrained weight licence not verified; use one of {VERIFIED_VARIANTS}")
+    if ctx.images_root is None:
+        raise MissingOptionalDependencyError("data.images_root is required for training")
+    opts = options(ctx)
+    work = Path(str(opts["work_dir"]))
+    layout_dir = work / "data_mediapipe"
     parts = partition(read_jsonl(ctx.canonical), load_split_assignments(ctx.splits))
     for split in ("train", "val"):
-        write_coco_layout(parts[split], layout_dir, layout="mediapipe", split=split, images_root=ctx.images_root)
-    cache = str(ctx.cfg.get("trainer_options", {}).get("cache_dir", ctx.run_dir / "cache"))
-    train_data = od.Dataset.from_coco_folder(str(layout_dir / "train"), cache_dir=cache + "/train")
-    val_data = od.Dataset.from_coco_folder(str(layout_dir / "val"), cache_dir=cache + "/val")
-    t = ctx.cfg["train"]
-    hparams = od.HParams(
-        export_dir=str(ctx.run_dir / "exported"),
-        epochs=t["epochs"],
-        batch_size=t["batch_size"],
-        learning_rate=t["learning_rate"],
-    )
-    options = od.ObjectDetectorOptions(supported_model=getattr(od.SupportedModels, ctx.cfg["model"]["variant"]), hparams=hparams)
-    model = od.ObjectDetector.create(train_data=train_data, validation_data=val_data, options=options)
-    loss, coco_metrics = model.evaluate(val_data, batch_size=t["batch_size"])
-    model.export_model("model_fp32.tflite")
-    result: dict[str, Any] = {"val_loss": loss, "val_coco_metrics_model_maker": coco_metrics,
-                              "artifacts": [str(ctx.run_dir / "exported" / "model_fp32.tflite")]}
-    if ctx.cfg["export"]["int8"] and t.get("qat_epochs", 0) > 0:
-        qat = od.QATHParams(learning_rate=t["learning_rate"], batch_size=t["batch_size"], epochs=t["qat_epochs"])
-        model.quantization_aware_training(train_data, validation_data=val_data, qat_hparams=qat)
-        model.export_model("model_int8_qat.tflite")
-        result["artifacts"].append(str(ctx.run_dir / "exported" / "model_int8_qat.tflite"))
-    result["note"] = "Model Maker COCO metrics are NOT the DentisAI report; run eval.py on test predictions."
+        small = resized_copy(parts[split], ctx.images_root, work / "images", max_side=int(opts["max_side"]))
+        write_coco_layout(small, layout_dir, layout="mediapipe", split=split, images_root=work / "images", link=True)
+    export_dir = ctx.run_dir / "exported"
+    cmd = build_command(ctx, opts, layout_dir, export_dir)
+    subprocess.run(cmd, check=True, timeout=None if opts.get("time_budget_h") is None else float(opts["time_budget_h"]) * 3600)
+    result: dict[str, Any] = json.loads((export_dir / "mm_result.json").read_text(encoding="utf-8"))
+    result["command"] = cmd
+    result["note"] = "Model Maker COCO metrics are NOT the DentisAI report; run predict.py + eval.py on the exported INT8 model."
     return result

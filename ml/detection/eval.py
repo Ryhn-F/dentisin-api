@@ -5,8 +5,10 @@ resampled over PATIENTS.
     python eval.py --pred preds.jsonl --split test --metadata meta.csv --report out/report.json
 
 Definitions (also in README "Evaluation"):
-- Classes are evaluated SEPARATELY (caries_cavitated vs caries_noncavitated) plus a
-  class-agnostic pseudo-class ``any_lesion``.
+- Classes are evaluated SEPARATELY (caries_permanent vs caries_primary, ADR 014) plus a
+  class-agnostic pseudo-class ``any_caries`` whose IMAGE-level metrics answer "ada indikasi karies pada
+  gigi?" (its box-level/AP numbers are class-agnostic localisation only). There are no severity metrics and
+  no box-size subgroups: boxes are whole teeth and their size says nothing about severity.
 - Operating point: a prediction counts if ``score >= threshold[class]``. Thresholds are
   PLACEHOLDER until set on a validation split (never on test) and reviewed.
 - Image level: image positive for class c if it has >= 1 GT box of c; predicted positive if it
@@ -43,10 +45,10 @@ import numpy.typing as npt
 from canonical import CLASS_NAMES, AnnotationError, Box, ImageAnnotation, read_jsonl
 
 REPORT_SCHEMA_VERSION = "1.0.0"
-ANY = "any_lesion"
+ANY = "any_caries"
 EVAL_KEYS: tuple[str, ...] = (*CLASS_NAMES, ANY)
 BACKGROUND = "background"
-DEFAULT_SUBGROUPS = ("dentition", "phone_model", "lighting", "source")
+DEFAULT_SUBGROUPS = ("phone_model", "lighting", "source")  # dentition IS the class split now (ADR 014)
 DISCLAIMER = (
     "Technical evaluation on the given split only. Not a clinical validation and not an accuracy "
     "claim (PRD §12, ADR 002). Screening output must say 'indikasi / perlu diperiksa'."
@@ -130,7 +132,7 @@ def _select(boxes: Sequence[Box], key: str) -> list[Box]:
 
 @dataclass
 class ClassTable:
-    """Per-image vectors for one evaluation key (class or any_lesion)."""
+    """Per-image vectors for one evaluation key (class or any_caries)."""
 
     gt_pos: BoolArr
     pred_pos: BoolArr
@@ -518,7 +520,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--pred", type=Path, required=True, help="JSONL {image, boxes:[{cls,x1,y1,x2,y2,score}]}")
     p.add_argument("--splits", type=Path, default=here.parent / "data/processed/ahmed2025/splits/splits.json")
     p.add_argument("--split", choices=["train", "val", "test"])
-    p.add_argument("--metadata", type=Path, help="CSV: image,patient_id,dentition,phone_model,lighting,source")
+    p.add_argument("--metadata", type=Path, help="CSV: image,patient_id,phone_model,lighting,source")
     p.add_argument("--subgroups", default=",".join(DEFAULT_SUBGROUPS))
     p.add_argument("--score-threshold", type=float, help="same threshold for all classes (PLACEHOLDER)")
     p.add_argument("--thresholds", type=Path, help="JSON {class: threshold, status}")

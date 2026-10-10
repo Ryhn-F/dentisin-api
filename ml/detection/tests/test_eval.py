@@ -14,7 +14,7 @@ import pytest
 import eval as ev
 from canonical import AnnotationError, Box, ImageAnnotation, write_jsonl
 
-C, N = "caries_cavitated", "caries_noncavitated"
+C, N = "caries_permanent", "caries_primary"
 THR = {C: 0.5, N: 0.5}
 SCHEMA = json.loads((Path(__file__).resolve().parents[1] / "report.schema.json").read_text(encoding="utf-8"))
 
@@ -103,7 +103,7 @@ def test_overall_hand_computed() -> None:
     assert non_img["sensitivity"] == 0.0 and non_img["ppv"] is None and non_img["npv"] == pytest.approx(0.8)
     assert pc[N]["box_level"]["ppv"] is None
     assert pc[N]["ap50"] == 0.0
-    anyl = pc["any_lesion"]["image_level"]
+    anyl = pc["any_caries"]["image_level"]
     assert (anyl["tp"], anyl["fp"], anyl["fn"], anyl["tn"]) == (2, 1, 1, 1)
     assert rep["overall"]["map50"] == pytest.approx(17 / 45)
     assert rep["overall"]["box_confusion_matrix"]["matrix"] == [[2, 0, 1], [0, 0, 1], [2, 0, 0]]
@@ -112,13 +112,13 @@ def test_overall_hand_computed() -> None:
     assert pc[C]["image_level"]["ci95"] is None and rep["overall"]["map50_ci95"] is None
 
 
-def test_class_confusion_cavitated_predicted_as_noncavitated() -> None:
+def test_class_confusion_permanent_predicted_as_primary() -> None:
     gt = [ImageAnnotation("a", 50, 50, [b(C, 0, 0, 10, 10)])]
     rep = ev.evaluate(gt, {"a": [b(N, 0, 0, 10, 10, 0.9)]}, THR, n_boot=0, subgroups=())
     assert rep["overall"]["box_confusion_matrix"]["matrix"] == [[0, 1, 0], [0, 0, 0], [0, 0, 0]]
     pc = rep["overall"]["per_class"]
     assert pc[C]["image_level"]["fn"] == 1 and pc[N]["image_level"]["fp"] == 1
-    assert pc["any_lesion"]["image_level"]["tp"] == 1  # class-agnostic
+    assert pc["any_caries"]["image_level"]["tp"] == 1  # class-agnostic
 
 
 def test_subgroups() -> None:
@@ -222,7 +222,7 @@ def test_thresholds_file_and_errors(tmp_path: Path, capsys: pytest.CaptureFixtur
 
 @pytest.mark.parametrize(
     ("line", "msg"),
-    [('{"image": "a", "boxes": [{"cls": "caries_cavitated", "x1": 0, "y1": 0, "x2": 1, "y2": 1}]}', "without score"),
+    [('{"image": "a", "boxes": [{"cls": "caries_permanent", "x1": 0, "y1": 0, "x2": 1, "y2": 1}]}', "without score"),
      ('{"image": "a", "boxes": [{"cls": "tooth", "x1": 0, "y1": 0, "x2": 1, "y2": 1, "score": 0.5}]}', "unknown class")],
 )
 def test_prediction_validation(tmp_path: Path, line: str, msg: str) -> None:

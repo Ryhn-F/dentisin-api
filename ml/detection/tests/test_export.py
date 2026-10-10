@@ -37,8 +37,10 @@ def test_labels_valid_for_every_candidate(name: str, kw: dict[str, Any]) -> None
     labels = labels_for(name, **kw)
     assert ex.validate_labels(labels) == []
     assert labels["validation_status"] == "NOT_VALIDATED"
-    assert labels["thresholds"] == {"score": {"caries_cavitated": None, "caries_noncavitated": None}, "status": "PLACEHOLDER", "source": None}
-    assert [c["may_raise_triage_level"] for c in labels["classes"]] == [True, False]  # FR-32
+    assert labels["thresholds"] == {"score": {"caries_permanent": None, "caries_primary": None}, "status": "PLACEHOLDER", "source": None}
+    assert [(c["name"], c["dentition"], c["may_raise_triage_level"]) for c in labels["classes"]] == [
+        ("caries_permanent", "permanent", True), ("caries_primary", "primary", True)]  # ADR 014
+    assert labels["box_use"] == "ui_overlay_only" and labels["schema_version"] == "2.0.0"
     assert labels["licenses"]["datasets"][0]["license"] == "CC-BY-4.0"
     assert {a["lang"] for a in labels["attribution"]} == {"id", "en"}
     assert labels["decode_spec"]["document"].endswith("DECODE_SPEC.md")
@@ -90,9 +92,9 @@ def test_schema_forbids_release_without_evidence() -> None:
 
 
 def test_thresholds_set() -> None:
-    lab = labels_for("yolox_nano", thresholds={"caries_cavitated": 0.4, "caries_noncavitated": 0.6, "status": "set_on_val", "source": "val sha"})
+    lab = labels_for("yolox_nano", thresholds={"caries_permanent": 0.4, "caries_primary": 0.6, "status": "set_on_val", "source": "val sha"})
     assert lab["thresholds"]["status"] == "set_on_val" and ex.validate_labels(lab) == []
-    half = labels_for("yolox_nano", thresholds={"caries_cavitated": 0.4, "status": "set_on_val"})
+    half = labels_for("yolox_nano", thresholds={"caries_permanent": 0.4, "status": "set_on_val"})
     assert half["thresholds"]["status"] == "PLACEHOLDER"
 
 
@@ -129,7 +131,8 @@ def test_build_bundle_end_to_end(tmp_path: Path, fake_tflite: Callable[[int], Pa
     out = tmp_path / "exports" / "0.1.0"
     rep = tmp_path / "report.json"
     rep.write_text(json.dumps({"inputs": {"split": "test", "split_sha256": "b" * 64}, "overall": {
-        "map50": 0.5, "per_class": {"caries_cavitated": {"image_level": {"sensitivity": 0.5, "specificity": 0.5}}}}}), encoding="utf-8")
+        "map50": 0.5, "per_class": {k: {"image_level": {"sensitivity": 0.5, "specificity": 0.5}, "ap50": 0.4}
+                                    for k in ("caries_permanent", "caries_primary", "any_caries")}}}), encoding="utf-8")
     parity = tmp_path / "parity.json"
     parity.write_text(json.dumps({"passed": True}), encoding="utf-8")
     labels = build(write_cfg(), out, fake_tflite(1000), eval_report=rep, parity_report=parity, run_id="run1")
@@ -209,3 +212,23 @@ def test_cli(tmp_path: Path, fake_tflite: Callable[[int], Path], write_cfg: Call
     assert ex.main(["verify-bundle", str(out)]) == 0
     (out / "MODEL_CARD.md").write_text("tampered", encoding="utf-8")
     assert ex.main(["verify-bundle", str(out)]) == 1
+
+
+def test_owner_accepted_risk_bundle(tmp_path: Path, fake_tflite: Callable[[int], Path], write_cfg: Callable[..., Path],
+                                    capsys: pytest.CaptureFixture[str]) -> None:
+    """ADR 014 §5: a pilot bundle is allowed, but labels.json, MODEL_CARD and stderr all say owner_accepted_risk."""
+    cfg = write_cfg(license_verified=True, license_note="owner_accepted_risk")
+    out = tmp_path / "0.2.0"
+    labels = ex.build_bundle(cfg, out, tflite_in=fake_tflite(256))
+    assert labels["distribution"] == "pilot"
+    assert labels["licenses"]["weights"]["verified"] is False and labels["licenses"]["weights"]["basis"] == "owner_accepted_risk"
+    card = (out / "MODEL_CARD.md").read_text(encoding="utf-8")
+    assert "TIDAK TERVERIFIKASI" in card and "basis: `owner_accepted_risk`" in card and "gigi sulung/ tetap" in card
+    assert "kavitas" not in card.lower()
+    assert "WARNING: weights licence NOT verified: owner_accepted_risk" in capsys.readouterr().err
+    with pytest.raises(ex.ExportError, match="owner_accepted_risk"):
+        ex.build_bundle(cfg, tmp_path / "1.0.0", tflite_in=fake_tflite(256), release=True)
+    assert "WARNING (RELEASE)" in capsys.readouterr().err
+    rel = json.loads(json.dumps(labels))
+    rel["distribution"] = "release"
+    assert any("licenses" in p for p in ex.validate_labels(rel))  # schema: release needs verified weights

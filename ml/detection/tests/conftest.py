@@ -38,6 +38,10 @@ def gate() -> dict[str, Any]:
 @pytest.fixture
 def config_dict() -> dict[str, Any]:
     data: dict[str, Any] = yaml.safe_load((DETECTION / "configs" / "yolox_nano.yaml").read_text(encoding="utf-8"))
+    # Generic fixture = an UNVERIFIED candidate (exercises the licence refusals). The real yolox_nano config
+    # (owner_accepted_risk, ADR 014 §5) is tested explicitly in test_license_gate.py / test_export.py.
+    data["license_verified"] = False
+    data.pop("license_note", None)
     return data
 
 

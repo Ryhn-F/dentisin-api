@@ -8,11 +8,11 @@
 ## Ringkasan
 | Hal | Isi |
 |---|---|
-| Tugas | Deteksi bounding box `caries_cavitated` (inti) dan `caries_noncavitated` ("perlu perhatian", kepercayaan rendah, tidak menaikkan level triase sendirian — FR-32). Tanpa kelas `tooth` (ADR 001/003) |
+| Tugas | Deteksi bounding box **indikasi karies pada gigi tetap** (`caries_permanent`, label Ahmed "D") dan **gigi sulung** (`caries_primary`, "d") — ADR 014. Kotak = seluruh gigi, **hanya overlay UI; ukuran kotak tidak pernah dipakai untuk keparahan**. Tidak ada pembeda berlubang/ belum berlubang |
 | Data | Ahmed 2025 (Zenodo 14827784, **CC BY 4.0**, 6.313 foto smartphone, satu perangkat, usia 10–24 th, Sindh, Pakistan). Lihat `../data/` |
 | Lisensi | Hanya kode **dan** bobot permisif. **Ultralytics/YOLOv8 (AGPL) tidak dipakai** (ADR 001/008); dicek otomatis. Gerbang: `../data/LICENSES.md` + `license_gate.yaml` |
 | Kandidat bake-off | `configs/`: MediaPipe Model Maker MobileNetV2-SSD, YOLOX-Nano, EfficientDet-Lite0, RF-DETR Nano (prioritas rendah) — **data & split identik** |
-| Target (hipotesis, belum terbukti) | INT8 ≤ 15 MB (gerbang di `export.py`), latensi ≤ 1,5 s di HP RAM 3–4 GB (spike S1), sens kavitas ≥ 0,85 pada foto layak (PRD §3.3) |
+| Target (hipotesis, belum terbukti) | INT8 ≤ 15 MB (gerbang di `export.py`), latensi ≤ 1,5 s di HP RAM 3–4 GB (spike S1), sens "ada indikasi karies" (gambar) ≥ 0,85 pada foto layak (PRD §3.3) |
 | Pelacakan eksperimen | `ml/runs/<run_id>/run.json` (berkas lokal; opsional MLflow **lokal** `--mlflow` → `ml/runs/mlruns`). **Tanpa Azure ML** |
 
 ## Alur
@@ -41,26 +41,35 @@ uv run python export.py verify-bundle ../exports/0.1.0
 | `decode.py` + `DECODE_SPEC.md` + `tests/decode_vectors.json` | Spesifikasi dekode yang di-port app (TS), vektor paritas |
 | `check_int8_parity.py` | Paritas float vs INT8 (tensor: max/mean abs error, cosine; deteksi: kecocokan IoU ≥ 0,5) untuk callable apa pun |
 | `quality_gate.py` + `quality_gate.yaml` + `tests/quality_gate_vectors.json` | Gerbang kualitas foto (blur, kecerahan, heuristik gigi terlihat), ambang PLACEHOLDER |
-| `bake_off/` | README, template laporan, `compare.py` |
+| `bake_off/` | README, template laporan, `compare.py` (`--adr` mengisi `ADR-013-template.md`) |
+| `preprocess.py` | Pra-proses referensi (DECODE_SPEC §1) + set kalibrasi INT8/ sampel paritas (`calib`, split train/val) |
+| `predict.py` | Jalankan `.tflite`/`.onnx` pada split → JSONL prediksi untuk `eval.py` (pra-proses + dekode yang sama dengan app) |
+| `thresholds.py` | Ambang skor per kelas dipilih di **val** (status `set_on_val`, tetap butuh tinjauan drg untuk rilis) |
+| `artifacts.py` | `collect` (zip unduhan notebook; menolak gambar/`.npy`/checkpoint) · `pack-code` (zip kode untuk dataset privat Kaggle) |
+| `WEIGHT_LICENSES.md` | Verifikasi lisensi **bobot** pra-latih tiap kandidat (sumber primer, 2026-10-09) + patch `license_gate.yaml` |
+| `kaggle/` | Notebook Kaggle/Colab (`*_kaggle.py` sumber, `.ipynb` dibangkitkan `make_ipynb.py`), `nbkit.py`, `mm_train_py310.py`, **`RUNBOOK.md`** |
 
 ## Metrik (`eval.py`)
-Per kelas (kavitas dan non-kavitas **terpisah**) + `any_lesion`: tingkat **gambar** (sens, spes, PPV, NPV, matriks 2×2)
+Per kelas (gigi tetap dan gigi sulung **terpisah**) + `any_caries` ("ada indikasi karies pada gigi"): tingkat **gambar** (sens, spes, PPV, NPV, matriks 2×2)
 dan tingkat **kotak** IoU ≥ 0,5 (sens, PPV; spes/NPV tidak terdefinisi → `null`), AP50 (interpolasi semua titik) dan
-mAP50, matriks kebingungan kotak multi-kelas, subgrup dari CSV metadata (`dentition` sulung/permanen, `phone_model`,
-`lighting`, `source`), **CI 95% bootstrap atas pasien** (fallback gambar + peringatan bila `patient_id` tidak ada).
+mAP50 (AP50 per kelas tetap/ sulung), matriks kebingungan kotak multi-kelas, subgrup dari CSV metadata (`phone_model`,
+`lighting`, `source`; **tanpa subgrup ukuran kotak**), **CI 95% bootstrap atas pasien** (fallback gambar + peringatan bila `patient_id` tidak ada).
 Ambang skor = PLACEHOLDER sampai ditetapkan pada split val (bukan test) dan ditinjau drg.
 
 ## KETERBATASAN YANG DIKETAHUI
 1. **Satu perangkat** pada data latih → generalisasi ke HP lain (kamera, ISP, senter) tidak diketahui.
 2. **Usia 10–24 th, Sindh (Pakistan)** → anak SD Indonesia (7–12 th, banyak gigi sulung) di luar distribusi; **tidak ada data anak Indonesia**.
-3. **Hanya kotak**, tanpa kelas `tooth` → triase memakai jumlah lesi & ukuran relatif kotak, bukan jumlah gigi/ luas mask.
-4. **Lesi awal (non-kavitas) tidak andal** dari foto smartphone (literatur sens 0–38%); apakah dataset membedakan kavitas vs non-kavitas belum dicek (`class_maps/ahmed2025.yaml` PLACEHOLDER).
+3. **Hanya kotak** (seluruh gigi bertanda karies), tanpa kelas `tooth` → triase memakai kelas, skor, dan **jumlah** temuan; ukuran/ luas kotak tidak pernah dipakai (ADR 014).
+4. Dataset **tidak membedakan berlubang vs belum berlubang** (label hanya D/d = jenis gigi; ADR 014); lesi awal tidak andal dari foto smartphone (literatur sens 0–38%). Tidak ada klaim keparahan.
 5. **ID pasien tidak terdokumentasi** di dataset → split per pasien mungkin heuristik (lihat `fetch_ahmed2025.md` §4) → metrik bisa optimistis.
 6. Foto data latih kemungkinan berkualitas "klinis" (retraktor, dokter) — foto orang tua/kader lebih buruk.
 7. Hanya gigi depan/ permukaan terlihat; sela-sela dan gigi belakang tidak dinilai.
 8. Heuristik "gigi terlihat" bukan detektor gigi (kertas putih + objek merah bisa lolos). Semua ambang quality gate PLACEHOLDER (FR-21: ≥ 200 foto berlabel).
-9. Format keluaran tiap kandidat (`output_format_verified: false`) dan lisensi bobot pra-latih semua kandidat **belum terverifikasi**.
-10. Adaptor pelatihan ditulis dari API terdokumentasi tetapi **belum pernah dijalankan**; MediaPipe Model Maker sudah *deprecated*.
+9. Format keluaran tiap kandidat (`output_format_verified: false`) belum dibaca dari model nyata. Lisensi bobot: lihat `WEIGHT_LICENSES.md`
+   (MediaPipe MobileNetV2 & EfficientDet-Lite0 Apache-2.0 terverifikasi; **YOLOX-Nano tidak eksplisit**; RF-DETR-N gugur karena ukuran).
+10. Adaptor pelatihan ditulis dari API/kode sumber tetapi **belum pernah dijalankan**; MediaPipe Model Maker sudah *deprecated* (Python 3.10).
+11. Konversi onnx2tf 2.6.9 hanya terbukti pada graf acak kecil: backend bawaan `flatbuffer_direct` memberi paritas INT8 buruk → notebook
+    mencoba `tf_converter` juga dan memilih berdasarkan paritas.
 
 ## Tes
 `uv sync && uv run pytest -q` (cakupan ≥ 90% ditegakkan; termasuk `../data/scripts`), `uv run ruff check . ../data/scripts`, `uv run mypy`.

@@ -12,7 +12,10 @@
       devices: {ram_3gb: "<model>", ram_4gb: "<model>"}
       export_difficulty: medium                    # low | medium | high
       export_notes: "onnx2tf needed decoder outside the graph"
-      weight_license_clarity: unclear              # clear | unclear | unknown
+      weight_license_clarity: unclear              # clear | unclear | unknown (default: WEIGHT_LICENSES.md verdict)
+      parity_passed: true                          # from check_int8_parity.py (notebook measurements_partial.json)
+
+``--meta`` may be repeated (YAML or JSON files; later files override earlier ones per candidate).
 
 All reports must share the same split file hash and GT hash (same data & split for all candidates);
 otherwise the comparison is refused.
@@ -29,6 +32,8 @@ from typing import Any
 
 import yaml
 
+HERE = Path(__file__).resolve().parent
+ADR_TEMPLATE = HERE / "ADR-013-template.md"
 SIZE_GATE_MB = 15.0
 LATENCY_GATE_MS = 1500.0
 DEVICES = ("ram_3gb", "ram_4gb")
@@ -76,31 +81,55 @@ def build_rows(reports: Mapping[str, Mapping[str, Any]], meta: Mapping[str, Mapp
     rows = []
     for cand in sorted(reports):
         ov = reports[cand]["overall"]
-        cav = ov["per_class"]["caries_cavitated"]
-        non = ov["per_class"]["caries_noncavitated"]
+        pc = ov["per_class"]
+        perm, prim, anyc = pc["caries_permanent"], pc["caries_primary"], pc["any_caries"]
         m = meta.get(cand, {})
         lat = m.get("latency_ms") or {}
         rows.append([
             f"`{cand}`",
-            metric_cell(cav["image_level"], "sensitivity"),
-            metric_cell(cav["image_level"], "specificity"),
-            metric_cell(cav["box_level"], "sensitivity"),
-            metric_cell(non["image_level"], "sensitivity"),
+            metric_cell(anyc["image_level"], "sensitivity"),
+            metric_cell(anyc["image_level"], "specificity"),
+            metric_cell(perm["image_level"], "sensitivity"),
+            metric_cell(perm["image_level"], "specificity"),
+            metric_cell(prim["image_level"], "sensitivity"),
+            metric_cell(prim["image_level"], "specificity"),
+            fmt_ratio(perm.get("ap50")),
+            fmt_ratio(prim.get("ap50")),
             fmt_ratio(ov.get("map50")) + fmt_ci(ov.get("map50_ci95")),
             "belum diukur" if m.get("int8_size_mb") is None else f"{float(m['int8_size_mb']):.1f}",
             *("belum diukur" if lat.get(d) is None else f"{float(lat[d]):.0f}" for d in DEVICES),
             str(m.get("export_difficulty", "belum dinilai")),
-            str(m.get("weight_license_clarity", "unknown")),
+            parity_cell(m),
+            str(m.get("weight_license_clarity", LICENSES.get(cand, {}).get("clarity", "unknown"))),
             gate_cell(m),
         ])
     return rows
 
 
 HEADER = [
-    "Kandidat", "Sens kavitas (gambar, CI95)", "Spes kavitas (gambar, CI95)", "Sens kavitas (box IoU≥0,5)",
-    "Sens non-kavitas (gambar)", "mAP50 (CI95)", "INT8 MB (≤15)", "Latensi HP 3 GB (ms)", "Latensi HP 4 GB (ms, ≤1500)",
-    "Kemudahan ekspor", "Kejelasan lisensi bobot", "Gerbang ukuran+latensi",
+    "Kandidat", "Sens karies apa pun (gambar, CI95)", "Spes karies apa pun (gambar, CI95)",
+    "Sens gigi tetap (gambar, CI95)", "Spes gigi tetap (gambar, CI95)", "Sens gigi sulung (gambar, CI95)", "Spes gigi sulung (gambar, CI95)",
+    "AP50 tetap", "AP50 sulung", "mAP50 (CI95)", "INT8 MB (≤15)", "Latensi HP 3 GB (ms)", "Latensi HP 4 GB (ms, ≤1500)",
+    "Kemudahan ekspor", "Paritas INT8", "Kejelasan lisensi bobot", "Gerbang ukuran+latensi",
 ]
+
+#: Verdicts from WEIGHT_LICENSES.md (read 2026-10-09). Keep in sync with that file (test checks the candidate ids).
+LICENSES: dict[str, dict[str, str]] = {
+    "yolox_nano": {"code": "Apache-2.0", "weights": "tidak eksplisit (aset rilis repo Apache-2.0; YOLOX#1865 belum dijawab)",
+                   "clarity": "owner_accepted_risk",
+                   "verdict": "risiko diterima pemilik untuk kompetisi (ADR 014 §5) — BUKAN terverifikasi; tinjau ulang sebelum rilis komersial/ publik"},
+    "mediapipe_modelmaker_mobilenetv2_ssd": {"code": "Apache-2.0", "weights": "Apache-2.0 (TF Model Garden QAT, MOBILENET_V2 i256)",
+                                             "clarity": "clear", "verdict": "boleh dipakai (sisa risiko: gambar COCO)"},
+    "efficientdet_lite0": {"code": "Apache-2.0", "weights": "Apache-2.0 (Kaggle Models tensorflow/efficientdet)",
+                           "clarity": "clear", "verdict": "lisensi OK; toolchain usang (cadangan)"},
+    "rfdetr_nano": {"code": "Apache-2.0", "weights": "Apache-2.0 (README RF-DETR-N)", "clarity": "clear",
+                    "verdict": "gugur: 30,5 jt parameter > gerbang 15 MB"},
+}
+
+
+def parity_cell(meta: Mapping[str, Any]) -> str:
+    v = meta.get("parity_passed")
+    return "belum diukur" if v is None else ("lulus" if v else "gagal")
 
 
 def render_markdown(reports: Mapping[str, Mapping[str, Any]], meta: Mapping[str, Mapping[str, Any]]) -> str:
@@ -164,10 +193,8 @@ def render_template() -> str:
         *[f"| `{c}` {empty}" for c in CANDIDATES],
         "",
         "## Subgrup (`report.json → subgroups`)",
-        "| Kandidat | Subgrup | n gambar / n pasien | Sens kavitas (CI95) | Spes kavitas (CI95) |",
+        "| Kandidat | Subgrup | n gambar / n pasien | Sens karies apa pun (CI95) | Spes karies apa pun (CI95) |",
         "|---|---|---|---|---|",
-        "| | dentition = primary | | | |",
-        "| | dentition = permanent | | | |",
         "| | lighting = flashlight | | | |",
         "| | phone_model = … | | | |",
         "",
@@ -189,12 +216,53 @@ def render_template() -> str:
     ])
 
 
+def render_licenses(candidates: Sequence[str]) -> str:
+    lines = ["| Kandidat | Kode | Bobot pra-latih | Putusan |", "|---|---|---|---|"]
+    for c in candidates:
+        lic = LICENSES.get(c, {})
+        lines.append(f"| `{c}` | {lic.get('code', '?')} | {lic.get('weights', '?')} | {lic.get('verdict', 'belum diverifikasi')} |")
+    return "\n".join(lines)
+
+
+def render_adr(reports: Mapping[str, Mapping[str, Any]], meta: Mapping[str, Mapping[str, Any]], template: str) -> str:
+    """Fill the ADR template markers. Every marker must be present (the template and this code stay in sync)."""
+    split_sha, gt_sha, split = check_same_data(reports)
+    md = render_markdown(reports, meta)
+    table = md[md.index("| " + HEADER[0]):].split("\n\n", 1)
+    inputs = "\n".join([
+        f"- Split evaluasi: `{split}` · `splits.json` sha256 `{split_sha}` · GT (`canonical.jsonl`) sha256 `{gt_sha}`",
+        f"- Status ambang: {', '.join(sorted({r['settings']['score_threshold_status'] for r in reports.values()}))} · "
+        f"unit bootstrap: {', '.join(sorted({r['counts']['bootstrap_unit'] for r in reports.values()}))}",
+        "- Kandidat dievaluasi: " + ", ".join(f"`{c}`" for c in sorted(reports)),
+    ])
+    fills = {"inputs": inputs, "table": table[0].rstrip(), "licenses": render_licenses(sorted(reports)),
+             "notes": table[1].strip() if len(table) > 1 else ""}
+    out = template
+    for key, value in fills.items():
+        marker = f"<!-- compare:{key} -->"
+        if marker not in out:
+            raise CompareError(f"ADR template lacks marker {marker}")
+        out = out.replace(marker, value)
+    return out
+
+
+def load_meta(paths: Sequence[Path]) -> dict[str, dict[str, Any]]:
+    merged: dict[str, dict[str, Any]] = {}
+    for path in paths:
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        for cand, values in data.items():
+            merged.setdefault(str(cand), {}).update(values or {})
+    return merged
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--report", action="append")
-    p.add_argument("--meta", type=Path)
+    p.add_argument("--meta", type=Path, action="append", default=[])
     p.add_argument("--out", type=Path)
     p.add_argument("--template", action="store_true", help="print/write the empty ADR report template")
+    p.add_argument("--adr", action="store_true", help="fill the ADR template (bake_off/ADR-013-template.md) instead of the bare table")
+    p.add_argument("--adr-template", type=Path, default=ADR_TEMPLATE)
     args = p.parse_args(argv)
     if args.template:
         text = render_template()
@@ -208,8 +276,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         paths = parse_report_args(args.report)
         reports = {k: json.loads(v.read_text(encoding="utf-8")) for k, v in paths.items()}
-        meta = (yaml.safe_load(args.meta.read_text(encoding="utf-8")) or {}) if args.meta else {}
-        md = render_markdown(reports, meta)
+        meta = load_meta(args.meta)
+        md = render_adr(reports, meta, args.adr_template.read_text(encoding="utf-8")) if args.adr else render_markdown(reports, meta)
     except (CompareError, OSError, KeyError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

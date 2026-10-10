@@ -15,6 +15,16 @@ from trainers import ADAPTERS, load_adapter
 from trainers.base import MissingOptionalDependencyError, TrainContext, require
 
 NOW = datetime(2026, 10, 9, 1, 2, 3, tzinfo=UTC)
+VERIFIED_IN_WEIGHT_LICENSES = {"mediapipe_modelmaker_mobilenetv2_ssd", "efficientdet_lite0", "rfdetr_nano", "yolox_nano"}
+OWNER_ACCEPTED = {"yolox_nano"}  # ADR 014 §5: license_verified true BUT license_note owner_accepted_risk
+
+
+def test_weight_licenses_doc_matches_configs() -> None:
+    text = (train.HERE / "WEIGHT_LICENSES.md").read_text(encoding="utf-8")
+    for p in sorted((train.HERE / "configs").glob("*.yaml")):
+        cfg, _ = train.load_config(p)
+        row = next(ln for ln in text.splitlines() if ln.startswith(f"| `{p.stem}`"))
+        assert row.rstrip().endswith(f"| `{str(cfg['license_verified']).lower()}` |"), row
 
 
 def test_all_repo_configs_validate() -> None:
@@ -23,7 +33,9 @@ def test_all_repo_configs_validate() -> None:
     datas = set()
     for p in cfgs:
         cfg, _ = train.load_config(p)
-        assert cfg["license_verified"] is False  # nothing has verified weights yet
+        # license_verified=true only where WEIGHT_LICENSES.md records a primary-source verification (2026-10-09)
+        assert cfg["license_verified"] is (p.stem in VERIFIED_IN_WEIGHT_LICENSES), p.stem
+        assert (cfg.get("license_note") == "owner_accepted_risk") is (p.stem in OWNER_ACCEPTED), p.stem
         assert cfg["export"]["max_size_mb"] <= 15
         datas.add(json.dumps(cfg["data"], sort_keys=True))
     assert len(datas) == 1, "all candidates must use the same data + split"
@@ -31,7 +43,7 @@ def test_all_repo_configs_validate() -> None:
 
 @pytest.mark.parametrize(
     ("override", "msg"),
-    [({"trainer": "ultralytics"}, "trainer"), ({"data__classes": ["caries_noncavitated", "caries_cavitated"]}, "canonical order"),
+    [({"trainer": "ultralytics"}, "trainer"), ({"data__classes": ["caries_primary", "caries_permanent"]}, "canonical order"),
      ({"export__format": "onnx"}, "export/format")],
 )
 def test_invalid_configs(write_cfg: Callable[..., Path], override: dict[str, Any], msg: str) -> None:
@@ -152,3 +164,13 @@ def test_yolox_exp_render(tmp_path: Path, config_dict: dict[str, Any]) -> None:
     text = render_exp(ctx, tmp_path / "data")
     compile(text, "exp.py", "exec")
     assert "self.num_classes = 2" in text and "self.input_size = (416, 416)" in text and "self.seed = 5" in text
+
+
+def test_dry_run_records_owner_accepted_risk(write_cfg: Callable[..., Path], tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    cfg = write_cfg(license_verified=True, license_note="owner_accepted_risk")
+    assert train.main(["--cfg", str(cfg), "--dry-run", "--runs-dir", str(tmp_path / "runs")]) == 0
+    captured = capsys.readouterr()
+    assert json.loads(captured.out)["license_basis"] == "owner_accepted_risk" and "WARNING" in captured.err
+    rec = json.loads(next((tmp_path / "runs").glob("*/run.json")).read_text(encoding="utf-8"))
+    assert rec["license_gate"]["basis"] == "owner_accepted_risk" and rec["license_gate"]["internal_experiment_only"] is False
+    assert rec["license_gate"]["warnings"]

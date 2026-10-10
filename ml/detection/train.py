@@ -174,6 +174,7 @@ def run(
         cfg_license_verified=cfg["license_verified"],
         allow_unverified=allow_unverified_license,
         compute_env=compute_env,
+        cfg_license_note=cfg.get("license_note"),
     )
     canonical = resolve(base, cfg["data"]["canonical"])
     splits = resolve(base, cfg["data"]["splits"])
@@ -194,6 +195,8 @@ def run(
         "license_gate": {
             "allowed": decision.allowed,
             "internal_experiment_only": decision.internal_experiment_only,
+            "basis": decision.license_basis,   # verified | owner_accepted_risk | unverified (never conflate)
+            "warnings": decision.warnings,
             "reasons": decision.reasons,
             "model": decision.model_license,
             "datasets": decision.dataset_licenses,
@@ -253,6 +256,9 @@ def main(argv: list[str] | None = None) -> int:
     summary = {k: record.get(k) for k in ("run_id", "status", "error")}
     summary["license_gate"] = record["license_gate"]["reasons"]
     summary["internal_experiment_only"] = record["license_gate"]["internal_experiment_only"]
+    summary["license_basis"] = record["license_gate"]["basis"]
+    for w in record["license_gate"]["warnings"]:
+        print(f"WARNING: {w}", file=sys.stderr)
     print(json.dumps(summary, indent=1))
     return code
 
