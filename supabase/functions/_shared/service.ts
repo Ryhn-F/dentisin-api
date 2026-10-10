@@ -1,13 +1,14 @@
 // Shared helpers for service-only Edge Functions (process-deletion, retention-sweep).
 // These functions are invoked by a scheduler with a dedicated CRON_SECRET (NOT the
 // service_role key: least privilege, and the key injected into the runtime may differ
-// from the one in the dashboard) and must never be callable from the app. They log COUNTS only — never ids, paths or e-mails.
+// from the one in the dashboard) and must never be callable from the app.
+// They log COUNTS only - never ids, paths or e-mails.
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.45.4";
 
 const encoder = new TextEncoder();
 
 /** Constant-time string comparison. */
-function safeEqual(a: string, b: string): boolean {
+export function safeEqual(a: string, b: string): boolean {
   const x = encoder.encode(a);
   const y = encoder.encode(b);
   let diff = x.length ^ y.length;

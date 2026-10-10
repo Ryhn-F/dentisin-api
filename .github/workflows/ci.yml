@@ -95,3 +95,18 @@ jobs:
         if: ${{ matrix.module == 'tools' }}
         working-directory: ${{ env.BACKEND_DIR }}tools
         run: uv run mypy .
+
+  edge-functions:
+    # Supabase Edge Functions (Deno): type-check, lint, format, unit tests. No network access to
+    # Supabase is needed (the client is mocked); npm/jsr packages are fetched by Deno.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: "2.9.6" # official release v2.9.6 (2026-08-27); edge_runtime deno_version = 2
+      - name: deno check / lint / fmt --check / test
+        working-directory: ${{ env.BACKEND_DIR }}supabase/functions
+        run: deno task ci

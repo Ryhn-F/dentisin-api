@@ -12,42 +12,6 @@
 //   curl -X POST "$SUPABASE_URL/functions/v1/process-deletion" \
 //        -H "Authorization: Bearer $CRON_SECRET"
 // Logs and responses contain counts only (no ids, paths or e-mails).
-import { json, removeObjects, requireService } from "../_shared/service.ts";
+import { handle } from "./handler.ts";
 
-type Pending = { request_id: string; storage_paths: string[] | null };
-
-Deno.serve(async (req: Request) => {
-  const client = requireService(req);
-  if (client instanceof Response) return client;
-
-  const { data, error } = await client.rpc("service_pending_deletions", { p_limit: 20 });
-  if (error) {
-    console.error("process-deletion: list_failed");
-    return json({ error: "list_failed" }, 500);
-  }
-
-  let completed = 0;
-  let waiting = 0;
-  let failed = 0;
-  let objects = 0;
-  for (const item of (data ?? []) as Pending[]) {
-    try {
-      const removed = await removeObjects(client, "dataset_photos", item.storage_paths ?? []);
-      objects += removed;
-      const res = await client.rpc("service_execute_deletion", {
-        p_request_id: item.request_id,
-        p_storage_objects_deleted: removed,
-      });
-      if (res.error) throw new Error("execute_failed");
-      const status = (res.data as { status?: string } | null)?.status;
-      if (status === "completed") completed++;
-      else waiting++;
-    } catch (_e) {
-      failed++; // details intentionally not logged (may contain identifiers)
-    }
-  }
-
-  const summary = { requests: (data ?? []).length, completed, waiting, failed, objects_removed: objects };
-  console.log("process-deletion", JSON.stringify(summary));
-  return json(summary, failed > 0 ? 207 : 200);
-});
+Deno.serve((req: Request) => handle(req));
