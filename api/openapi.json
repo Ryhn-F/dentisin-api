@@ -1,6 +1,232 @@
 {
   "components": {
     "schemas": {
+      "Amount": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "text"
+        ],
+        "title": "Amount",
+        "type": "object"
+      },
+      "AnalyzeRequest": {
+        "additionalProperties": false,
+        "description": "QA/second-opinion pipeline on a CONSENTED dataset photo, by reference only.",
+        "properties": {
+          "age_months": {
+            "anyOf": [
+              {
+                "maximum": 300.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Months"
+          },
+          "pain": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "const": "unknown",
+                "type": "string"
+              }
+            ],
+            "title": "Pain"
+          },
+          "photo_ref": {
+            "description": "public.image_upload.id of a consented dataset photo (consent (c) active, dataset_contribution ON). Raw photos are never accepted.",
+            "format": "uuid",
+            "title": "Photo Ref",
+            "type": "string"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Preferences"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "symptoms": {
+            "$ref": "#/components/schemas/Symptoms"
+          }
+        },
+        "required": [
+          "photo_ref",
+          "symptoms",
+          "age_months",
+          "pain"
+        ],
+        "title": "AnalyzeRequest",
+        "type": "object"
+      },
+      "AnalyzeResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "clinically_validated": {
+            "title": "Clinically Validated",
+            "type": "boolean"
+          },
+          "detector": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DetectorOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "disclaimer_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disclaimer Ids",
+            "type": "array"
+          },
+          "disclaimers": {
+            "items": {
+              "$ref": "#/components/schemas/IdText"
+            },
+            "title": "Disclaimers",
+            "type": "array"
+          },
+          "outcome": {
+            "enum": [
+              "completed",
+              "red_flag_short_circuit",
+              "quality_failed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "overlay": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Overlay"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Boxes for drawing ONLY (ADR 014). Never sent to triage; never use box size/area for severity."
+          },
+          "photo_status": {
+            "enum": [
+              "assessed",
+              "not_taken",
+              "quality_failed"
+            ],
+            "title": "Photo Status",
+            "type": "string"
+          },
+          "purpose": {
+            "const": "qa_second_opinion",
+            "default": "qa_second_opinion",
+            "title": "Purpose",
+            "type": "string"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recommendation_status": {
+            "enum": [
+              "ok",
+              "skipped_age_unknown",
+              "skipped_age_out_of_range"
+            ],
+            "title": "Recommendation Status",
+            "type": "string"
+          },
+          "referral": {
+            "$ref": "#/components/schemas/Referral"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "rules_status": {
+            "description": "draft/needs_review while the triage or recommender release check fails: the output must NOT be presented as clinically validated.",
+            "enum": [
+              "draft",
+              "needs_review",
+              "approved"
+            ],
+            "title": "Rules Status",
+            "type": "string"
+          },
+          "rules_version": {
+            "$ref": "#/components/schemas/RulesVersion"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/StageOut"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "triage": {
+            "$ref": "#/components/schemas/TriageOut"
+          }
+        },
+        "required": [
+          "triage",
+          "recommendation",
+          "recommendation_status",
+          "rules_version",
+          "rules_status",
+          "clinically_validated",
+          "disclaimer_ids",
+          "disclaimers",
+          "referral",
+          "request_id",
+          "outcome",
+          "photo_status",
+          "stages",
+          "quality",
+          "detector",
+          "overlay"
+        ],
+        "title": "AnalyzeResponse",
+        "type": "object"
+      },
       "Box": {
         "additionalProperties": false,
         "properties": {
@@ -47,6 +273,131 @@
         "title": "Box",
         "type": "object"
       },
+      "BoxOut": {
+        "additionalProperties": false,
+        "properties": {
+          "x1": {
+            "title": "X1",
+            "type": "number"
+          },
+          "x2": {
+            "title": "X2",
+            "type": "number"
+          },
+          "y1": {
+            "title": "Y1",
+            "type": "number"
+          },
+          "y2": {
+            "title": "Y2",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x1",
+          "y1",
+          "x2",
+          "y2"
+        ],
+        "title": "BoxOut",
+        "type": "object"
+      },
+      "ClassInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "dataset_label": {
+            "title": "Dataset Label",
+            "type": "string"
+          },
+          "dentition": {
+            "title": "Dentition",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "dentition",
+          "dataset_label",
+          "label"
+        ],
+        "title": "ClassInfo",
+        "type": "object"
+      },
+      "ComponentOut": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "config_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Status"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "name",
+          "available"
+        ],
+        "title": "ComponentOut",
+        "type": "object"
+      },
+      "DetectionIn": {
+        "additionalProperties": false,
+        "description": "One model finding: class + confidence ONLY. No geometry (ADR 014).",
+        "properties": {
+          "class": {
+            "enum": [
+              "caries_permanent",
+              "caries_primary"
+            ],
+            "title": "Class",
+            "type": "string"
+          },
+          "confidence": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "type": "number"
+          }
+        },
+        "required": [
+          "class",
+          "confidence"
+        ],
+        "title": "DetectionIn",
+        "type": "object"
+      },
       "DetectionOut": {
         "additionalProperties": false,
         "properties": {
@@ -90,6 +441,25 @@
           "score"
         ],
         "title": "DetectionOut",
+        "type": "object"
+      },
+      "DetectorOut": {
+        "additionalProperties": false,
+        "properties": {
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "model_version"
+        ],
+        "title": "DetectorOut",
         "type": "object"
       },
       "EnqueueRequest": {
@@ -157,6 +527,29 @@
             ],
             "title": "Details"
           },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine"
+          },
+          "fail_safe": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fail Safe"
+          },
           "message": {
             "title": "Message",
             "type": "string"
@@ -164,6 +557,21 @@
           "request_id": {
             "title": "Request Id",
             "type": "string"
+          },
+          "stages": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stages"
           }
         },
         "required": [
@@ -185,6 +593,261 @@
           "error"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "EvaluateRequest": {
+        "additionalProperties": false,
+        "description": "Device-provided screening inputs = the triage engine input + preferences.",
+        "properties": {
+          "age_months": {
+            "anyOf": [
+              {
+                "maximum": 300.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Age in months, or null if unknown.",
+            "title": "Age Months"
+          },
+          "detections": {
+            "description": "On-device model findings, {class, confidence} only. Empty list when no photo was assessed. Boxes are rejected (ADR 014).",
+            "items": {
+              "$ref": "#/components/schemas/DetectionIn"
+            },
+            "maxItems": 100,
+            "title": "Detections",
+            "type": "array"
+          },
+          "pain": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "const": "unknown",
+                "type": "string"
+              }
+            ],
+            "description": "Pain score 0-10 or 'unknown'.",
+            "title": "Pain"
+          },
+          "photo_status": {
+            "description": "assessed = photo passed the on-device quality gate and was run through the model; not_taken / quality_failed otherwise (detections must then be empty).",
+            "enum": [
+              "assessed",
+              "not_taken",
+              "quality_failed"
+            ],
+            "title": "Photo Status",
+            "type": "string"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Preferences"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Optional toothpaste filters (not part of the triage input)."
+          },
+          "symptoms": {
+            "$ref": "#/components/schemas/Symptoms"
+          }
+        },
+        "required": [
+          "detections",
+          "photo_status",
+          "symptoms",
+          "age_months",
+          "pain"
+        ],
+        "title": "EvaluateRequest",
+        "type": "object"
+      },
+      "EvaluateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "clinically_validated": {
+            "title": "Clinically Validated",
+            "type": "boolean"
+          },
+          "disclaimer_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disclaimer Ids",
+            "type": "array"
+          },
+          "disclaimers": {
+            "items": {
+              "$ref": "#/components/schemas/IdText"
+            },
+            "title": "Disclaimers",
+            "type": "array"
+          },
+          "purpose": {
+            "const": "screening_reference",
+            "default": "screening_reference",
+            "title": "Purpose",
+            "type": "string"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recommendation_status": {
+            "enum": [
+              "ok",
+              "skipped_age_unknown",
+              "skipped_age_out_of_range"
+            ],
+            "title": "Recommendation Status",
+            "type": "string"
+          },
+          "referral": {
+            "$ref": "#/components/schemas/Referral"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "rules_status": {
+            "description": "draft/needs_review while the triage or recommender release check fails: the output must NOT be presented as clinically validated.",
+            "enum": [
+              "draft",
+              "needs_review",
+              "approved"
+            ],
+            "title": "Rules Status",
+            "type": "string"
+          },
+          "rules_version": {
+            "$ref": "#/components/schemas/RulesVersion"
+          },
+          "triage": {
+            "$ref": "#/components/schemas/TriageOut"
+          }
+        },
+        "required": [
+          "triage",
+          "recommendation",
+          "recommendation_status",
+          "rules_version",
+          "rules_status",
+          "clinically_validated",
+          "disclaimer_ids",
+          "disclaimers",
+          "referral",
+          "request_id"
+        ],
+        "title": "EvaluateResponse",
+        "type": "object"
+      },
+      "Fluoride": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "$ref": "#/components/schemas/Amount"
+          },
+          "band_id": {
+            "title": "Band Id",
+            "type": "string"
+          },
+          "decision_pending": {
+            "title": "Decision Pending",
+            "type": "boolean"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/IdText"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "ppm_options": {
+            "items": {
+              "$ref": "#/components/schemas/PpmOption"
+            },
+            "title": "Ppm Options",
+            "type": "array"
+          },
+          "supervision": {
+            "$ref": "#/components/schemas/Supervision"
+          }
+        },
+        "required": [
+          "band_id",
+          "ppm_options",
+          "decision_pending",
+          "amount",
+          "supervision",
+          "notes"
+        ],
+        "title": "Fluoride",
+        "type": "object"
+      },
+      "GateOut": {
+        "additionalProperties": false,
+        "properties": {
+          "blocker_count": {
+            "description": "-1 when the release check could not run.",
+            "title": "Blocker Count",
+            "type": "integer"
+          },
+          "marker_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Marker Status"
+          },
+          "releasable": {
+            "title": "Releasable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "releasable",
+          "blocker_count"
+        ],
+        "title": "GateOut",
+        "type": "object"
+      },
+      "IdText": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "IdText",
         "type": "object"
       },
       "InferRequest": {
@@ -239,6 +902,48 @@
           "detections"
         ],
         "title": "InferResponse",
+        "type": "object"
+      },
+      "Lesion": {
+        "additionalProperties": false,
+        "properties": {
+          "class": {
+            "enum": [
+              "caries_permanent",
+              "caries_primary"
+            ],
+            "title": "Class",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "counted": {
+            "title": "Counted",
+            "type": "boolean"
+          },
+          "dentition": {
+            "enum": [
+              "primary",
+              "permanent"
+            ],
+            "title": "Dentition",
+            "type": "string"
+          },
+          "detection_index": {
+            "title": "Detection Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "detection_index",
+          "class",
+          "dentition",
+          "confidence",
+          "counted"
+        ],
+        "title": "Lesion",
         "type": "object"
       },
       "ModelOut": {
@@ -384,6 +1089,266 @@
         "title": "ModelRegisterResponse",
         "type": "object"
       },
+      "Overlay": {
+        "additionalProperties": false,
+        "properties": {
+          "box_use": {
+            "const": "ui_overlay_only",
+            "default": "ui_overlay_only",
+            "title": "Box Use",
+            "type": "string"
+          },
+          "coordinate_space": {
+            "const": "original_image_pixels",
+            "default": "original_image_pixels",
+            "title": "Coordinate Space",
+            "type": "string"
+          },
+          "detections": {
+            "items": {
+              "$ref": "#/components/schemas/OverlayDetection"
+            },
+            "title": "Detections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "detections"
+        ],
+        "title": "Overlay",
+        "type": "object"
+      },
+      "OverlayDetection": {
+        "additionalProperties": false,
+        "properties": {
+          "box": {
+            "$ref": "#/components/schemas/BoxOut"
+          },
+          "class": {
+            "enum": [
+              "caries_permanent",
+              "caries_primary"
+            ],
+            "title": "Class",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "detection_index": {
+            "title": "Detection Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "detection_index",
+          "class",
+          "confidence",
+          "box"
+        ],
+        "title": "OverlayDetection",
+        "type": "object"
+      },
+      "ParamOut": {
+        "additionalProperties": false,
+        "properties": {
+          "engine": {
+            "enum": [
+              "triage",
+              "recommender",
+              "quality_gate"
+            ],
+            "title": "Engine",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "placeholder": {
+            "title": "Placeholder",
+            "type": "boolean"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "engine",
+          "name",
+          "status",
+          "placeholder",
+          "reviewed"
+        ],
+        "title": "ParamOut",
+        "type": "object"
+      },
+      "PpmOption": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "max": {
+            "title": "Max",
+            "type": "integer"
+          },
+          "min": {
+            "title": "Min",
+            "type": "integer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "label",
+          "min",
+          "max",
+          "source"
+        ],
+        "title": "PpmOption",
+        "type": "object"
+      },
+      "Preferences": {
+        "additionalProperties": false,
+        "description": "Toothpaste filters (recommender FR-52). Unknown allergy codes are kept and\nreported (``unknown_allergy:<code>``), never silently dropped.",
+        "properties": {
+          "allergies": {
+            "items": {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Allergies",
+            "type": "array"
+          },
+          "halal": {
+            "default": false,
+            "title": "Halal",
+            "type": "boolean"
+          },
+          "no_sls": {
+            "default": false,
+            "title": "No Sls",
+            "type": "boolean"
+          }
+        },
+        "title": "Preferences",
+        "type": "object"
+      },
+      "ProductOut": {
+        "additionalProperties": false,
+        "properties": {
+          "bpom_notification_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bpom Notification No"
+          },
+          "brand": {
+            "title": "Brand",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "matches_candidate_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Matches Candidate Ids",
+            "type": "array"
+          },
+          "ppm": {
+            "title": "Ppm",
+            "type": "integer"
+          },
+          "synthetic": {
+            "title": "Synthetic",
+            "type": "boolean"
+          },
+          "verified": {
+            "title": "Verified",
+            "type": "boolean"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          }
+        },
+        "required": [
+          "id",
+          "brand",
+          "ppm",
+          "bpom_notification_no",
+          "verified",
+          "verified_at",
+          "synthetic",
+          "matches_candidate_ids"
+        ],
+        "title": "ProductOut",
+        "type": "object"
+      },
+      "QualityOut": {
+        "additionalProperties": false,
+        "properties": {
+          "config_status": {
+            "title": "Config Status",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "passed",
+          "reasons",
+          "method",
+          "config_status"
+        ],
+        "title": "QualityOut",
+        "type": "object"
+      },
       "QueueItemOut": {
         "additionalProperties": false,
         "properties": {
@@ -470,6 +1435,145 @@
           "items"
         ],
         "title": "QueueListResponse",
+        "type": "object"
+      },
+      "Reason": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "Reason",
+        "type": "object"
+      },
+      "RecommendationOut": {
+        "additionalProperties": false,
+        "description": "Output of ``recommender.recommend`` unchanged (fluoride-only v1). While\n``status.needs_review`` is true the UI shows ``status.generic_message`` and must\nnot present ppm values as clinical advice.",
+        "properties": {
+          "disclaimer_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disclaimer Ids",
+            "type": "array"
+          },
+          "disclaimers": {
+            "items": {
+              "$ref": "#/components/schemas/IdText"
+            },
+            "title": "Disclaimers",
+            "type": "array"
+          },
+          "fluoride": {
+            "$ref": "#/components/schemas/Fluoride"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/IdText"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/ProductOut"
+            },
+            "title": "Products",
+            "type": "array"
+          },
+          "rules_version": {
+            "title": "Rules Version",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RecommendationStatus"
+          }
+        },
+        "required": [
+          "fluoride",
+          "disclaimer_ids",
+          "disclaimers",
+          "products",
+          "notes",
+          "status",
+          "rules_version"
+        ],
+        "title": "RecommendationOut",
+        "type": "object"
+      },
+      "RecommendationStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "generic_message": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IdText"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "needs_review": {
+            "title": "Needs Review",
+            "type": "boolean"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "needs_review",
+          "reasons",
+          "generic_message"
+        ],
+        "title": "RecommendationStatus",
+        "type": "object"
+      },
+      "Referral": {
+        "additionalProperties": false,
+        "properties": {
+          "cta_id": {
+            "description": "Advice id of the referral call-to-action (always present).",
+            "title": "Cta Id",
+            "type": "string"
+          },
+          "cta_text": {
+            "title": "Cta Text",
+            "type": "string"
+          },
+          "required": {
+            "const": true,
+            "default": true,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "template_id": {
+            "description": "Referral letter template for the final level.",
+            "title": "Template Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "cta_id",
+          "cta_text",
+          "template_id"
+        ],
+        "title": "Referral",
         "type": "object"
       },
       "ReviewRequest": {
@@ -573,6 +1677,180 @@
         "title": "ReviewResponse",
         "type": "object"
       },
+      "RulesResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "classes": {
+            "items": {
+              "$ref": "#/components/schemas/ClassInfo"
+            },
+            "title": "Classes",
+            "type": "array"
+          },
+          "clinically_validated": {
+            "title": "Clinically Validated",
+            "type": "boolean"
+          },
+          "detector": {
+            "$ref": "#/components/schemas/ComponentOut"
+          },
+          "disclaimer_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disclaimer Ids",
+            "type": "array"
+          },
+          "levels": {
+            "items": {
+              "enum": [
+                "emergency",
+                "urgent",
+                "scheduled",
+                "routine"
+              ],
+              "type": "string"
+            },
+            "title": "Levels",
+            "type": "array"
+          },
+          "notice": {
+            "title": "Notice",
+            "type": "string"
+          },
+          "parameters": {
+            "items": {
+              "$ref": "#/components/schemas/ParamOut"
+            },
+            "title": "Parameters",
+            "type": "array"
+          },
+          "quality_gate": {
+            "$ref": "#/components/schemas/ComponentOut"
+          },
+          "release_checks": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GateOut"
+            },
+            "title": "Release Checks",
+            "type": "object"
+          },
+          "rules_status": {
+            "enum": [
+              "draft",
+              "needs_review",
+              "approved"
+            ],
+            "title": "Rules Status",
+            "type": "string"
+          },
+          "rules_version": {
+            "$ref": "#/components/schemas/RulesVersion"
+          }
+        },
+        "required": [
+          "rules_version",
+          "rules_status",
+          "clinically_validated",
+          "notice",
+          "release_checks",
+          "classes",
+          "levels",
+          "parameters",
+          "quality_gate",
+          "detector",
+          "disclaimer_ids"
+        ],
+        "title": "RulesResponse",
+        "type": "object"
+      },
+      "RulesVersion": {
+        "additionalProperties": false,
+        "properties": {
+          "recommender": {
+            "title": "Recommender",
+            "type": "string"
+          },
+          "triage": {
+            "title": "Triage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "triage",
+          "recommender"
+        ],
+        "title": "RulesVersion",
+        "type": "object"
+      },
+      "StageOut": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Detail",
+            "type": "object"
+          },
+          "duration_ms": {
+            "title": "Duration Ms",
+            "type": "number"
+          },
+          "name": {
+            "enum": [
+              "red_flag",
+              "consent",
+              "photo_fetch",
+              "quality_gate",
+              "detector",
+              "triage",
+              "recommendation"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "skipped",
+              "failed",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "duration_ms"
+        ],
+        "title": "StageOut",
+        "type": "object"
+      },
       "StatusResponse": {
         "additionalProperties": false,
         "properties": {
@@ -586,6 +1864,193 @@
         ],
         "title": "StatusResponse",
         "type": "object"
+      },
+      "Supervision": {
+        "additionalProperties": false,
+        "properties": {
+          "required": {
+            "title": "Required",
+            "type": "boolean"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "until_age_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until Age Months"
+          }
+        },
+        "required": [
+          "required",
+          "until_age_months",
+          "text"
+        ],
+        "title": "Supervision",
+        "type": "object"
+      },
+      "Symptoms": {
+        "additionalProperties": false,
+        "description": "Every question of triage/rules.yaml must be answered: \"unknown\" is a valid\nanswer and is NEVER treated as \"no\" by the engine.",
+        "properties": {
+          "airway_or_swallowing": {
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "title": "Airway Or Swallowing",
+            "type": "string"
+          },
+          "dental_trauma": {
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "title": "Dental Trauma",
+            "type": "string"
+          },
+          "facial_swelling": {
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "title": "Facial Swelling",
+            "type": "string"
+          },
+          "fever_with_toothache": {
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "title": "Fever With Toothache",
+            "type": "string"
+          },
+          "lethargy": {
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "title": "Lethargy",
+            "type": "string"
+          },
+          "night_pain": {
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "title": "Night Pain",
+            "type": "string"
+          },
+          "pus_or_fistula": {
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "title": "Pus Or Fistula",
+            "type": "string"
+          },
+          "trismus": {
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "title": "Trismus",
+            "type": "string"
+          },
+          "white_spot": {
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "title": "White Spot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "airway_or_swallowing",
+          "lethargy",
+          "trismus",
+          "facial_swelling",
+          "fever_with_toothache",
+          "pus_or_fistula",
+          "dental_trauma",
+          "night_pain",
+          "white_spot"
+        ],
+        "title": "Symptoms",
+        "type": "object"
+      },
+      "TriageOut": {
+        "additionalProperties": false,
+        "properties": {
+          "advice_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Advice Ids",
+            "type": "array"
+          },
+          "lesions": {
+            "items": {
+              "$ref": "#/components/schemas/Lesion"
+            },
+            "title": "Lesions",
+            "type": "array"
+          },
+          "level": {
+            "enum": [
+              "emergency",
+              "urgent",
+              "scheduled",
+              "routine"
+            ],
+            "title": "Level",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/Reason"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "referral_template_id": {
+            "title": "Referral Template Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "level",
+          "reasons",
+          "lesions",
+          "advice_ids",
+          "referral_template_id"
+        ],
+        "title": "TriageOut",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -597,7 +2062,7 @@
     }
   },
   "info": {
-    "description": "**DentisAI ML/AI API.** Hanya untuk ML & integrasi AI (ADR 005/009):\nantrean review dokter gigi atas foto berizin, registri versi model/aturan\nbertanda tangan, dan inferensi awan opsional untuk QA. **Tidak ada CRUD dan\ntidak ada auth sendiri** \u2014 keduanya di Supabase. Semua keluaran deteksi adalah\n*indikasi skrining*, bukan diagnosis.\n",
+    "description": "**DentisAI ML/AI API.** Hanya untuk ML & integrasi AI (ADR 005/009):\nantrean review dokter gigi atas foto berizin, registri versi model/aturan\nbertanda tangan, inferensi awan opsional untuk QA, dan pipeline skrining\nreferensi (`/v1/screening`, mati secara default). **Tidak ada CRUD dan\ntidak ada auth sendiri** \u2014 keduanya di Supabase. Semua keluaran adalah\n*indikasi skrining*, bukan diagnosis; selama aturan berstatus draf\n(`rules_status != approved`) keluaran tidak boleh ditampilkan sebagai tervalidasi klinis.\n",
     "title": "DentisAI ML/AI API",
     "version": "0.1.0"
   },
@@ -1253,6 +2718,460 @@
         "summary": "Submit one dentist review (boxes in canonical format) for a queue item",
         "tags": [
           "review-queue"
+        ]
+      }
+    },
+    "/v1/screening/analyze": {
+      "post": {
+        "operationId": "analyze_v1_screening_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "QA/second-opinion pipeline on a consented dataset photo reference (404 unless ENABLE_SCREENING_API and ENABLE_CLOUD_INFER)",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
+    "/v1/screening/evaluate": {
+      "post": {
+        "operationId": "evaluate_v1_screening_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Stateless triage + toothpaste recommendation from device-provided inputs",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
+    "/v1/screening/rules": {
+      "get": {
+        "operationId": "rules_metadata_v1_screening_rules_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RulesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Rule metadata: versions, status, classes and which parameters are placeholders",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
+    "/v1/screening/schema/input": {
+      "get": {
+        "operationId": "input_schema_v1_screening_schema_input_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Input Schema V1 Screening Schema Input Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Triage engine input JSON Schema (triage/dist/input.schema.json, verbatim)",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
+    "/v1/screening/schema/output": {
+      "get": {
+        "operationId": "output_schema_v1_screening_schema_output_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Output Schema V1 Screening Schema Output Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Triage engine output JSON Schema (triage/dist/output.schema.json, verbatim)",
+        "tags": [
+          "screening"
         ]
       }
     }

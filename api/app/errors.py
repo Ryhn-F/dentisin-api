@@ -9,6 +9,7 @@ tokens, storage paths or exception text, and never contain stack traces.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -28,12 +29,16 @@ class ApiError(Exception):
         code: str,
         message: str,
         headers: dict[str, str] | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(code)
         self.status_code = status_code
         self.code = code
         self.message = message
         self.headers = headers
+        # Additional, server-chosen fields merged into ``error`` (e.g. the screening
+        # fail-safe instructions). Never client input.
+        self.extra = extra
 
 
 # Shorthands used across routers/services ------------------------------------------
@@ -96,15 +101,45 @@ def error_response(
     )
 
 
+# Per-route translation of a request-validation failure into a domain error
+# (route path template -> mapper). The screening routes use it to answer with the
+# triage engine's own error codes. A mapper returns None to fall back to the
+# generic ``validation_error``.
+ValidationMapper = Callable[[Any, RequestValidationError], ApiError | None]
+
+
+def validation_mappers(app: FastAPI) -> dict[str, ValidationMapper]:
+    mappers: dict[str, ValidationMapper] | None = getattr(app.state, "validation_mappers", None)
+    if mappers is None:
+        mappers = {}
+        app.state.validation_mappers = mappers
+    return mappers
+
+
+def _api_error_response(request: Request, exc: ApiError) -> JSONResponse:
+    return error_response(
+        exc.status_code,
+        exc.code,
+        exc.message,
+        request_id_of(request),
+        headers=exc.headers,
+        **(exc.extra or {}),
+    )
+
+
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(ApiError)
     async def _api_error(request: Request, exc: ApiError) -> JSONResponse:
-        return error_response(
-            exc.status_code, exc.code, exc.message, request_id_of(request), headers=exc.headers
-        )
+        return _api_error_response(request, exc)
 
     @app.exception_handler(RequestValidationError)
     async def _validation(request: Request, exc: RequestValidationError) -> JSONResponse:
+        route_path = getattr(request.scope.get("route"), "path", None)
+        mapper = validation_mappers(request.app).get(route_path) if route_path else None
+        if mapper is not None:
+            mapped = mapper(exc.body, exc)
+            if mapped is not None:
+                return _api_error_response(request, mapped)
         # Only location + error type + pydantic's generic message. The offending
         # input value and ctx are dropped so client data is never reflected.
         details = [

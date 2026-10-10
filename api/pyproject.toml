@@ -1,11 +1,13 @@
 [project]
 name = "dentisai-api"
 version = "0.1.0"
-description = "DentisAI FastAPI service for ML & AI integration only (ADR 005/009): review queue, model registry, optional QA inference. No CRUD, no own auth."
+description = "DentisAI FastAPI service for ML & AI integration only (ADR 005/009): review queue, model registry, optional QA inference, screening reference pipeline. No CRUD, no own auth."
 requires-python = ">=3.12,<3.13"
 # Licenses (all permissive, ADR 008 / closed repo):
 #   fastapi MIT · starlette BSD-3 · pydantic MIT · pydantic-settings MIT · httpx BSD-3
 #   PyJWT MIT · cryptography Apache-2.0 OR BSD-3 · uvicorn BSD-3
+#   dentisai-triage / dentisai-recommender: in-repo path dependencies (closed repo, ADR 008);
+#   they pull PyYAML MIT and jsonschema MIT.
 dependencies = [
     "fastapi>=0.115,<1",
     "pydantic>=2.8,<3",
@@ -14,12 +16,32 @@ dependencies = [
     "PyJWT[crypto]>=2.9,<3",
     "cryptography>=43",
     "uvicorn>=0.30,<1",
+    # Screening pipeline (ADR 014): the Python REFERENCE engines are reused as libraries,
+    # never re-implemented here. Editable path installs because both packages read their
+    # rule files relative to their source folder (backend/triage, backend/recommender).
+    "dentisai-triage",
+    "dentisai-recommender",
+]
+
+[project.optional-dependencies]
+# /v1/screening/analyze quality-gate stage: ml/detection/quality_gate.py (loaded by file
+# path) needs numpy BSD-3 + Pillow MIT-CMU (HPND) + PyYAML MIT. Without this extra the
+# stage reports `unavailable` and /analyze fails closed (503), never silently skips it.
+vision = [
+    "numpy>=1.26",
+    "pillow>=10.4",
 ]
 
 [dependency-groups]
 # pytest MIT · pytest-cov MIT · anyio MIT · respx BSD-3 · ruff MIT · mypy MIT
+# hypothesis MPL-2.0 (dev only, not shipped) · numpy/Pillow (same as the `vision` extra)
 dev = [
     "pytest>=8",
+    "hypothesis>=6.100",
+    "numpy>=1.26",
+    "pillow>=10.4",
+    "types-PyYAML>=6.0",
+    "types-jsonschema>=4.23",
     "pytest-cov>=5",
     "anyio>=4",
     "respx>=0.21",
@@ -29,6 +51,10 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+dentisai-triage = { path = "../triage", editable = true }
+dentisai-recommender = { path = "../recommender", editable = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -65,6 +91,15 @@ strict = true
 python_version = "3.12"
 files = ["app", "tests", "scripts"]
 plugins = ["pydantic.mypy"]
+# The reference engines are editable path dependencies without py.typed: point mypy at
+# their sources (recommender's package dir IS backend/recommender, hence ".."), follow
+# them for types but do not report their own findings here (they run mypy --strict
+# in their own projects).
+mypy_path = ["../triage/src", ".."]
+
+[[tool.mypy.overrides]]
+module = ["triage", "triage.*", "recommender", "recommender.*"]
+follow_imports = "silent"
 
 [tool.pydantic-mypy]
 init_forbid_extra = true

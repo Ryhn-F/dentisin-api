@@ -37,6 +37,9 @@ class Settings(BaseSettings):
 
     # --- Feature switches -------------------------------------------------------
     ENABLE_CLOUD_INFER: bool = False
+    # /v1/screening/* (medical module, ADR 002 option 3): default OFF -> every
+    # screening route answers 404, indistinguishable from a missing route.
+    ENABLE_SCREENING_API: bool = False
     # Comma-separated exact origins. Empty (default) = no CORS headers at all.
     API_ALLOWED_ORIGINS: Annotated[list[str], NoDecode] = Field(default_factory=list)
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from functools import lru_cache
 
 import httpx
 from fastapi import FastAPI
@@ -28,17 +29,25 @@ from .middleware import (
 from .ratelimit import TokenBucketLimiter
 from .repositories.base import MlRepository
 from .repositories.supabase import SupabaseRepository
-from .routers import health, infer, models, review_queue
+from .routers import health, infer, models, review_queue, screening
 from .services.detector import Detector, NullDetector
 from .services.manifest_verify import TrustStore
+from .services.quality import QualityGate, load_reference_quality_gate
+from .services.screening_rules import (
+    RulesUnavailableError,
+    ScreeningRules,
+    load_screening_rules,
+)
 from .settings import Settings, get_settings
 
 DESCRIPTION = """\
 **DentisAI ML/AI API.** Hanya untuk ML & integrasi AI (ADR 005/009):
 antrean review dokter gigi atas foto berizin, registri versi model/aturan
-bertanda tangan, dan inferensi awan opsional untuk QA. **Tidak ada CRUD dan
-tidak ada auth sendiri** — keduanya di Supabase. Semua keluaran deteksi adalah
-*indikasi skrining*, bukan diagnosis.
+bertanda tangan, inferensi awan opsional untuk QA, dan pipeline skrining
+referensi (`/v1/screening`, mati secara default). **Tidak ada CRUD dan
+tidak ada auth sendiri** — keduanya di Supabase. Semua keluaran adalah
+*indikasi skrining*, bukan diagnosis; selama aturan berstatus draf
+(`rules_status != approved`) keluaran tidak boleh ditampilkan sebagai tervalidasi klinis.
 """
 
 
@@ -53,13 +62,27 @@ def _trust_store(settings: Settings) -> TrustStore | None:
         return None  # misconfigured key -> registration answers 503, never crashes
 
 
+@lru_cache(maxsize=1)
+def _screening_rules() -> ScreeningRules | None:
+    """Loaded once per process (immutable files; ~0.3 s incl. the release gates)."""
+    try:
+        return load_screening_rules()
+    except RulesUnavailableError:
+        return None  # screening routes answer 503 rules_unavailable; nothing else breaks
+
+
 def create_app(
     settings: Settings | None = None,
     repo: MlRepository | None = None,
     detector: Detector | None = None,
     jwks_fetcher: JwksFetcher | None = None,
     configure_logs: bool = True,
+    screening_rules: ScreeningRules | bool | None = True,
+    quality_gate: QualityGate | None = None,
 ) -> FastAPI:
+    """``screening_rules``: True = load the shipped rules (default); a
+    ``ScreeningRules`` instance = injected (tests: params profiles); None/False =
+    unavailable. ``quality_gate``: None = load the ml/detection reference gate."""
     settings = settings or get_settings()
     if configure_logs:
         configure_logging(settings.API_LOG_LEVEL)
@@ -90,6 +113,8 @@ def create_app(
         detector=detector or NullDetector(),
         trust_store=_trust_store(settings),
         http_client=http_client,
+        screening=_screening_rules() if screening_rules is True else (screening_rules or None),
+        quality_gate=quality_gate or load_reference_quality_gate(),
     )
 
     @asynccontextmanager
@@ -116,6 +141,7 @@ def create_app(
 
     for router in (health.router, review_queue.router, models.router, infer.router):
         app.include_router(router)
+    screening.install(app)
 
     # Middleware: added last = outermost.
     app.add_middleware(

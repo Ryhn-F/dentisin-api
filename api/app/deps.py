@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Annotated, Final
 
 import httpx
@@ -16,6 +16,8 @@ from .ratelimit import TokenBucketLimiter
 from .repositories.base import MlRepository
 from .services.detector import Detector
 from .services.manifest_verify import TrustStore
+from .services.quality import QualityGate, UnavailableQualityGate
+from .services.screening_rules import ScreeningRules
 from .settings import Settings
 
 # Role model of backend/supabase (public.app_role): guardian, kader,
@@ -24,6 +26,10 @@ from .settings import Settings
 # `reviewer` role is added later, add it to REVIEWER_ROLES only.
 ADMIN_ROLES: Final = frozenset({"admin"})
 REVIEWER_ROLES: Final = frozenset({"admin"})
+# /v1/screening/evaluate: the people who run a screening in the app.
+SCREENING_ROLES: Final = frozenset({"guardian", "kader", "admin"})
+# Metadata (rules/schema): any app role, incl. facility_viewer; anonymous never.
+ANY_APP_ROLE: Final = frozenset({"guardian", "kader", "facility_viewer", "admin"})
 
 
 @dataclass
@@ -35,6 +41,9 @@ class AppState:
     detector: Detector
     trust_store: TrustStore | None
     http_client: httpx.AsyncClient | None = None
+    # None = rule artefacts missing/invalid -> screening answers 503 rules_unavailable.
+    screening: ScreeningRules | None = None
+    quality_gate: QualityGate = field(default_factory=UnavailableQualityGate)
 
 
 def get_state(request: Request) -> AppState:
@@ -88,3 +97,5 @@ def require_roles(allowed: frozenset[str]) -> Callable[[Principal], Awaitable[Pr
 
 AdminDep = Annotated[Principal, Depends(require_roles(ADMIN_ROLES))]
 ReviewerDep = Annotated[Principal, Depends(require_roles(REVIEWER_ROLES))]
+ScreenerDep = Annotated[Principal, Depends(require_roles(SCREENING_ROLES))]
+AnyRoleDep = Annotated[Principal, Depends(require_roles(ANY_APP_ROLE))]

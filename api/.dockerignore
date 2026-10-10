@@ -1,11 +1,4 @@
-# Only pyproject.toml, uv.lock and app/ are needed in the image.
+# LEGACY: the image is now built with context = backend/ (sibling path dependencies),
+# filtered by Dockerfile.dockerignore. A build with context = backend/api is not supported;
+# this file keeps such a context empty so nothing (e.g. .env, .venv) is ever sent.
 *
-!pyproject.toml
-!uv.lock
-!app/
-app/**/__pycache__
-app/**/*.pyc
-# never ship secrets even if someone drops them into app/
-app/**/.env*
-app/**/*.pem
-app/**/*.key

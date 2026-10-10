@@ -1,0 +1,28 @@
+# Context = backend/ (see Dockerfile). Deny everything, then admit only what the image needs.
+# Never admits .env*, keys, photos, datasets, model weights, tests (except the shared
+# triage case table the release gate counts), caches or virtualenvs.
+*
+!api/pyproject.toml
+!api/uv.lock
+!api/app/
+!triage/pyproject.toml
+!triage/rules.yaml
+!triage/schema.json
+!triage/src/
+!triage/dist/
+!triage/tests/cases.json
+!recommender/pyproject.toml
+!recommender/*.py
+!recommender/rules.json
+!recommender/products.json
+!recommender/schema/
+!ml/detection/quality_gate.py
+!ml/detection/quality_gate.yaml
+!docs/style/forbidden_phrases.md
+**/__pycache__
+**/*.pyc
+**/.venv
+**/*.egg-info
+**/.env*
+**/*.pem
+**/*.key

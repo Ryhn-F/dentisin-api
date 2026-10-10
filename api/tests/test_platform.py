@@ -473,6 +473,11 @@ def test_openapi_contents() -> None:
         "/v1/ml/review-queue/{queue_id}/review",
         "/v1/ml/models",
         "/v1/ml/infer",
+        "/v1/screening/evaluate",
+        "/v1/screening/analyze",
+        "/v1/screening/rules",
+        "/v1/screening/schema/input",
+        "/v1/screening/schema/output",
     }
     assert "HTTPBearer" in doc["components"]["securitySchemes"]
     # no CRUD verbs anywhere

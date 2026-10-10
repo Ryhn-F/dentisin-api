@@ -22,6 +22,10 @@ class ErrorDetail(ResponseModel):
     message: str
     request_id: str
     details: list[dict[str, Any]] | None = None
+    # Screening routes only (see docs/API.md "Errors"):
+    engine: str | None = None
+    fail_safe: dict[str, Any] | None = None
+    stages: list[dict[str, Any]] | None = None
 
 
 class ErrorResponse(ResponseModel):
