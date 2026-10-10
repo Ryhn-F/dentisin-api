@@ -27,13 +27,29 @@ def test_nobody_has_reviewed_anything_yet(rules: dict[str, Any]) -> None:
 
 def test_clinical_params_are_placeholders(rules: dict[str, Any]) -> None:
     for name, spec in rules["params"].items():
-        if spec["type"] == "enum":  # technical choice (area reference), still unreviewed
-            assert spec["status"] == "PROPOSED", name
-            continue
         assert spec["value"] is None, name
         assert spec["status"] == "PLACEHOLDER", name
-    assert rules["params"]["small_lesion_rel_area"]["symbol"] == "X"
     assert rules["params"]["many_lesions_n"]["symbol"] == "N"
+
+
+def test_no_box_geometry_anywhere_in_rules(rules: dict[str, Any]) -> None:
+    """ADR 014: severity is never derived from box size/position."""
+    assert "small_lesion_rel_area" not in rules["params"]
+    assert "lesion_area_reference" not in rules["params"]
+    assert "lesion_size" not in rules
+    assert {c["id"] for c in rules["detection_classes"]} == {"caries_permanent", "caries_primary"}
+    assert {c["dentition"] for c in rules["detection_classes"]} == {"permanent", "primary"}
+    detection_rules = [r for r in rules["rules"] if r["when"]["type"] == "detection_count_at_least"]
+    assert all(set(r["when"]) <= {"type", "class", "count", "count_param"} for r in detection_rules)
+
+
+def test_dentition_rules_share_one_level(rules: dict[str, Any]) -> None:
+    """No invented per-dentition clinical level: both use the same PLACEHOLDER param."""
+    by_id = {r["id"]: r for r in rules["rules"]}
+    assert by_id["DET_CARIES_PERMANENT"]["level_param"] == "caries_indication_level"
+    assert by_id["DET_CARIES_PRIMARY"]["level_param"] == "caries_indication_level"
+    assert "gigi tetap" in by_id["DET_CARIES_PERMANENT"]["message"]
+    assert "gigi sulung" in by_id["DET_CARIES_PRIMARY"]["message"]
 
 
 def test_engine_runs_on_placeholder_rules_with_fail_safe_fallbacks(rules: dict[str, Any]) -> None:
@@ -45,7 +61,6 @@ def test_engine_runs_on_placeholder_rules_with_fail_safe_fallbacks(rules: dict[s
         {
             "detections": [],
             "photo_status": "assessed",
-            "reference_frame": None,
             "symptoms": symptoms,
             "age_months": 96,
             "pain": 0,

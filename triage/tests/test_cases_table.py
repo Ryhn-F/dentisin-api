@@ -16,14 +16,9 @@ from triage.paths import CASES_PATH, CASES_SCHEMA_PATH
 CASES: list[dict[str, Any]] = read_json(CASES_PATH)["cases"]
 OK_CASES = [c for c in CASES if "error" not in c["expected"]]
 ERROR_CASES = [c for c in CASES if "error" in c["expected"]]
-# Error codes that may come from constraints JSON Schema cannot express (x_min < x_max,
-# detections need an assessed photo, frame required for frame-relative sizing).
-CROSS_FIELD_CODES = {
-    "DETECTIONS_WITHOUT_PHOTO",
-    "REFERENCE_FRAME_REQUIRED",
-    "BOX_INVALID",
-    "REFERENCE_FRAME_INVALID",
-}
+# Error code for the one cross-field constraint JSON Schema cannot express
+# (detections need an assessed photo).
+CROSS_FIELD_CODES = {"DETECTIONS_WITHOUT_PHOTO"}
 
 
 @pytest.mark.parametrize("case", CASES, ids=[c["id"] for c in CASES])
@@ -43,7 +38,7 @@ def test_shared_case(case: dict[str, Any], rules: dict[str, Any], profiles: dict
     assert out["referral_template_id"] == expected["referral_template_id"]
     if "lesions" in expected:
         got = [
-            {key: lesion[key] for key in ("detection_index", "counted", "size")}
+            {key: lesion[key] for key in ("detection_index", "dentition", "counted")}
             for lesion in out["lesions"]
         ]
         assert got == expected["lesions"]
@@ -77,7 +72,7 @@ def test_error_case_inputs_rejected_by_schema_unless_cross_field(
     if valid:
         assert code in CROSS_FIELD_CODES
     else:
-        assert code not in {"DETECTIONS_WITHOUT_PHOTO", "REFERENCE_FRAME_REQUIRED"}
+        assert code not in CROSS_FIELD_CODES
 
 
 def test_every_rule_is_triggered_by_some_case(rules: dict[str, Any]) -> None:

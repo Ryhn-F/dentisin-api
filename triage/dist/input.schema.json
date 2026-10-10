@@ -1,14 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://dentisai.local/triage/input.schema.json",
-  "title": "Triage engine input (rules 0.1.0-draft)",
-  "description": "Generated from rules.yaml by triage.export. Cross-field rules (detections require an assessed photo; reference_frame required when lesion_area_reference is 'frame' and detections exist) are enforced by the engine.",
+  "title": "Triage engine input (rules 0.2.0-draft)",
+  "description": "Generated from rules.yaml by triage.export. Detections carry only class + confidence: box geometry is NOT an engine input (ADR 014; strip boxes used for the UI overlay before calling the engine). Cross-field rule enforced by the engine: detections require an assessed photo.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "detections",
     "photo_status",
-    "reference_frame",
     "symptoms",
     "age_months",
     "pain"
@@ -21,23 +20,19 @@
         "additionalProperties": false,
         "required": [
           "class",
-          "confidence",
-          "box"
+          "confidence"
         ],
         "properties": {
           "class": {
             "enum": [
-              "caries_cavitated",
-              "caries_noncavitated"
+              "caries_permanent",
+              "caries_primary"
             ]
           },
           "confidence": {
             "type": "number",
             "minimum": 0,
             "maximum": 1
-          },
-          "box": {
-            "$ref": "#/$defs/box"
           }
         }
       }
@@ -47,16 +42,6 @@
         "assessed",
         "not_taken",
         "quality_failed"
-      ]
-    },
-    "reference_frame": {
-      "oneOf": [
-        {
-          "type": "null"
-        },
-        {
-          "$ref": "#/$defs/box"
-        }
       ]
     },
     "symptoms": {
@@ -162,41 +147,6 @@
           "maximum": 10
         }
       ]
-    }
-  },
-  "$defs": {
-    "box": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "x_min",
-        "y_min",
-        "x_max",
-        "y_max"
-      ],
-      "description": "Normalised [0,1] image coordinates; x_min < x_max and y_min < y_max (cross-field rule enforced by the engine).",
-      "properties": {
-        "x_min": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "y_min": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "x_max": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        },
-        "y_max": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 1
-        }
-      }
     }
   }
 }

@@ -22,18 +22,14 @@ def base_input(rules: dict[str, Any]) -> dict[str, Any]:
     return {
         "detections": [],
         "photo_status": "assessed",
-        "reference_frame": None,
         "symptoms": {q["id"]: "no" for q in rules["questions"]},
         "age_months": 96,
         "pain": 0,
     }
 
 
-CAV: dict[str, Any] = {
-    "class": "caries_cavitated",
-    "confidence": 0.9,
-    "box": {"x_min": 0.1, "y_min": 0.1, "x_max": 0.2, "y_max": 0.2},
-}
+CAV: dict[str, Any] = {"class": "caries_permanent", "confidence": 0.9}
+BOX = {"x_min": 0.1, "y_min": 0.1, "x_max": 0.2, "y_max": 0.2}
 
 
 @pytest.mark.parametrize(
@@ -46,15 +42,14 @@ CAV: dict[str, Any] = {
         ({"photo_status": ["assessed"]}, "PHOTO_STATUS_INVALID"),
         ({"symptoms": None}, "SYMPTOMS_INVALID"),
         ({"detections": "caries"}, "DETECTIONS_INVALID"),
-        ({"detections": [["caries_cavitated", 0.9]]}, "DETECTION_INVALID"),
+        ({"detections": [["caries_permanent", 0.9]]}, "DETECTION_INVALID"),
         ({"detections": [{**CAV, "extra": 1}]}, "DETECTION_INVALID"),
         ({"detections": [{**CAV, "class": 7}]}, "UNKNOWN_CLASS"),
         ({"detections": [{**CAV, "confidence": True}]}, "CONFIDENCE_INVALID"),
         ({"detections": [{**CAV, "confidence": -0.1}]}, "CONFIDENCE_INVALID"),
-        ({"detections": [{**CAV, "box": [0.1, 0.1, 0.2, 0.2]}]}, "BOX_INVALID"),
-        ({"detections": [{**CAV, "box": {**CAV["box"], "x_min": "0"}}]}, "BOX_INVALID"),
-        ({"detections": [{**CAV, "box": {**CAV["box"], "y_max": 0.1}}]}, "BOX_INVALID"),
-        ({"reference_frame": "full"}, "REFERENCE_FRAME_INVALID"),
+        ({"detections": [{**CAV, "box": BOX}]}, "DETECTION_INVALID"),
+        ({"detections": [{**CAV, "class": "caries_noncavitated"}]}, "UNKNOWN_CLASS"),
+        ({"reference_frame": None}, "UNKNOWN_FIELD"),
     ],
 )
 def test_invalid_input_raises_typed_error(
@@ -88,10 +83,10 @@ def test_integral_float_and_tuple_accepted_like_json(
         ({"not_a_param": 1}, "PARAM_UNKNOWN"),
         ({"many_lesions_n": 2.5}, "PARAM_INVALID"),
         ({"many_lesions_n": 0}, "PARAM_INVALID"),
-        ({"small_lesion_rel_area": "0.1"}, "PARAM_INVALID"),
-        ({"small_lesion_rel_area": True}, "PARAM_INVALID"),
+        ({"permanent_min_confidence": "0.1"}, "PARAM_INVALID"),
+        ({"primary_min_confidence": True}, "PARAM_INVALID"),
         ({"night_pain_level": "routine"}, "PARAM_INVALID"),
-        ({"lesion_area_reference": 1}, "PARAM_INVALID"),
+        ({"caries_indication_level": 1}, "PARAM_INVALID"),
     ],
 )
 def test_invalid_params(
@@ -127,7 +122,7 @@ def test_resolve_params_precedence(rules: dict[str, Any]) -> None:
 
 def test_rule_level_kinds(rules: dict[str, Any], params: dict[str, Any]) -> None:
     by_id = {r["id"]: r for r in rules["rules"]}
-    assert rule_level(by_id["DET_NONCAV_ATTENTION"], params) is None
+    assert rule_level(by_id["DET_CARIES_PRIMARY"], params) == params["caries_indication_level"]
     assert rule_level(by_id["SYM_NIGHT_PAIN"], params) == params["night_pain_level"]
     assert rule_level(by_id["RF_TRISMUS"], params) == "emergency"
 

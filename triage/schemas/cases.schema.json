@@ -7,7 +7,7 @@
   "additionalProperties": false,
   "required": ["format_version", "description", "graded_by_drg_note", "rules_file", "params_profiles_file", "how_to_run", "cases"],
   "properties": {
-    "format_version": {"const": 1},
+    "format_version": {"const": 2},
     "description": {"type": "string"},
     "graded_by_drg_note": {"type": "string"},
     "rules_file": {"type": "string"},
@@ -45,11 +45,11 @@
                     "items": {
                       "type": "object",
                       "additionalProperties": false,
-                      "required": ["detection_index", "counted", "size"],
+                      "required": ["detection_index", "dentition", "counted"],
                       "properties": {
                         "detection_index": {"type": "integer", "minimum": 0},
-                        "counted": {"type": "boolean"},
-                        "size": {"enum": ["small", "large", null]}
+                        "dentition": {"enum": ["primary", "permanent"]},
+                        "counted": {"type": "boolean"}
                       }
                     }
                   }

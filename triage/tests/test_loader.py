@@ -54,12 +54,8 @@ def _class_param_missing(rules: dict[str, Any]) -> None:
     rules["detection_classes"][0]["min_confidence_param"] = "does_not_exist"
 
 
-def _area_reference_allowed(rules: dict[str, Any]) -> None:
-    rules["params"]["lesion_area_reference"]["allowed"] = ["image"]
-
-
-def _area_reference_param_missing(rules: dict[str, Any]) -> None:
-    rules["lesion_size"]["area_reference_param"] = "does_not_exist"
+def _reserved_class_id(rules: dict[str, Any]) -> None:
+    rules["detection_classes"][0]["id"] = "any"
 
 
 def _default_not_last(rules: dict[str, Any]) -> None:
@@ -75,7 +71,7 @@ def _two_defaults(rules: dict[str, Any]) -> None:
 
 
 def _rule_unknown_level(rules: dict[str, Any]) -> None:
-    _rule(rules, "DET_CAVITY_LARGE")["level"] = "whenever"
+    _rule(rules, "DET_CARIES_MANY")["level"] = "whenever"
 
 
 def _rule_level_param_wrong(rules: dict[str, Any]) -> None:
@@ -87,11 +83,11 @@ def _rule_unknown_symptom(rules: dict[str, Any]) -> None:
 
 
 def _rule_unknown_class(rules: dict[str, Any]) -> None:
-    _rule(rules, "DET_CAVITY_LARGE")["when"]["class"] = "tooth"
+    _rule(rules, "DET_CARIES_PRIMARY")["when"]["class"] = "tooth"
 
 
 def _rule_count_param_wrong(rules: dict[str, Any]) -> None:
-    _rule(rules, "DET_CAVITY_MANY")["when"]["count_param"] = "small_lesion_rel_area"
+    _rule(rules, "DET_CARIES_MANY")["when"]["count_param"] = "permanent_min_confidence"
 
 
 def _red_flag_downgraded(rules: dict[str, Any]) -> None:
@@ -109,7 +105,7 @@ SEMANTIC_CASES: list[tuple[str, Mutator, str]] = [
     ("unknown contact", _unknown_contact, "unknown contact"),
     (
         "number value out of range",
-        _set_param("small_lesion_rel_area", value=2),
+        _set_param("permanent_min_confidence", value=2),
         "outside [min, max]",
     ),
     ("level value not allowed", _set_param("night_pain_level", value="routine"), "not in allowed"),
@@ -125,8 +121,7 @@ SEMANTIC_CASES: list[tuple[str, Mutator, str]] = [
     ),
     ("class param wrong type", _class_param_wrong_type, "must be of type"),
     ("class param missing", _class_param_missing, "unknown param"),
-    ("area reference allowed", _area_reference_allowed, "exactly 'image' and 'frame'"),
-    ("area reference missing", _area_reference_param_missing, "unknown param"),
+    ("reserved class id 'any'", _reserved_class_id, "is reserved"),
     ("default not last", _default_not_last, "exactly one default rule"),
     ("default wrong level", _default_wrong_level, "exactly one default rule"),
     ("two defaults", _two_defaults, "exactly one default rule"),
@@ -163,7 +158,7 @@ def test_semantic_invariants(rules: dict[str, Any], mutate: Mutator, message: st
         lambda r: r.update(answers=[True, False, "unknown"]),  # YAML 1.1 yes/no pitfall
         lambda r: _rule(r, "RF_LETHARGY").pop("rationale"),
         lambda r: _rule(r, "RF_LETHARGY").update(level_param="night_pain_level"),
-        lambda r: _rule(r, "DET_NONCAV_ATTENTION").update(level="urgent"),
+        lambda r: _rule(r, "DET_CARIES_PRIMARY").update(level="urgent"),
         lambda r: r["params"]["many_lesions_n"].update(value=3),  # PLACEHOLDER must be null
         lambda r: r["params"]["many_lesions_n"].update(allowed=["a"]),
         lambda r: r["params"]["night_pain_level"].update(min=0),
@@ -181,15 +176,6 @@ def test_semantic_duplicate_checks_ignore_unique_ids(rules: dict[str, Any]) -> N
     broken = copy.deepcopy(rules)
     broken["levels"][1]["rank"] = broken["levels"][0]["rank"]
     assert any("duplicate level rank" in e for e in semantic_errors(broken))
-
-
-def test_semantic_area_reference_without_allowed(rules: dict[str, Any]) -> None:
-    broken = copy.deepcopy(rules)
-    del broken["params"]["lesion_area_reference"]["allowed"]
-    broken["params"]["lesion_area_reference"]["type"] = "number"
-    broken["params"]["lesion_area_reference"].update(min=0, max=1, value=None, if_unset=0)
-    errors = semantic_errors(broken)
-    assert any("exactly 'image' and 'frame'" in e for e in errors)
 
 
 def test_load_rules_reads_json_export(rules: dict[str, Any]) -> None:

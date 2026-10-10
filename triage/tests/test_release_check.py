@@ -15,10 +15,10 @@ from triage.forbidden import ForbiddenList
 from triage.release_check import collect_blockers, main
 
 TEST_VALUES = {
-    "small_lesion_rel_area": 0.02,
     "many_lesions_n": 3,
-    "cavitated_min_confidence": 0.5,
-    "noncavitated_min_confidence": 0.3,
+    "permanent_min_confidence": 0.5,
+    "primary_min_confidence": 0.4,
+    "caries_indication_level": "scheduled",
     "pain_scheduled_min_score": 2,
     "pain_urgent_min_score": 6,
     "night_pain_level": "urgent",
@@ -29,7 +29,6 @@ TEST_VALUES = {
     "validated_age_months_max": 155,
     "age_out_of_range_level": "scheduled",
     "photo_not_assessed_level": "scheduled",
-    "lesion_area_reference": "image",
 }  # synthetic, only to exercise the "pass" path of the gate
 
 

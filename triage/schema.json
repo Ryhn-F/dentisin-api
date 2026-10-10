@@ -7,7 +7,7 @@
   "required": [
     "schema_version", "version", "status", "title", "notice", "texts_review",
     "release_requirements", "levels", "answers", "questions", "photo_statuses",
-    "pain_scale", "input_limits", "detection_classes", "lesion_size", "contacts",
+    "pain_scale", "input_limits", "detection_classes", "contacts",
     "params", "advice", "always_advice", "photo_assessed_advice", "rules"
   ],
   "properties": {
@@ -110,22 +110,14 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "label", "min_confidence_param"],
+        "required": ["id", "dataset_label", "dentition", "label", "min_confidence_param"],
         "properties": {
           "id": {"$ref": "#/$defs/snake_id"},
+          "dataset_label": {"type": "string", "minLength": 1},
+          "dentition": {"enum": ["primary", "permanent"]},
           "label": {"type": "string"},
           "min_confidence_param": {"$ref": "#/$defs/snake_id"}
         }
-      }
-    },
-    "lesion_size": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["description", "large_min_rel_area_param", "area_reference_param"],
-      "properties": {
-        "description": {"type": "string"},
-        "large_min_rel_area_param": {"$ref": "#/$defs/snake_id"},
-        "area_reference_param": {"$ref": "#/$defs/snake_id"}
       }
     },
     "contacts": {
@@ -276,12 +268,11 @@
         },
         {
           "type": "object", "additionalProperties": false,
-          "required": ["type", "class", "size"],
+          "required": ["type", "class"],
           "oneOf": [{"required": ["count"]}, {"required": ["count_param"]}],
           "properties": {
-            "type": {"const": "lesion_count_at_least"},
-            "class": {"$ref": "#/$defs/snake_id"},
-            "size": {"enum": ["any", "small", "large"]},
+            "type": {"const": "detection_count_at_least"},
+            "class": {"description": "a detection class id, or 'any' (all classes)", "$ref": "#/$defs/snake_id"},
             "count": {"type": "integer", "minimum": 1},
             "count_param": {"$ref": "#/$defs/snake_id"}
           }
@@ -303,11 +294,10 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["id", "stage", "effect", "when", "when_text", "message", "advice", "rationale", "source", "reviewed_by", "reviewed_at"],
+          "required": ["id", "stage", "when", "when_text", "message", "advice", "rationale", "source", "reviewed_by", "reviewed_at"],
           "properties": {
             "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
-            "stage": {"enum": ["red_flag", "symptom", "detection_score", "detection_count", "context", "default"]},
-            "effect": {"enum": ["raise", "info"]},
+            "stage": {"enum": ["red_flag", "symptom", "detection", "detection_count", "context", "default"]},
             "level": {"$ref": "#/$defs/level_id"},
             "level_param": {"$ref": "#/$defs/snake_id"},
             "when": {"$ref": "#/$defs/condition"},
@@ -320,11 +310,7 @@
             "reviewed_at": true
           }
         },
-        {
-          "if": {"properties": {"effect": {"const": "raise"}}},
-          "then": {"oneOf": [{"required": ["level"]}, {"required": ["level_param"]}]},
-          "else": {"not": {"anyOf": [{"required": ["level"]}, {"required": ["level_param"]}]}}
-        }
+        {"oneOf": [{"required": ["level"]}, {"required": ["level_param"]}]}
       ]
     }
   }

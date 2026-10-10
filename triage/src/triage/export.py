@@ -33,32 +33,21 @@ def to_json_bytes(data: object) -> bytes:
 
 
 def build_input_schema(rules: Mapping[str, Any]) -> dict[str, Any]:
-    box = {
-        "type": "object",
-        "additionalProperties": False,
-        "required": ["x_min", "y_min", "x_max", "y_max"],
-        "description": "Normalised [0,1] image coordinates; x_min < x_max and y_min < y_max "
-        "(cross-field rule enforced by the engine).",
-        "properties": {
-            key: {"type": "number", "minimum": 0, "maximum": 1}
-            for key in ("x_min", "y_min", "x_max", "y_max")
-        },
-    }
     limits = rules["input_limits"]
     scale = rules["pain_scale"]
     return {
         "$schema": SCHEMA_DIALECT,
         "$id": "https://dentisai.local/triage/input.schema.json",
         "title": f"Triage engine input (rules {rules['version']})",
-        "description": "Generated from rules.yaml by triage.export. Cross-field rules "
-        "(detections require an assessed photo; reference_frame required when "
-        "lesion_area_reference is 'frame' and detections exist) are enforced by the engine.",
+        "description": "Generated from rules.yaml by triage.export. Detections carry only "
+        "class + confidence: box geometry is NOT an engine input (ADR 014; strip boxes used for "
+        "the UI overlay before calling the engine). Cross-field rule enforced by the engine: "
+        "detections require an assessed photo.",
         "type": "object",
         "additionalProperties": False,
         "required": [
             "detections",
             "photo_status",
-            "reference_frame",
             "symptoms",
             "age_months",
             "pain",
@@ -69,16 +58,14 @@ def build_input_schema(rules: Mapping[str, Any]) -> dict[str, Any]:
                 "items": {
                     "type": "object",
                     "additionalProperties": False,
-                    "required": ["class", "confidence", "box"],
+                    "required": ["class", "confidence"],
                     "properties": {
                         "class": {"enum": [c["id"] for c in rules["detection_classes"]]},
                         "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-                        "box": {"$ref": "#/$defs/box"},
                     },
                 },
             },
             "photo_status": {"enum": [s["id"] for s in rules["photo_statuses"]]},
-            "reference_frame": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/box"}]},
             "symptoms": {
                 "type": "object",
                 "additionalProperties": False,
@@ -104,7 +91,6 @@ def build_input_schema(rules: Mapping[str, Any]) -> dict[str, Any]:
                 ]
             },
         },
-        "$defs": {"box": box},
     }
 
 
@@ -147,18 +133,16 @@ def build_output_schema(rules: Mapping[str, Any]) -> dict[str, Any]:
                     "required": [
                         "detection_index",
                         "class",
+                        "dentition",
                         "confidence",
-                        "rel_area",
                         "counted",
-                        "size",
                     ],
                     "properties": {
                         "detection_index": {"type": "integer", "minimum": 0},
                         "class": {"enum": [c["id"] for c in rules["detection_classes"]]},
+                        "dentition": {"enum": ["primary", "permanent"]},
                         "confidence": {"type": "number"},
-                        "rel_area": {"type": "number", "minimum": 0},
                         "counted": {"type": "boolean"},
-                        "size": {"enum": ["small", "large", None]},
                     },
                 },
             },

@@ -8,9 +8,9 @@ Parsing rules (keep the markdown table format stable):
   phrase. ``…`` / ``...`` are stripped, ``XX`` means "any number".
 * Double-quoted sentences on lines starting with ``Wajib`` are mandatory texts
   (e.g. "Hasil ini bukan diagnosis ...") and are allow-listed verbatim.
-* Matching is case-insensitive and on whole words (``aman`` does not match
-  ``keamanan``). "bebas karies" is forbidden outright (stricter than the guide,
-  which allows it with a disclaimer).
+* Matching is case-insensitive and on whole words (a short forbidden word does not
+  match inside a longer word that contains it). "bebas karies" is forbidden outright
+  (stricter than the guide, which allows it with a disclaimer).
 """
 
 from __future__ import annotations

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://dentisai.local/triage/output.schema.json",
-  "title": "Triage engine output (rules 0.1.0-draft)",
+  "title": "Triage engine output (rules 0.2.0-draft)",
   "description": "Generated from rules.yaml by triage.export.",
   "type": "object",
   "additionalProperties": false,
@@ -48,10 +48,9 @@
               "PAIN_MODERATE",
               "PAIN_UNKNOWN",
               "SYM_WHITE_SPOT",
-              "DET_CAVITY_LARGE",
-              "DET_CAVITY_SMALL",
-              "DET_NONCAV_ATTENTION",
-              "DET_CAVITY_MANY",
+              "DET_CARIES_PERMANENT",
+              "DET_CARIES_PRIMARY",
+              "DET_CARIES_MANY",
               "CTX_AGE_OUTSIDE_VALIDATED_RANGE",
               "CTX_PHOTO_NOT_ASSESSED",
               "DEFAULT_ROUTINE"
@@ -71,10 +70,9 @@
         "required": [
           "detection_index",
           "class",
+          "dentition",
           "confidence",
-          "rel_area",
-          "counted",
-          "size"
+          "counted"
         ],
         "properties": {
           "detection_index": {
@@ -83,26 +81,21 @@
           },
           "class": {
             "enum": [
-              "caries_cavitated",
-              "caries_noncavitated"
+              "caries_permanent",
+              "caries_primary"
+            ]
+          },
+          "dentition": {
+            "enum": [
+              "primary",
+              "permanent"
             ]
           },
           "confidence": {
             "type": "number"
           },
-          "rel_area": {
-            "type": "number",
-            "minimum": 0
-          },
           "counted": {
             "type": "boolean"
-          },
-          "size": {
-            "enum": [
-              "small",
-              "large",
-              null
-            ]
           }
         }
       }
@@ -131,7 +124,6 @@
           "ADV_RESCREEN_3_6_MONTHS",
           "ADV_RECHECK_SYMPTOMS",
           "ADV_ASK_MEDICATION",
-          "ADV_ATTENTION_AREA",
           "ADV_RETAKE_OR_VISIT",
           "ADV_PHOTO_LIMITATION",
           "ADV_DISCLAIMER_NOT_DIAGNOSIS",
@@ -148,7 +140,7 @@
       ]
     },
     "rules_version": {
-      "const": "0.1.0-draft"
+      "const": "0.2.0-draft"
     }
   }
 }

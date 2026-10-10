@@ -4,12 +4,12 @@
   "profiles": {
     "test": {
       "clinical": false,
-      "description": "Primary test profile: image-area reference; exact binary fractions so boundary cases are exact in IEEE-754 (Python and JS).",
+      "description": "Primary test profile (different confidence thresholds per class to test them separately).",
       "values": {
-        "small_lesion_rel_area": 0.015625,
         "many_lesions_n": 3,
-        "cavitated_min_confidence": 0.5,
-        "noncavitated_min_confidence": 0.25,
+        "permanent_min_confidence": 0.5,
+        "primary_min_confidence": 0.4,
+        "caries_indication_level": "scheduled",
         "pain_scheduled_min_score": 2,
         "pain_urgent_min_score": 6,
         "night_pain_level": "urgent",
@@ -19,18 +19,17 @@
         "validated_age_months_min": 72,
         "validated_age_months_max": 155,
         "age_out_of_range_level": "scheduled",
-        "photo_not_assessed_level": "scheduled",
-        "lesion_area_reference": "image"
+        "photo_not_assessed_level": "scheduled"
       }
     },
     "test_alt": {
       "clinical": false,
-      "description": "Alternative choices for every level param and frame-relative lesion area, to exercise the other branches.",
+      "description": "Alternative choices for every level param, to exercise the other branches.",
       "values": {
-        "small_lesion_rel_area": 0.015625,
         "many_lesions_n": 3,
-        "cavitated_min_confidence": 0.5,
-        "noncavitated_min_confidence": 0.25,
+        "permanent_min_confidence": 0.5,
+        "primary_min_confidence": 0.4,
+        "caries_indication_level": "urgent",
         "pain_scheduled_min_score": 2,
         "pain_urgent_min_score": 6,
         "night_pain_level": "emergency",
@@ -40,18 +39,17 @@
         "validated_age_months_min": 72,
         "validated_age_months_max": 155,
         "age_out_of_range_level": "routine",
-        "photo_not_assessed_level": "routine",
-        "lesion_area_reference": "frame"
+        "photo_not_assessed_level": "routine"
       }
     },
     "unset": {
       "clinical": false,
       "description": "Every param null: exercises the fail-safe if_unset fallbacks declared in rules.yaml (what the app does today with the PLACEHOLDER rules).",
       "values": {
-        "small_lesion_rel_area": null,
         "many_lesions_n": null,
-        "cavitated_min_confidence": null,
-        "noncavitated_min_confidence": null,
+        "permanent_min_confidence": null,
+        "primary_min_confidence": null,
+        "caries_indication_level": null,
         "pain_scheduled_min_score": null,
         "pain_urgent_min_score": null,
         "night_pain_level": null,
@@ -61,8 +59,7 @@
         "validated_age_months_min": null,
         "validated_age_months_max": null,
         "age_out_of_range_level": null,
-        "photo_not_assessed_level": null,
-        "lesion_area_reference": null
+        "photo_not_assessed_level": null
       }
     }
   }

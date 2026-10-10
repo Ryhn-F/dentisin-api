@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "version": "0.1.0-draft",
+  "version": "0.2.0-draft",
   "status": "DRAFT",
   "title": "Aturan triase skrining gigi anak DentisAI",
   "notice": "DRAF. Semua nilai klinis dan aturan belum ditinjau dokter gigi. Tidak boleh dipakai pada anak sebelum disahkan.",
@@ -138,21 +138,20 @@
   },
   "detection_classes": [
     {
-      "id": "caries_cavitated",
-      "label": "indikasi lubang gigi",
-      "min_confidence_param": "cavitated_min_confidence"
+      "id": "caries_permanent",
+      "dataset_label": "D",
+      "dentition": "permanent",
+      "label": "indikasi karies pada gigi tetap",
+      "min_confidence_param": "permanent_min_confidence"
     },
     {
-      "id": "caries_noncavitated",
-      "label": "perlu perhatian",
-      "min_confidence_param": "noncavitated_min_confidence"
+      "id": "caries_primary",
+      "dataset_label": "d",
+      "dentition": "primary",
+      "label": "indikasi karies pada gigi sulung",
+      "min_confidence_param": "primary_min_confidence"
     }
   ],
-  "lesion_size": {
-    "description": "Ukuran lesi = luas kotak lesi dibagi luas acuan (seluruh foto, atau bingkai gigi depan). Lesi 'besar' bila ukuran >= X; 'kecil' bila < X.",
-    "large_min_rel_area_param": "small_lesion_rel_area",
-    "area_reference_param": "lesion_area_reference"
-  },
   "contacts": {
     "emergency_numbers": {
       "value": [
@@ -164,20 +163,6 @@
     }
   },
   "params": {
-    "small_lesion_rel_area": {
-      "symbol": "X",
-      "type": "number",
-      "min": 0,
-      "max": 1,
-      "value": null,
-      "status": "PLACEHOLDER",
-      "if_unset": 0,
-      "if_unset_text": "Selama X kosong, setiap lesi berlubang dianggap 'besar' (lebih waspada).",
-      "description": "Batas ukuran relatif kotak lesi berlubang. Ukuran >= X dianggap 'besar'.",
-      "source": "ADR 003 (pembaruan 2026-10-08); backend/CLAUDE.md §8; nilai ditetapkan drg",
-      "reviewed_by": "PENDING_DRG",
-      "reviewed_at": null
-    },
     "many_lesions_n": {
       "symbol": "N",
       "type": "integer",
@@ -186,35 +171,50 @@
       "value": null,
       "status": "PLACEHOLDER",
       "if_unset": 1,
-      "if_unset_text": "Selama N kosong, satu lesi berlubang saja sudah dianggap 'banyak' (lebih waspada).",
-      "description": "Jumlah minimum lesi berlubang yang dianggap 'banyak'.",
-      "source": "ADR 003; backend/CLAUDE.md §8; nilai ditetapkan drg",
+      "if_unset_text": "Selama N kosong, satu temuan saja sudah dianggap 'banyak' (lebih waspada).",
+      "description": "Jumlah minimum temuan karies terhitung (gigi sulung + gigi tetap) yang dianggap 'banyak'.",
+      "source": "ADR 014 (jumlah temuan, bukan ukuran kotak); backend/CLAUDE.md §8; nilai ditetapkan drg",
       "reviewed_by": "PENDING_DRG",
       "reviewed_at": null
     },
-    "cavitated_min_confidence": {
+    "permanent_min_confidence": {
       "type": "number",
       "min": 0,
       "max": 1,
       "value": null,
       "status": "PLACEHOLDER",
       "if_unset": 0,
-      "if_unset_text": "Selama kosong, semua temuan lubang dari model dihitung (lebih waspada).",
-      "description": "Keyakinan model minimum agar temuan 'lubang gigi' dihitung. Ditentukan dari hasil validasi model bersama drg.",
-      "source": "PRD FR-30; ambang ditetapkan dari evaluasi model (ml/detection) + drg",
+      "if_unset_text": "Selama kosong, semua temuan karies gigi tetap dari model dihitung (lebih waspada).",
+      "description": "Keyakinan model minimum agar temuan 'karies gigi tetap' (D) dihitung. Ditentukan dari hasil validasi model bersama drg.",
+      "source": "ADR 014; PRD FR-30; ambang dari evaluasi model per kelas (ml/detection) + drg",
       "reviewed_by": "PENDING_DRG",
       "reviewed_at": null
     },
-    "noncavitated_min_confidence": {
+    "primary_min_confidence": {
       "type": "number",
       "min": 0,
       "max": 1,
       "value": null,
       "status": "PLACEHOLDER",
       "if_unset": 0,
-      "if_unset_text": "Selama kosong, semua temuan 'perlu perhatian' ditampilkan.",
-      "description": "Keyakinan model minimum agar temuan 'perlu perhatian' ditampilkan (tidak pernah menaikkan level).",
-      "source": "PRD FR-32; ADR 003",
+      "if_unset_text": "Selama kosong, semua temuan karies gigi sulung dari model dihitung (lebih waspada).",
+      "description": "Keyakinan model minimum agar temuan 'karies gigi sulung' (d) dihitung.",
+      "source": "ADR 014; PRD FR-30; ambang dari evaluasi model per kelas (ml/detection) + drg",
+      "reviewed_by": "PENDING_DRG",
+      "reviewed_at": null
+    },
+    "caries_indication_level": {
+      "type": "level",
+      "allowed": [
+        "scheduled",
+        "urgent"
+      ],
+      "value": null,
+      "status": "PLACEHOLDER",
+      "if_unset": "urgent",
+      "if_unset_text": "Selama kosong, satu indikasi karies saja dianggap segera (pilihan yang lebih tinggi).",
+      "description": "Level bila ada minimal 1 indikasi karies (gigi sulung atau gigi tetap; level sama untuk keduanya). Model tidak bisa membedakan berlubang atau belum.",
+      "source": "ADR 014 (tanpa klaim kavitas; keparahan tidak dari ukuran kotak); keputusan drg",
       "reviewed_by": "PENDING_DRG",
       "reviewed_at": null
     },
@@ -360,21 +360,6 @@
       "source": "Asumsi tim teknis (tanpa foto, hasil 'rutin' bisa menenangkan secara keliru); PRD FR-21",
       "reviewed_by": "PENDING_DRG",
       "reviewed_at": null
-    },
-    "lesion_area_reference": {
-      "type": "enum",
-      "allowed": [
-        "image",
-        "frame"
-      ],
-      "value": "image",
-      "status": "PROPOSED",
-      "if_unset": "image",
-      "if_unset_text": "Acuan ukuran: seluruh foto.",
-      "description": "Acuan ukuran relatif lesi: 'image' = luas seluruh foto; 'frame' = luas bingkai gigi depan dari app.",
-      "source": "ADR 003 (pembaruan 2026-10-08: ukuran relatif box terhadap foto/ gigi depan)",
-      "reviewed_by": "PENDING_DRG",
-      "reviewed_at": null
     }
   },
   "advice": [
@@ -408,10 +393,6 @@
       "text": "Untuk obat pereda sakit, tanyakan ke dokter atau puskesmas. Jangan memberi obat tanpa petunjuk."
     },
     {
-      "id": "ADV_ATTENTION_AREA",
-      "text": "Ada area yang perlu perhatian. Tunjukkan ke dokter gigi saat pemeriksaan."
-    },
-    {
       "id": "ADV_RETAKE_OR_VISIT",
       "text": "Foto gigi belum bisa dinilai. Coba foto lagi dengan senter, atau periksakan langsung ke dokter gigi."
     },
@@ -439,7 +420,6 @@
     {
       "id": "RF_AIRWAY_OR_SWALLOWING",
       "stage": "red_flag",
-      "effect": "raise",
       "level": "emergency",
       "when": {
         "type": "symptom_answer",
@@ -461,7 +441,6 @@
     {
       "id": "RF_LETHARGY",
       "stage": "red_flag",
-      "effect": "raise",
       "level": "emergency",
       "when": {
         "type": "symptom_answer",
@@ -483,7 +462,6 @@
     {
       "id": "RF_TRISMUS",
       "stage": "red_flag",
-      "effect": "raise",
       "level": "emergency",
       "when": {
         "type": "symptom_answer",
@@ -505,7 +483,6 @@
     {
       "id": "RF_FACIAL_SWELLING",
       "stage": "red_flag",
-      "effect": "raise",
       "level": "emergency",
       "when": {
         "type": "symptom_answer",
@@ -525,7 +502,6 @@
     {
       "id": "RF_FEVER_WITH_TOOTHACHE",
       "stage": "red_flag",
-      "effect": "raise",
       "level": "emergency",
       "when": {
         "type": "symptom_answer",
@@ -545,7 +521,6 @@
     {
       "id": "RF_PUS_OR_FISTULA",
       "stage": "red_flag",
-      "effect": "raise",
       "level": "emergency",
       "when": {
         "type": "symptom_answer",
@@ -565,7 +540,6 @@
     {
       "id": "RF_DENTAL_TRAUMA",
       "stage": "red_flag",
-      "effect": "raise",
       "level": "emergency",
       "when": {
         "type": "symptom_answer",
@@ -585,7 +559,6 @@
     {
       "id": "RF_UNKNOWN_ANSWER",
       "stage": "red_flag",
-      "effect": "raise",
       "level_param": "unknown_red_flag_level",
       "when": {
         "type": "any_symptom_answer",
@@ -607,7 +580,6 @@
     {
       "id": "SYM_NIGHT_PAIN",
       "stage": "symptom",
-      "effect": "raise",
       "level_param": "night_pain_level",
       "when": {
         "type": "symptom_answer",
@@ -630,7 +602,6 @@
     {
       "id": "PAIN_HIGH",
       "stage": "symptom",
-      "effect": "raise",
       "level": "urgent",
       "when": {
         "type": "pain_score_at_least",
@@ -649,7 +620,6 @@
     {
       "id": "PAIN_MODERATE",
       "stage": "symptom",
-      "effect": "raise",
       "level": "scheduled",
       "when": {
         "type": "pain_score_in_range",
@@ -669,7 +639,6 @@
     {
       "id": "PAIN_UNKNOWN",
       "stage": "symptom",
-      "effect": "raise",
       "level_param": "pain_unknown_level",
       "when": {
         "type": "pain_unknown"
@@ -685,7 +654,6 @@
     {
       "id": "SYM_WHITE_SPOT",
       "stage": "symptom",
-      "effect": "raise",
       "level_param": "white_spot_level",
       "when": {
         "type": "symptom_answer",
@@ -704,86 +672,59 @@
       "reviewed_at": null
     },
     {
-      "id": "DET_CAVITY_LARGE",
-      "stage": "detection_score",
-      "effect": "raise",
-      "level": "urgent",
+      "id": "DET_CARIES_PERMANENT",
+      "stage": "detection",
+      "level_param": "caries_indication_level",
       "when": {
-        "type": "lesion_count_at_least",
-        "class": "caries_cavitated",
-        "size": "large",
+        "type": "detection_count_at_least",
+        "class": "caries_permanent",
         "count": 1
       },
-      "when_text": "Minimal 1 temuan 'lubang gigi' yang dihitung dengan ukuran >= X.",
-      "message": "Ada indikasi lubang gigi yang cukup besar pada foto. Perlu diperiksa dokter gigi segera.",
+      "when_text": "Minimal 1 temuan 'karies gigi tetap' (D) yang terhitung (keyakinan >= ambang).",
+      "message": "Ada indikasi karies pada gigi tetap di foto. Perlu diperiksa dokter gigi.",
       "advice": [],
-      "rationale": "Lubang yang besar lebih mungkin sudah dekat saraf gigi dan bisa menimbulkan sakit atau infeksi.",
-      "source": "Draf 03_ai_components.md §3.2 (skor 3 → 🟠); ADR 003 (ukuran relatif box)",
+      "rationale": "Model melihat tanda karies pada gigi tetap. Foto tidak bisa menunjukkan apakah gigi sudah berlubang, jadi perlu pemeriksaan dokter gigi.",
+      "source": "ADR 014 (kelas D = karies gigi tetap; tanpa klaim kavitas)",
       "reviewed_by": "PENDING_DRG",
       "reviewed_at": null
     },
     {
-      "id": "DET_CAVITY_SMALL",
-      "stage": "detection_score",
-      "effect": "raise",
-      "level": "scheduled",
+      "id": "DET_CARIES_PRIMARY",
+      "stage": "detection",
+      "level_param": "caries_indication_level",
       "when": {
-        "type": "lesion_count_at_least",
-        "class": "caries_cavitated",
-        "size": "small",
+        "type": "detection_count_at_least",
+        "class": "caries_primary",
         "count": 1
       },
-      "when_text": "Minimal 1 temuan 'lubang gigi' yang dihitung dengan ukuran < X.",
-      "message": "Ada indikasi lubang gigi kecil pada foto. Perlu diperiksa dokter gigi.",
+      "when_text": "Minimal 1 temuan 'karies gigi sulung' (d) yang terhitung (keyakinan >= ambang).",
+      "message": "Ada indikasi karies pada gigi sulung di foto. Perlu diperiksa dokter gigi.",
       "advice": [],
-      "rationale": "Lubang kecil sebaiknya ditangani terjadwal sebelum membesar.",
-      "source": "Draf 03_ai_components.md §3.2 (skor 2 → 🟡); ADR 003",
+      "rationale": "Karies gigi sulung tetap perlu ditangani karena bisa menimbulkan sakit, infeksi, dan memengaruhi gigi tetap di bawahnya.",
+      "source": "ADR 014 (kelas d = karies gigi sulung; tanpa klaim kavitas)",
       "reviewed_by": "PENDING_DRG",
       "reviewed_at": null
     },
     {
-      "id": "DET_NONCAV_ATTENTION",
-      "stage": "detection_score",
-      "effect": "info",
-      "when": {
-        "type": "lesion_count_at_least",
-        "class": "caries_noncavitated",
-        "size": "any",
-        "count": 1
-      },
-      "when_text": "Minimal 1 temuan 'perlu perhatian' yang dihitung. TIDAK menaikkan level.",
-      "message": "Ada area pada gigi yang perlu perhatian (keyakinan model rendah). Perlu diperiksa saat ke dokter gigi.",
-      "advice": [
-        "ADV_ATTENTION_AREA"
-      ],
-      "rationale": "Deteksi lesi awal dari foto HP belum andal, jadi hanya ditampilkan sebagai catatan dan tidak menaikkan level.",
-      "source": "PRD FR-32; ADR 003 butir 1; 03_ai_components.md §3.1.2 (sensitivitas lesi awal rendah)",
-      "reviewed_by": "PENDING_DRG",
-      "reviewed_at": null
-    },
-    {
-      "id": "DET_CAVITY_MANY",
+      "id": "DET_CARIES_MANY",
       "stage": "detection_count",
-      "effect": "raise",
       "level": "urgent",
       "when": {
-        "type": "lesion_count_at_least",
-        "class": "caries_cavitated",
-        "size": "any",
+        "type": "detection_count_at_least",
+        "class": "any",
         "count_param": "many_lesions_n"
       },
-      "when_text": "Jumlah temuan 'lubang gigi' yang dihitung >= N.",
-      "message": "Ada indikasi beberapa lubang gigi pada foto. Perlu diperiksa dokter gigi segera.",
+      "when_text": "Jumlah temuan karies terhitung (gigi sulung + gigi tetap) >= N.",
+      "message": "Ada indikasi karies pada beberapa gigi di foto. Perlu diperiksa dokter gigi segera.",
       "advice": [],
-      "rationale": "Banyak lubang sekaligus menandakan risiko karies tinggi dan perlu penanganan lebih cepat.",
-      "source": "Draf 03_ai_components.md §3.2 ('score==2 and teeth>=N' → 🟠, diganti jumlah lesi per ADR 003)",
+      "rationale": "Banyak gigi dengan tanda karies sekaligus menandakan risiko karies tinggi dan perlu penanganan lebih cepat.",
+      "source": "Draf 03_ai_components.md §3.2 ('teeth>=N' → 🟠); ADR 014 (jumlah temuan, bukan ukuran kotak)",
       "reviewed_by": "PENDING_DRG",
       "reviewed_at": null
     },
     {
       "id": "CTX_AGE_OUTSIDE_VALIDATED_RANGE",
       "stage": "context",
-      "effect": "raise",
       "level_param": "age_out_of_range_level",
       "when": {
         "type": "age_outside_validated_range",
@@ -801,7 +742,6 @@
     {
       "id": "CTX_PHOTO_NOT_ASSESSED",
       "stage": "context",
-      "effect": "raise",
       "level_param": "photo_not_assessed_level",
       "when": {
         "type": "photo_not_assessed"
@@ -819,7 +759,6 @@
     {
       "id": "DEFAULT_ROUTINE",
       "stage": "default",
-      "effect": "raise",
       "level": "routine",
       "when": {
         "type": "no_higher_level_rule_fired"

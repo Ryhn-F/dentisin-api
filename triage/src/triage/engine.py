@@ -13,21 +13,23 @@ Purity: no I/O, no clock, no randomness, no globals mutated, inputs never
 mutated. Every clinical value, symptom list, class list and message lives in
 ``rules.yaml``; this module only implements the fixed condition vocabulary.
 
+Detections are ``{class, confidence}`` only (ADR 014). Box geometry is NOT part
+of the engine input: tooth sizes differ between children, so severity is never
+derived from box size or position. Unknown detection keys (e.g. ``box``) are
+rejected so geometry cannot leak into the decision.
+
 Algorithm:
 1. Validate params and input (typed errors, never a silent lower level).
-2. Assess each detection: ``rel_area`` = box area / reference area; counted if
-   ``confidence >= min_confidence`` of its class; size ``large`` if
-   ``rel_area >= X`` else ``small`` (null when not counted).
-3. Walk ``rules`` in file order; a rule fires when its ``when`` condition
-   holds. ``raise`` rules contribute a level; ``info`` rules never do.
-4. Final level = highest-ranked level among fired ``raise`` rules. Because red
-   flags are always the top level, this equals first-match in the order
-   red flag -> highest score -> lesion count -> default.
+2. Assess each detection: counted iff ``confidence >= min_confidence`` of its class.
+3. Walk ``rules`` in file order; a rule fires when its ``when`` condition holds
+   and contributes its level (fixed ``level`` or ``params[level_param]``).
+4. Final level = highest-ranked level among fired rules. Because red flags are
+   always the top level, this equals first-match in the order
+   red flag -> symptoms -> detections -> detection count -> context -> default.
 5. ``reasons`` = every fired rule (file order). ``advice_ids`` = advice of the
-   fired ``raise`` rules at the final level and of fired ``info`` rules (file
-   order), then the final level's advice, then ``photo_assessed_advice`` (only
-   when the photo was assessed), then ``always_advice``; de-duplicated keeping
-   the first occurrence.
+   fired rules at the final level (file order), then the final level's advice,
+   then ``photo_assessed_advice`` (only when the photo was assessed), then
+   ``always_advice``; de-duplicated keeping the first occurrence.
 """
 
 from __future__ import annotations
@@ -38,11 +40,10 @@ from typing import Any
 
 from triage.errors import TriageInputError, TriageParamsError
 
-INPUT_FIELDS = ("detections", "photo_status", "reference_frame", "symptoms", "age_months", "pain")
-DETECTION_FIELDS = ("class", "confidence", "box")
-BOX_FIELDS = ("x_min", "y_min", "x_max", "y_max")
+INPUT_FIELDS = ("detections", "photo_status", "symptoms", "age_months", "pain")
+DETECTION_FIELDS = ("class", "confidence")
 UNKNOWN = "unknown"
-AREA_REFERENCE_FRAME = "frame"
+ANY_CLASS = "any"
 
 Rules = Mapping[str, Any]
 Params = Mapping[str, Any]
@@ -61,10 +62,6 @@ def _is_integral(value: object) -> bool:
 
 def _in_range(value: Any, low: Any, high: Any) -> bool:
     return bool(low <= value <= high)
-
-
-def _box_area(box: Mapping[str, Any]) -> float:
-    return float((box["x_max"] - box["x_min"]) * (box["y_max"] - box["y_min"]))
 
 
 def _level_ranks(rules: Rules) -> dict[str, int]:
@@ -112,18 +109,7 @@ def resolve_params(rules: Rules, overrides: Mapping[str, Any] | None = None) -> 
 
 
 # --------------------------------------------------------------------------- input
-def _check_box(box: object, code: str, label: str) -> Mapping[str, Any]:
-    if not isinstance(box, Mapping) or sorted(box) != sorted(BOX_FIELDS):
-        raise TriageInputError(code, f"{label} must be an object with keys {BOX_FIELDS}")
-    for key in BOX_FIELDS:
-        if not _is_number(box[key]) or not _in_range(box[key], 0, 1):
-            raise TriageInputError(code, f"{label}.{key} must be a number in [0, 1]")
-    if not (box["x_min"] < box["x_max"] and box["y_min"] < box["y_max"]):
-        raise TriageInputError(code, f"{label} must have x_min < x_max and y_min < y_max")
-    return box
-
-
-def _check_input(rules: Rules, params: Params, data: object) -> Mapping[str, Any]:
+def _check_input(rules: Rules, data: object) -> Mapping[str, Any]:
     if not isinstance(data, Mapping):
         raise TriageInputError("INPUT_NOT_OBJECT", "input must be an object")
     for key in data:
@@ -171,52 +157,36 @@ def _check_input(rules: Rules, params: Params, data: object) -> Mapping[str, Any
     for index, det in enumerate(detections):
         if not isinstance(det, Mapping) or sorted(det) != sorted(DETECTION_FIELDS):
             raise TriageInputError(
-                "DETECTION_INVALID", f"detections[{index}] must have keys {DETECTION_FIELDS}"
+                "DETECTION_INVALID",
+                f"detections[{index}] must have exactly the keys {DETECTION_FIELDS} "
+                "(box geometry is not an engine input)",
             )
         if not isinstance(det["class"], str) or det["class"] not in class_ids:
             raise TriageInputError("UNKNOWN_CLASS", f"detections[{index}].class {det['class']!r}")
         if not _is_number(det["confidence"]) or not _in_range(det["confidence"], 0, 1):
             raise TriageInputError("CONFIDENCE_INVALID", f"detections[{index}].confidence")
-        _check_box(det["box"], "BOX_INVALID", f"detections[{index}].box")
     if detections and not statuses[photo_status]:
         raise TriageInputError(
             "DETECTIONS_WITHOUT_PHOTO", "detections given but photo_status is not assessed"
-        )
-
-    frame = data["reference_frame"]
-    if frame is not None:
-        _check_box(frame, "REFERENCE_FRAME_INVALID", "reference_frame")
-    reference = params[rules["lesion_size"]["area_reference_param"]]
-    if reference == AREA_REFERENCE_FRAME and detections and frame is None:
-        raise TriageInputError(
-            "REFERENCE_FRAME_REQUIRED", "lesion_area_reference is 'frame' but no reference_frame"
         )
     return data
 
 
 # --------------------------------------------------------------------------- lesions
-def _assess_lesions(rules: Rules, params: Params, data: Mapping[str, Any]) -> list[dict[str, Any]]:
-    size_cfg = rules["lesion_size"]
-    large_min = params[size_cfg["large_min_rel_area_param"]]
-    use_frame = params[size_cfg["area_reference_param"]] == AREA_REFERENCE_FRAME
-    min_conf = {
-        cls["id"]: params[cls["min_confidence_param"]] for cls in rules["detection_classes"]
-    }
+def _assess_detections(
+    rules: Rules, params: Params, data: Mapping[str, Any]
+) -> list[dict[str, Any]]:
+    classes = {cls["id"]: cls for cls in rules["detection_classes"]}
     lesions: list[dict[str, Any]] = []
     for index, det in enumerate(data["detections"]):
-        # The frame is only required (and only read) when there is a detection to size.
-        reference_area = _box_area(data["reference_frame"]) if use_frame else 1.0
-        rel_area = _box_area(det["box"]) / reference_area
-        counted = bool(det["confidence"] >= min_conf[det["class"]])
-        size = ("large" if rel_area >= large_min else "small") if counted else None
+        cls = classes[det["class"]]
         lesions.append(
             {
                 "detection_index": index,
                 "class": det["class"],
+                "dentition": cls["dentition"],
                 "confidence": det["confidence"],
-                "rel_area": rel_area,
-                "counted": counted,
-                "size": size,
+                "counted": bool(det["confidence"] >= params[cls["min_confidence_param"]]),
             }
         )
     return lesions
@@ -274,14 +244,12 @@ def _pain_unknown(when: Mapping[str, Any], ctx: _Context) -> bool:
     return bool(ctx.pain == UNKNOWN)
 
 
-def _lesion_count_at_least(when: Mapping[str, Any], ctx: _Context) -> bool:
+def _detection_count_at_least(when: Mapping[str, Any], ctx: _Context) -> bool:
     threshold = when["count"] if "count" in when else ctx.params[when["count_param"]]
     count = sum(
         1
         for lesion in ctx.lesions
-        if lesion["counted"]
-        and lesion["class"] == when["class"]
-        and (when["size"] == "any" or lesion["size"] == when["size"])
+        if lesion["counted"] and when["class"] in (ANY_CLASS, lesion["class"])
     )
     return bool(count >= threshold)
 
@@ -309,17 +277,15 @@ CONDITIONS: Mapping[str, Callable[[Mapping[str, Any], _Context], bool]] = {
     "pain_score_at_least": _pain_score_at_least,
     "pain_score_in_range": _pain_score_in_range,
     "pain_unknown": _pain_unknown,
-    "lesion_count_at_least": _lesion_count_at_least,
+    "detection_count_at_least": _detection_count_at_least,
     "age_outside_validated_range": _age_outside_validated_range,
     "photo_not_assessed": _photo_not_assessed,
     "no_higher_level_rule_fired": _no_higher_level_rule_fired,
 }
 
 
-def rule_level(rule: Mapping[str, Any], params: Params) -> str | None:
-    """Level contributed by a rule (``None`` for ``info`` rules)."""
-    if rule["effect"] == "info":
-        return None
+def rule_level(rule: Mapping[str, Any], params: Params) -> str:
+    """Level contributed by a rule: fixed ``level`` or ``params[level_param]``."""
     if "level_param" in rule:
         return str(params[rule["level_param"]])
     return str(rule["level"])
@@ -329,25 +295,24 @@ def rule_level(rule: Mapping[str, Any], params: Params) -> str | None:
 def evaluate(rules: Rules, triage_input: object, params: Params) -> dict[str, Any]:
     """Evaluate one screening. Pure function; see module docstring."""
     check_params(rules, params)
-    data = _check_input(rules, params, triage_input)
-    lesions = _assess_lesions(rules, params, data)
+    data = _check_input(rules, triage_input)
+    lesions = _assess_detections(rules, params, data)
     ctx = _Context(rules, params, data, lesions)
 
-    fired: list[tuple[Mapping[str, Any], str | None]] = []
+    fired: list[tuple[Mapping[str, Any], str]] = []
     for rule in rules["rules"]:
         if CONDITIONS[rule["when"]["type"]](rule["when"], ctx):
             level = rule_level(rule, params)
             fired.append((rule, level))
-            if level is not None:
-                ctx.fired_levels.append(level)
+            ctx.fired_levels.append(level)
 
-    # The default rule guarantees at least one raise rule fires (validated in loader).
+    # The default rule guarantees at least one rule fires (validated in loader).
     final_level = max(ctx.fired_levels, key=lambda level_id: ctx.ranks[level_id])
     level_cfg = next(level for level in rules["levels"] if level["id"] == final_level)
 
     advice: list[str] = []
     for rule, level in fired:
-        if level is None or level == final_level:
+        if level == final_level:
             advice.extend(rule["advice"])
     advice.extend(level_cfg["advice"])
     if ctx.photo_assessed:

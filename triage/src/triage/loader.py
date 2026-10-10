@@ -14,6 +14,7 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
+from triage.engine import ANY_CLASS
 from triage.errors import RulesValidationError
 from triage.paths import RULES_PATH, SCHEMA_PATH
 
@@ -127,11 +128,8 @@ def semantic_errors(rules: Mapping[str, Any]) -> list[str]:
 
     for cls in rules["detection_classes"]:
         expect_param(cls["min_confidence_param"], ("number",), f"class '{cls['id']}'")
-    expect_param(rules["lesion_size"]["large_min_rel_area_param"], ("number",), "lesion_size")
-    expect_param(rules["lesion_size"]["area_reference_param"], ("enum",), "lesion_size")
-    area_ref = rules["lesion_size"]["area_reference_param"]
-    if area_ref in params and sorted(params[area_ref].get("allowed", [])) != ["frame", "image"]:
-        errors.append("lesion_size area reference param must allow exactly 'image' and 'frame'")
+    if ANY_CLASS in class_ids:
+        errors.append(f"detection class id '{ANY_CLASS}' is reserved")
 
     default_rules = [r for r in rules["rules"] if r["when"]["type"] == "no_higher_level_rule_fired"]
     lowest = min(ranks, key=lambda level_id: ranks[level_id])
@@ -151,7 +149,9 @@ def semantic_errors(rules: Mapping[str, Any]) -> list[str]:
             expect_param(rule["level_param"], ("level",), where)
         if when["type"] == "symptom_answer" and when["symptom"] not in questions:
             errors.append(f"{where}: unknown symptom '{when['symptom']}'")
-        if when["type"] == "lesion_count_at_least" and when["class"] not in class_ids:
+        if when["type"] == "detection_count_at_least" and when["class"] not in (
+            class_ids | {ANY_CLASS}
+        ):
             errors.append(f"{where}: unknown class '{when['class']}'")
         for name in _param_refs(when):
             expect_param(name, ("integer",), where)
