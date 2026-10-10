@@ -29,6 +29,7 @@ RESUME_FROM = ["/kaggle/input/*/yolox_outputs"]          # earlier committed ver
 YOLOX_COMMIT = "6ddff4824372906469a7fae2dc3206c7aa4bbaee" # keep equal to trainers/yolox_adapter.YOLOX_COMMIT
 
 # %% 1. Locate the code, copy it to a writable place, import helpers
+import collections
 import json
 import shutil
 import sys
@@ -80,12 +81,18 @@ if info is None:  # fallback: build them here from the reviewed class map (same 
     assert not any("null" in p for p in probs), "fill ml/data/class_maps/ahmed2025.yaml first (data engineer + drg)"
     nbkit.sh([sys.executable, "convert_annotations.py", "to-canonical", "--in-format", "yolo", "--root", DATA_ROOT,
               "--images", YOLO_IMAGES, "--labels", YOLO_LABELS, "--class-map", SRC / "ml/data/class_maps/ahmed2025.yaml",
-              "--source", "ahmed2025", "--out", PROCESSED / "canonical.jsonl"], cwd=DET)
+              "--source", "ahmed2025", "--missing-label", "negative", "--on-invalid", "drop",
+              "--out", PROCESSED / "canonical.jsonl"], cwd=DET)
     nbkit.sh([sys.executable, SRC / "ml/data/scripts/make_splits.py", "--canonical", PROCESSED / "canonical.jsonl",
               "--out-dir", PROCESSED / "splits", "--group-mode", GROUP_MODE, "--images-root", DATA_ROOT,
               "--merge-near-duplicates", "--seed", "20261008"], cwd=DET)
     info = nbkit.check_processed(PROCESSED)
 print(json.dumps(info, indent=1))
+# Sanity check of the D/d decision (ADR 014): D -> caries_permanent, d -> caries_primary.
+_cls = collections.Counter(b["cls"] for line in (PROCESSED / "canonical.jsonl").read_text(encoding="utf-8").splitlines()
+                           for b in json.loads(line).get("boxes", []))
+print("boxes per class:", dict(_cls))
+assert set(_cls) <= {"caries_permanent", "caries_primary"}, f"unexpected classes: {set(_cls)}"
 P = nbkit.processed_paths(PROCESSED)
 META_CSV = WORK / "out" / "metadata.csv"
 nbkit.metadata_from_splits(P["splits"], META_CSV)
