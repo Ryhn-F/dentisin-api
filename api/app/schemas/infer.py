@@ -6,6 +6,7 @@ from uuid import UUID
 from pydantic import Field
 
 from .common import ResponseModel, StrictModel
+from .review import CariesClass
 
 # Principle 1 (CLAUDE.md): screening, not diagnosis. Shown with every result.
 DISCLAIMER_ID = (
@@ -22,7 +23,7 @@ class InferRequest(StrictModel):
 
 
 class DetectionOut(ResponseModel):
-    cls: Literal["caries_cavitated", "caries_noncavitated"]
+    cls: CariesClass
     x1: float
     y1: float
     x2: float

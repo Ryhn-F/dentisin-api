@@ -14,14 +14,14 @@ select jsonb_build_array(
     'screening_id', '50000000-0000-4000-8000-000000000001', 'child_id', '00000000-0000-4000-8000-00000000ca01',
     'screened_at', now() - interval '1 hour', 'model_version', '0.1.0', 'rules_version', '0.1.0',
     'level', 'yellow', 'red_flag', false,
-    'findings', '[{"class": "caries_cavitated", "confidence": 0.71, "rel_area": 0.02, "box": [0.1, 0.2, 0.05, 0.04]}]'::jsonb)),
+    'findings', '[{"class": "caries_permanent", "confidence": 0.71, "box": [0.1, 0.2, 0.05, 0.04]}]'::jsonb)),
   tests.ev('e0000000-0000-4000-8000-000000000002', 'brushing_recorded', jsonb_build_object(
     'brushing_id', '60000000-0000-4000-8000-000000000001', 'child_id', '00000000-0000-4000-8000-00000000ca01',
     'started_at', now() - interval '2 hours', 'duration_s', 120, 'spirit_score', 77, 'slot', 'morning', 'camera_mode', true)),
   tests.ev('e0000000-0000-4000-8000-000000000003', 'referral_created', jsonb_build_object(
     'referral_id', '70000000-0000-4000-8000-000000000001', 'child_id', '00000000-0000-4000-8000-00000000ca01',
     'screening_id', '50000000-0000-4000-8000-000000000001', 'level', 'yellow',
-    'reason_codes', '["caries_cavitated"]'::jsonb, 'referred_at', now() - interval '1 hour')),
+    'reason_codes', '["caries_primary"]'::jsonb, 'referred_at', now() - interval '1 hour')),
   tests.ev('e0000000-0000-4000-8000-000000000004', 'child_upserted', jsonb_build_object(
     'child_id', '00000000-0000-4000-8000-00000000ca01', 'birth_year', 2016, 'birth_month', 7,
     'allergies', '["mint"]'::jsonb))
@@ -87,7 +87,7 @@ select is((public.sync_events(jsonb_build_array(tests.ev('e0000000-0000-4000-800
           jsonb_build_object('screening_id', '50000000-0000-4000-8000-000000000012',
                              'child_id', '00000000-0000-4000-8000-00000000ca01',
                              'screened_at', now(), 'model_version', '0.1.0', 'rules_version', '0.1.0', 'level', 'green',
-                             'findings', '[{"class": "caries_cavitated", "note": "free text"}]'::jsonb))))) -> 0 ->> 'code',
+                             'findings', '[{"class": "caries_permanent", "note": "free text"}]'::jsonb))))) -> 0 ->> 'code',
           'schema_invalid', 'findings with extra keys are rejected');
 select is((public.sync_events(jsonb_build_array(tests.ev('e0000000-0000-4000-8000-000000000013', 'screening_recorded',
           jsonb_build_object('screening_id', '50000000-0000-4000-8000-000000000013',

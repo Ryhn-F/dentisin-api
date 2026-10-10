@@ -66,7 +66,7 @@ select ('5eed0000-0000-4000-8000-0000005c' || lpad(row_number() over (order by c
        '0.0.0-synthetic', '0.0.0-synthetic',
        (array['green', 'yellow', 'orange', 'green']::public.triage_level[])[1 + (row_number() over (order by c.id))::int % 4],
        false,
-       '[{"class": "caries_cavitated", "confidence": 0.5, "rel_area": 0.01, "box": [0.4, 0.4, 0.05, 0.05]}]'::jsonb
+       '[{"class": "caries_primary", "confidence": 0.5, "box": [0.4, 0.4, 0.05, 0.05]}]'::jsonb
 from public.child_profile c
 where c.id::text like '5eed0000-%'
 on conflict (id) do nothing;

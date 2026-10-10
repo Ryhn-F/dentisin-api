@@ -39,11 +39,11 @@ select throws_ok($$ insert into public.class_roster (kader_id, label) values ('0
 
 select throws_ok($$ insert into public.screening (id, child_id, screened_at, model_version, rules_version, level, findings)
                     values (gen_random_uuid(), '00000000-0000-4000-8000-00000000ca05', now(), '1.0.0', '1.0.0', 'green',
-                            '[{"class": "caries_cavitated", "confidence": 1.5}]') $$,
+                            '[{"class": "caries_permanent", "confidence": 1.5}]') $$,
                  '23514', null, 'finding confidence must be within 0..1');
 select throws_ok($$ insert into public.screening (id, child_id, screened_at, model_version, rules_version, level, findings)
                     values (gen_random_uuid(), '00000000-0000-4000-8000-00000000ca05', now(), '1.0.0', '1.0.0', 'green',
-                            '[{"class": "caries_cavitated", "image_b64": "AAAA"}]') $$,
+                            '[{"class": "caries_permanent", "image_b64": "AAAA"}]') $$,
                  '23514', null, 'findings cannot carry extra fields (e.g. image data)');
 select throws_ok($$ insert into public.screening (id, child_id, screened_at, model_version, rules_version, level)
                     values (gen_random_uuid(), '00000000-0000-4000-8000-00000000ca05', now(), 'latest', '1.0.0', 'green') $$,

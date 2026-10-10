@@ -6,8 +6,8 @@
         "properties": {
           "cls": {
             "enum": [
-              "caries_cavitated",
-              "caries_noncavitated"
+              "caries_permanent",
+              "caries_primary"
             ],
             "title": "Cls",
             "type": "string"
@@ -52,8 +52,8 @@
         "properties": {
           "cls": {
             "enum": [
-              "caries_cavitated",
-              "caries_noncavitated"
+              "caries_permanent",
+              "caries_primary"
             ],
             "title": "Cls",
             "type": "string"

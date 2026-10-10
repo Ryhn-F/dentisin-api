@@ -3,8 +3,10 @@
 Boxes follow the canonical annotation convention of ml/detection/canonical.py
 (``dentis-canonical-v1``): class NAME + absolute pixel corners in the ORIGINAL
 image, top-left origin, ``0 <= x1 < x2 <= width``, ``0 <= y1 < y2 <= height``,
-minimum side 1 px. v1 classes (ADR 001/003): caries_cavitated,
-caries_noncavitated.
+minimum side 1 px. v1 classes (ADR 014): caries_permanent (label D, permanent
+teeth) and caries_primary (label d, primary teeth). Boxes enclose the WHOLE tooth
+and serve annotation / UI overlay only: nothing derives severity or area from
+them.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ from pydantic import Field, field_validator, model_validator
 
 from .common import ResponseModel, StrictModel
 
-CLASS_NAMES: Final = ("caries_cavitated", "caries_noncavitated")
+CLASS_NAMES: Final = ("caries_permanent", "caries_primary")
 MIN_BOX_SIDE_PX: Final = 1.0
 MAX_IMAGE_SIDE_PX: Final = 20_000
 MAX_BOXES: Final = 100
@@ -26,7 +28,7 @@ MAX_NOTES_CHARS: Final = 500
 _CONTROL_CHARS: Final = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
 Coord = Annotated[float, Field(ge=0, le=MAX_IMAGE_SIDE_PX, allow_inf_nan=False, strict=True)]
-CariesClass = Literal["caries_cavitated", "caries_noncavitated"]
+CariesClass = Literal["caries_permanent", "caries_primary"]
 Decision = Literal["annotated", "no_finding", "ungradable"]
 
 

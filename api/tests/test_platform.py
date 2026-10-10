@@ -389,14 +389,14 @@ def test_infer_with_custom_detector_and_oversized_photo(
         model_version = "0.0.1"
 
         async def detect(self, image: bytes) -> list[Detection]:
-            return [Detection("caries_noncavitated", 1, 2, 30, 40, 0.42)]
+            return [Detection("caries_primary", 1, 2, 30, 40, 0.42)]
 
     settings = make_settings(ENABLE_CLOUD_INFER=True)
     with TestClient(app_factory(settings, detector=FakeDetector())) as c:
         resp = c.post(
             "/v1/ml/infer", json={"image_upload_id": IMG}, headers=auth(make_token(ADMIN))
         )
-        assert resp.json()["detections"][0]["cls"] == "caries_noncavitated"
+        assert resp.json()["detections"][0]["cls"] == "caries_primary"
         repo.photos[IMG_PATH] = b"x" * 600_000
         big = c.post("/v1/ml/infer", json={"image_upload_id": IMG}, headers=auth(make_token(ADMIN)))
         assert big.status_code == 409 and _code(big) == "photo_not_processable"

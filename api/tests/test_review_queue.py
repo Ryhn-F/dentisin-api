@@ -39,7 +39,7 @@ def _review_body(**overrides: Any) -> dict[str, Any]:
         "decision": "annotated",
         "image_width": 1080,
         "image_height": 1440,
-        "boxes": [{"cls": "caries_cavitated", "x1": 10, "y1": 20.5, "x2": 50, "y2": 70}],
+        "boxes": [{"cls": "caries_permanent", "x1": 10, "y1": 20.5, "x2": 50, "y2": 70}],
         "notes": "lesi kecil di gigi depan",
     }
     body.update(overrides)
@@ -324,11 +324,27 @@ def test_review_completes_after_required_reviews(
     assert r3.status_code == 409 and _code(r3) == "queue_item_closed"
     stored = [rev for rev, _ in repo.reviews.values()]
     assert stored[0].boxes == [
-        {"cls": "caries_cavitated", "x1": 10.0, "y1": 20.5, "x2": 50.0, "y2": 70.0}
+        {"cls": "caries_permanent", "x1": 10.0, "y1": 20.5, "x2": 50.0, "y2": 70.0}
     ]
     assert stored[0].reviewer_id == ADMIN
     # completed items no longer listed
     assert client.get(Q, headers=auth(admin)).json()["items"] == []
+
+
+def test_review_accepts_both_dentition_classes(
+    client: TestClient, make_token: TokenFactory
+) -> None:
+    admin = make_token(ADMIN)
+    queue_id = _queued(client, admin, required_reviews=2)
+    boxes = [
+        {"cls": "caries_permanent", "x1": 10, "y1": 20, "x2": 50, "y2": 70},
+        {"cls": "caries_primary", "x1": 60, "y1": 20, "x2": 90, "y2": 70},
+    ]
+    resp = client.post(
+        f"{Q}/{queue_id}/review", json=_review_body(boxes=boxes), headers=auth(admin)
+    )
+    assert resp.status_code == 201
+    assert set(resp.json()).isdisjoint({"area", "rel_area", "severity"})
 
 
 def test_same_grader_twice_conflict(client: TestClient, make_token: TokenFactory) -> None:
@@ -402,12 +418,24 @@ BAD_REVIEWS: list[tuple[dict[str, Any], str]] = [
     ({"grader_pseudonym": "Dr. Budi Santoso"}, "real-name-like grader"),
     ({"grader_pseudonym": "x"}, "too short grader"),
     ({"boxes": [{"cls": "tooth", "x1": 1, "y1": 1, "x2": 5, "y2": 5}]}, "unknown class"),
-    ({"boxes": [{"cls": "caries_cavitated", "x1": 50, "y1": 1, "x2": 10, "y2": 5}]}, "x1>x2"),
-    ({"boxes": [{"cls": "caries_cavitated", "x1": 1, "y1": 1, "x2": 1.5, "y2": 5}]}, "<1px"),
-    ({"boxes": [{"cls": "caries_cavitated", "x1": 1, "y1": 1, "x2": 2000, "y2": 5}]}, "outside"),
-    ({"boxes": [{"cls": "caries_cavitated", "x1": -1, "y1": 1, "x2": 5, "y2": 5}]}, "negative"),
-    ({"boxes": [{"cls": "caries_cavitated", "x1": 1, "y1": 1, "x2": 5, "y2": 5, "s": 1}]}, "extra"),
-    ({"boxes": [{"cls": "caries_cavitated", "x1": "1", "y1": 1, "x2": 5, "y2": 5}]}, "str coord"),
+    (
+        {"boxes": [{"cls": "caries_cavitated", "x1": 1, "y1": 1, "x2": 5, "y2": 5}]},
+        "legacy cavitated",
+    ),
+    (
+        {"boxes": [{"cls": "caries_noncavitated", "x1": 1, "y1": 1, "x2": 5, "y2": 5}]},
+        "legacy noncav",
+    ),
+    (
+        {"boxes": [{"cls": "caries_primary", "x1": 1, "y1": 1, "x2": 5, "y2": 5, "rel_area": 0.1}]},
+        "box-size-derived field",
+    ),
+    ({"boxes": [{"cls": "caries_permanent", "x1": 50, "y1": 1, "x2": 10, "y2": 5}]}, "x1>x2"),
+    ({"boxes": [{"cls": "caries_permanent", "x1": 1, "y1": 1, "x2": 1.5, "y2": 5}]}, "<1px"),
+    ({"boxes": [{"cls": "caries_permanent", "x1": 1, "y1": 1, "x2": 2000, "y2": 5}]}, "outside"),
+    ({"boxes": [{"cls": "caries_permanent", "x1": -1, "y1": 1, "x2": 5, "y2": 5}]}, "negative"),
+    ({"boxes": [{"cls": "caries_permanent", "x1": 1, "y1": 1, "x2": 5, "y2": 5, "s": 1}]}, "extra"),
+    ({"boxes": [{"cls": "caries_permanent", "x1": "1", "y1": 1, "x2": 5, "y2": 5}]}, "str coord"),
     ({"boxes": []}, "annotated without boxes"),
     ({"decision": "no_finding"}, "boxes with no_finding"),
     ({"notes": "x" * 501}, "notes too long"),
@@ -416,7 +444,7 @@ BAD_REVIEWS: list[tuple[dict[str, Any], str]] = [
     ({"image_height": 20001}, "too tall"),
     ({"reviewer_id": ADMIN}, "unknown field"),
     (
-        {"boxes": [{"cls": "caries_cavitated", "x1": 1, "y1": 1, "x2": 5, "y2": 5}] * 101},
+        {"boxes": [{"cls": "caries_permanent", "x1": 1, "y1": 1, "x2": 5, "y2": 5}] * 101},
         "too many boxes",
     ),
 ]
@@ -442,7 +470,7 @@ def test_review_nan_rejected(client: TestClient, make_token: TokenFactory) -> No
     queue_id = _queued(client, admin)
     raw = (
         '{"grader_pseudonym":"drg-a1","decision":"annotated","image_width":100,'
-        '"image_height":100,"boxes":[{"cls":"caries_cavitated","x1":NaN,"y1":1,"x2":5,"y2":5}]}'
+        '"image_height":100,"boxes":[{"cls":"caries_permanent","x1":NaN,"y1":1,"x2":5,"y2":5}]}'
     )
     resp = client.post(
         f"{Q}/{queue_id}/review",
