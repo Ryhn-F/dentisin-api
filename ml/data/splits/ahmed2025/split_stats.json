@@ -1,0 +1,114 @@
+{
+ "per_split": {
+  "test": {
+   "images": 940,
+   "groups": 96,
+   "images_with_boxes": 332,
+   "boxes_by_source_class": {
+    "D": 1026,
+    "d": 69
+   },
+   "images_with_label_defects": 6,
+   "positive_fraction": 0.3532,
+   "by_subset": {
+    "no_retractors": 410,
+    "pilot": 121,
+    "retractors": 409
+   },
+   "by_view": {
+    "Frontal": 164,
+    "Left_Lateral": 164,
+    "Mandibular": 163,
+    "Maxillary_Occlusal": 164,
+    "Right_Lateral": 164,
+    "frontal": 25,
+    "leftLateral": 24,
+    "mandibular": 24,
+    "maxillary": 24,
+    "rightLateral": 24
+   },
+   "by_device": {
+    "-": 819,
+    "SM-A045F": 15,
+    "SM-A235F": 46,
+    "SM-N985F": 60
+   }
+  },
+  "train": {
+   "images": 4387,
+   "groups": 460,
+   "images_with_boxes": 1499,
+   "boxes_by_source_class": {
+    "D": 4221,
+    "d": 426
+   },
+   "images_with_label_defects": 7,
+   "positive_fraction": 0.3417,
+   "by_subset": {
+    "no_retractors": 1937,
+    "pilot": 518,
+    "retractors": 1932
+   },
+   "by_view": {
+    "Frontal": 774,
+    "Left_Lateral": 774,
+    "Mandibular": 775,
+    "Maxillary_Occlusal": 775,
+    "Right_Lateral": 771,
+    "frontal": 106,
+    "leftLateral": 101,
+    "mandibular": 103,
+    "maxillary": 104,
+    "rightLateral": 104
+   },
+   "by_device": {
+    "-": 3869,
+    "SM-A045F": 149,
+    "SM-A235F": 249,
+    "SM-N985F": 120
+   }
+  },
+  "val": {
+   "images": 938,
+   "groups": 101,
+   "images_with_boxes": 317,
+   "boxes_by_source_class": {
+    "D": 887,
+    "d": 57
+   },
+   "images_with_label_defects": 3,
+   "positive_fraction": 0.338,
+   "by_subset": {
+    "no_retractors": 405,
+    "pilot": 121,
+    "retractors": 412
+   },
+   "by_view": {
+    "Frontal": 165,
+    "Left_Lateral": 162,
+    "Mandibular": 162,
+    "Maxillary_Occlusal": 163,
+    "Right_Lateral": 165,
+    "frontal": 25,
+    "leftLateral": 24,
+    "mandibular": 24,
+    "maxillary": 24,
+    "rightLateral": 24
+   },
+   "by_device": {
+    "-": 817,
+    "SM-A045F": 21,
+    "SM-A235F": 50,
+    "SM-N985F": 50
+   }
+  }
+ },
+ "leakage": {
+  "images_without_group_row": 0,
+  "groups_in_multiple_splits": 0,
+  "records_in_multiple_splits": 0,
+  "pairs_checked": 65,
+  "cross_split_pairs": 0,
+  "cross_split_pair_examples": []
+ }
+}

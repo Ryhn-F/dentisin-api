@@ -1,0 +1,130 @@
+{
+ "images": 6265,
+ "label_files": 2245,
+ "empty_label_files": 65,
+ "boxes": 6740,
+ "class_histogram": {
+  "0": 6188,
+  "1": 552
+ },
+ "class_histogram_by_name": {
+  "D": 6188,
+  "d": 552
+ },
+ "box_area_histogram": {
+  "<=0.0025": 1,
+  "<=0.01": 28,
+  "<=0.04": 5736,
+  "<=0.16": 975
+ },
+ "images_per_folder": {
+  "Images/no_retractors/Frontal": 550,
+  "Images/no_retractors/Left_Lateral": 550,
+  "Images/no_retractors/Mandibular": 551,
+  "Images/no_retractors/Maxillary_Occlusal": 551,
+  "Images/no_retractors/Right_Lateral": 550,
+  "Images/pilot/Frontal": 156,
+  "Images/pilot/Left_Lateral": 149,
+  "Images/pilot/Mandibular": 151,
+  "Images/pilot/Maxillary_Occlusal": 152,
+  "Images/pilot/Right_Lateral": 152,
+  "Images/retractors/Frontal": 553,
+  "Images/retractors/Left_Lateral": 550,
+  "Images/retractors/Mandibular": 549,
+  "Images/retractors/Maxillary_Occlusal": 551,
+  "Images/retractors/Right_Lateral": 550
+ },
+ "images_without_label": {
+  "count": 4038,
+  "examples": [
+   "Images/no_retractors/Frontal/anonymous_002-007-1425-00_1733985413148_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1003-00_1731041803319_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1004-00_1731042060585_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1006-00_1731044633484_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1008-00_1731046769270_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1010-00_1731050226585_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1012-00_1731052265486_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1022-00_1731213200765_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1033-00_1731299676705_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1035-00_1731301508894_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1037-00_1731303473745_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1039-00_1731308349671_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1041-00_1731310888841_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1042-00_1731311050235_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1044-00_1731313465914_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1056-00_1731387137891_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1058-00_1731390028166_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1060-00_1731392641455_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1062-00_1731395133625_Frontal_View.jpg",
+   "Images/no_retractors/Frontal/anonymous_003-007-1064-00_1731398214377_Frontal_View.jpg"
+  ]
+ },
+ "labels_without_image": {
+  "count": 18,
+  "examples": [
+   "Annotations/Darknet_YOLO/pilot/Mandibular/anonymous-1727845380707_Mandibular_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Mandibular/anonymous-1727846130649_Mandibular_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Mandibular/anonymous-1727849249910_Mandibular_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Mandibular/anonymous-1727849691134_Mandibular_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Mandibular/anonymous-1727850241443_Mandibular_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Mandibular/anonymous-1727852113159_Mandibular_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Mandibular/anonymous-1727852867244_Mandibular_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Mandibular/anonymous-1727856760983_Mandibular_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Mandibular/anonymous-1727857494246_Mandibular_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Maxillary_Occlusal/anonymous-1727845380707_Maxillary_Occlusal_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Maxillary_Occlusal/anonymous-1727849249910_Maxillary_Occlusal_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Maxillary_Occlusal/anonymous-1727849691134_Maxillary_Occlusal_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Maxillary_Occlusal/anonymous-1727850241443_Maxillary_Occlusal_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Maxillary_Occlusal/anonymous-1727852113159_Maxillary_Occlusal_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Maxillary_Occlusal/anonymous-1727852867244_Maxillary_Occlusal_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Maxillary_Occlusal/anonymous-1727856393586_Maxillary_Occlusal_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Maxillary_Occlusal/anonymous-1727856760983_Maxillary_Occlusal_View.txt",
+   "Annotations/Darknet_YOLO/pilot/Maxillary_Occlusal/anonymous-1727857494246_Maxillary_Occlusal_View.txt"
+  ]
+ },
+ "duplicate_stems": {
+  "count": 0,
+  "examples": []
+ },
+ "non_image_files": {
+  "count": 0,
+  "examples": []
+ },
+ "extension_mismatch": {
+  "count": 0,
+  "examples": []
+ },
+ "label_errors": {
+  "count": 42,
+  "examples": [
+   "Annotations/Darknet_YOLO/no_retractors/Frontal/anonymous_003-007-1214-00_1732862917124_Frontal_View.txt:1: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Frontal/anonymous_003-008-1188-00_1732714947165_Frontal_View.txt:1: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Frontal/anonymous_003-008-1188-00_1732714947165_Frontal_View.txt:2: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Frontal/anonymous_003-008-1188-00_1732714947165_Frontal_View.txt:3: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Frontal/anonymous_003-008-1188-00_1732714947165_Frontal_View.txt:4: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Frontal/anonymous_003-008-1188-00_1732714947165_Frontal_View.txt:5: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-007-1214-00_1732862917124_Left_Lateral_View.txt:1: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-008-1116-00_1732364867658_Left_Lateral_View.txt:1: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-008-1116-00_1732364867658_Left_Lateral_View.txt:2: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-008-1116-00_1732364867658_Left_Lateral_View.txt:3: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-008-1140-00_1732538036389_Left_Lateral_View.txt:1: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-008-1140-00_1732538036389_Left_Lateral_View.txt:2: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-008-1188-00_1732714947165_Left_Lateral_View.txt:1: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-008-1188-00_1732714947165_Left_Lateral_View.txt:2: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-008-1188-00_1732714947165_Left_Lateral_View.txt:3: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-008-1188-00_1732714947165_Left_Lateral_View.txt:4: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Left_Lateral/anonymous_003-008-1188-00_1732714947165_Left_Lateral_View.txt:5: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Right_Lateral/anonymous_003-008-1140-00_1732538036389_Right_Lateral_View.txt:1: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Right_Lateral/anonymous_003-008-1188-00_1732714947165_Right_Lateral_View.txt:1: coordinate outside [0, 1]",
+   "Annotations/Darknet_YOLO/no_retractors/Right_Lateral/anonymous_003-008-1188-00_1732714947165_Right_Lateral_View.txt:2: coordinate outside [0, 1]"
+  ]
+ },
+ "errors": [
+  "42 invalid label lines"
+ ],
+ "warnings": [
+  "18 label files without image",
+  "4038 images without label file (negatives or missing?)"
+ ],
+ "ok": false
+}

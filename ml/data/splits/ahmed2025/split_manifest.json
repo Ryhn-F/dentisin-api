@@ -1,0 +1,30 @@
+{
+ "tool": "ml/data/scripts/make_splits.py",
+ "tool_version": "1.1.0",
+ "created_at": "2026-10-10T04:20:25.665564+00:00",
+ "splits_file": "splits.json",
+ "splits_sha256": "61b59b7b2a8a98908afe18b0419f457ccd0ac3dda47f3a53d28a570bab1fb625",
+ "input_file": "split_input.jsonl",
+ "canonical_sha256": "a1c15a6ba8fa448816ff7508a93b487481cba60f1706d2f4805413254200b11b",
+ "seed": 20261008,
+ "ratios": [
+  0.7,
+  0.15,
+  0.15
+ ],
+ "group_mode": "session_csv",
+ "group_quality": "heuristic_session",
+ "image_counts": {
+  "train": 4387,
+  "val": 938,
+  "test": 940
+ },
+ "group_counts": {
+  "train": 460,
+  "val": 101,
+  "test": 96
+ },
+ "limitations": [
+  "Patient groups are HEURISTIC (capture-time sessions from EXIF or filename timestamps). Two children photographed within the session gap merge (harmless); one child photographed across a gap splits (leak risk)."
+ ]
+}

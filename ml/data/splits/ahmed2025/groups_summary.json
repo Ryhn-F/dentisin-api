@@ -1,0 +1,65 @@
+{
+ "images": 6265,
+ "images_main": 5505,
+ "images_pilot": 760,
+ "main_records": 1122,
+ "groups": 657,
+ "groups_main": 560,
+ "groups_pilot": 97,
+ "pilot_images_merged_into_main_groups": 65,
+ "group_size_hist": {
+  "1": 1,
+  "2": 1,
+  "4": 2,
+  "5": 68,
+  "6": 3,
+  "7": 3,
+  "8": 2,
+  "9": 6,
+  "10": 557,
+  "11": 3,
+  "12": 1,
+  "15": 2,
+  "20": 8
+ },
+ "pilot_devices": {
+  "SM-N985F": 230,
+  "SM-A045F": 185,
+  "SM-A235F": 345
+ },
+ "images_with_boxes": 2148,
+ "boxes_by_source_class": {
+  "d": 552,
+  "D": 6134
+ },
+ "images_with_label_defects": 16,
+ "orphan_label_files": [
+  "anonymous-1727845380707_Mandibular_View",
+  "anonymous-1727845380707_Maxillary_Occlusal_View",
+  "anonymous-1727846130649_Mandibular_View",
+  "anonymous-1727849249910_Mandibular_View",
+  "anonymous-1727849249910_Maxillary_Occlusal_View",
+  "anonymous-1727849691134_Mandibular_View",
+  "anonymous-1727849691134_Maxillary_Occlusal_View",
+  "anonymous-1727850241443_Mandibular_View",
+  "anonymous-1727850241443_Maxillary_Occlusal_View",
+  "anonymous-1727852113159_Mandibular_View",
+  "anonymous-1727852113159_Maxillary_Occlusal_View",
+  "anonymous-1727852867244_Mandibular_View",
+  "anonymous-1727852867244_Maxillary_Occlusal_View",
+  "anonymous-1727856393586_Maxillary_Occlusal_View",
+  "anonymous-1727856760983_Mandibular_View",
+  "anonymous-1727856760983_Maxillary_Occlusal_View",
+  "anonymous-1727857494246_Mandibular_View",
+  "anonymous-1727857494246_Maxillary_Occlusal_View"
+ ],
+ "rules": {
+  "link_gap_s": 600.0,
+  "pair_gap_s": 1800.0,
+  "pilot_gap_s": 900.0,
+  "pilot_main_gap_s": 900.0,
+  "main": "consecutive records linked if gap <= link_gap_s, or retractors->no_retractors within pair_gap_s",
+  "pilot": "per EXIF Model timeline; gap > pilot_gap_s starts a new group",
+  "pilot_main": "pilot image within pilot_main_gap_s of a main record -> groups merged"
+ }
+}

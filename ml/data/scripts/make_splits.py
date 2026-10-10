@@ -8,6 +8,9 @@ Grouping modes (``--group-mode``), strongest first:
 - ``metadata_csv``   -- ``--metadata-csv`` with columns ``image`` and ``--id-column``.
 - ``regex``          -- ``--patient-regex`` with a named group ``(?P<patient>...)`` applied to the
                          image path (only valid after inspecting real filenames).
+- ``session_csv``    -- HEURISTIC groups precomputed by a dataset-specific script (e.g.
+                         ``ahmed2025_groups.py``: filename record ids/timestamps + EXIF device), given as
+                         ``--metadata-csv`` (columns ``image`` + ``--id-column``). Quality = heuristic_session.
 - ``exif_session``   -- HEURISTIC: images whose EXIF capture times are within ``--session-gap-s``
                          seconds of each other form one session ~ one patient. Default timeline is
                          global (``--session-folder-level 0``): Ahmed 2025 stores the 5 views of one
@@ -40,13 +43,14 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 SPLIT_NAMES: tuple[str, ...] = ("train", "val", "test")
-TOOL_VERSION = "1.0.0"
+TOOL_VERSION = "1.1.0"
 
 GROUP_QUALITY = {
     "patient_field": "patient",
     "metadata_csv": "patient",
     "regex": "patient_derived",
     "exif_session": "heuristic_session",
+    "session_csv": "heuristic_session",
     "image": "none",
 }
 
@@ -54,7 +58,7 @@ LIMITATIONS = {
     "patient": [],
     "patient_derived": ["Patient id derived from filenames by regex; correctness depends on the naming scheme."],
     "heuristic_session": [
-        "Patient groups are HEURISTIC (EXIF capture-time sessions). Two children photographed within the "
+        "Patient groups are HEURISTIC (capture-time sessions from EXIF or filename timestamps). Two children photographed within the "
         "session gap merge (harmless); one child photographed across a gap splits (leak risk).",
     ],
     "none": [
@@ -123,7 +127,7 @@ def group_by_regex(images: Sequence[str], pattern: str) -> dict[str, str]:
     return out
 
 
-def group_by_metadata(images: Sequence[str], csv_path: Path, id_column: str) -> dict[str, str]:
+def group_by_metadata(images: Sequence[str], csv_path: Path, id_column: str, *, prefix: str = "meta") -> dict[str, str]:
     with csv_path.open(encoding="utf-8", newline="") as fh:
         rows = {row["image"]: row.get(id_column, "") for row in csv.DictReader(fh)}
     out: dict[str, str] = {}
@@ -131,7 +135,7 @@ def group_by_metadata(images: Sequence[str], csv_path: Path, id_column: str) -> 
         pid = rows.get(img)
         if not pid:
             raise SplitError(f"metadata CSV has no {id_column!r} for {img}")
-        out[img] = f"meta:{pid}"
+        out[img] = f"{prefix}:{pid}"
     return out
 
 
@@ -324,6 +328,7 @@ def write_outputs(
     group_mode: str,
     canonical_sha256: str | None,
     extra_limitations: Sequence[str] = (),
+    input_file: str | None = None,
     now: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> dict[str, Any]:
     check_no_leak(splits)
@@ -339,6 +344,7 @@ def write_outputs(
         "created_at": now().isoformat(),
         "splits_file": "splits.json",
         "splits_sha256": hashlib.sha256(data).hexdigest(),
+        "input_file": input_file,
         "canonical_sha256": canonical_sha256,
         "seed": splits["seed"],
         "ratios": splits["ratios"],
@@ -379,10 +385,10 @@ def main(argv: list[str] | None = None) -> int:
         mode = args.group_mode
         if mode == "patient_field":
             groups = group_by_field(records)
-        elif mode == "metadata_csv":
+        elif mode in ("metadata_csv", "session_csv"):
             if args.metadata_csv is None:
                 raise SplitError("--metadata-csv required")
-            groups = group_by_metadata(images, args.metadata_csv, args.id_column)
+            groups = group_by_metadata(images, args.metadata_csv, args.id_column, prefix="meta" if mode == "metadata_csv" else "sess")
         elif mode == "regex":
             if not args.patient_regex:
                 raise SplitError("--patient-regex required")
@@ -405,7 +411,8 @@ def main(argv: list[str] | None = None) -> int:
         positives = {r["image"]: bool(r.get("boxes")) for r in records}
         splits = build_splits(groups, positives, parse_ratios(args.ratios), args.seed, stratify=not args.no_stratify)
         manifest = write_outputs(splits, args.out_dir, group_mode=mode,
-                                 canonical_sha256=sha256_file(args.canonical), extra_limitations=extra)
+                                 canonical_sha256=sha256_file(args.canonical), extra_limitations=extra,
+                                 input_file=args.canonical.name)
     except SplitError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

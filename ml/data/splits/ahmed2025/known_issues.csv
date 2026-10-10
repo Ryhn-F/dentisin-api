@@ -1,0 +1,100 @@
+image,issue,detail
+(no image) anonymous-1727845380707_Mandibular_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727845380707_Maxillary_Occlusal_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727846130649_Mandibular_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727849249910_Mandibular_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727849249910_Maxillary_Occlusal_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727849691134_Mandibular_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727849691134_Maxillary_Occlusal_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727850241443_Mandibular_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727850241443_Maxillary_Occlusal_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727852113159_Mandibular_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727852113159_Maxillary_Occlusal_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727852867244_Mandibular_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727852867244_Maxillary_Occlusal_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727856393586_Maxillary_Occlusal_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727856760983_Mandibular_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727856760983_Maxillary_Occlusal_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727857494246_Mandibular_View,orphan_label_file,label file whose image is not in Dataset.zip
+(no image) anonymous-1727857494246_Maxillary_Occlusal_View,orphan_label_file,label file whose image is not in Dataset.zip
+Dataset/Images/no_retractors/Frontal/anonymous_003-007-1214-00_1732862917124_Frontal_View.jpg,label_box_outside_image,"1 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/no_retractors/Frontal/anonymous_003-008-1188-00_1732714947165_Frontal_View.jpg,label_box_outside_image,"5 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/no_retractors/Left_Lateral/anonymous_003-007-1214-00_1732862917124_Left_Lateral_View.jpg,label_box_outside_image,"1 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/no_retractors/Left_Lateral/anonymous_003-008-1116-00_1732364867658_Left_Lateral_View.jpg,label_box_outside_image,"3 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/no_retractors/Left_Lateral/anonymous_003-008-1140-00_1732538036389_Left_Lateral_View.jpg,label_box_outside_image,"2 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/no_retractors/Left_Lateral/anonymous_003-008-1188-00_1732714947165_Left_Lateral_View.jpg,label_box_outside_image,"5 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/no_retractors/Right_Lateral/anonymous_003-008-1140-00_1732538036389_Right_Lateral_View.jpg,label_box_outside_image,"1 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/no_retractors/Right_Lateral/anonymous_003-008-1188-00_1732714947165_Right_Lateral_View.jpg,label_box_outside_image,"5 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727864379482.jpg,duplicate_of,Dataset/Images/retractors/Frontal/anonymous_003_103_297_01_1727863917233_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727864790998.jpg,duplicate_of,Dataset/Images/no_retractors/Frontal/anonymous_003_103_298_00_1727864717921_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727868181581.jpg,duplicate_of,Dataset/Images/retractors/Frontal/anonymous_003_103_299_01_1727868080003_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727868567499.jpg,duplicate_of,Dataset/Images/no_retractors/Frontal/anonymous_003_103_300_00_1727868501855_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727870763972.jpg,duplicate_of,Dataset/Images/retractors/Frontal/anonymous_003_103_301_01_1727870655318_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727871419789.jpg,duplicate_of,Dataset/Images/no_retractors/Frontal/anonymous_003_103_303_00_1727871236587_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727873577995.jpg,duplicate_of,Dataset/Images/retractors/Frontal/anonymous_003_103_304_01_1727873448702_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727873972321.jpg,duplicate_of,Dataset/Images/no_retractors/Frontal/anonymous_003_103_305_00_1727873872476_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727875640825.jpg,duplicate_of,Dataset/Images/retractors/Frontal/anonymous_003_103_306_01_1727875509639_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727876003614.jpg,duplicate_of,Dataset/Images/no_retractors/Frontal/anonymous_003_103_307_00_1727875920267_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727877290347.jpg,duplicate_of,Dataset/Images/retractors/Frontal/anonymous_003_103_308_01_1727877227409_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727877582333.jpg,duplicate_of,Dataset/Images/no_retractors/Frontal/anonymous_003_103_309_00_1727877534946_Frontal_View.jpg
+Dataset/Images/pilot/Frontal/anonymous-frontalView-1727879831516.jpg,duplicate_of,Dataset/Images/no_retractors/Frontal/anonymous_003_103_310_00_1727879635589_Frontal_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727864514194.jpg,duplicate_of,Dataset/Images/retractors/Left_Lateral/anonymous_003_103_297_01_1727863917233_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727864964644.jpg,duplicate_of,Dataset/Images/no_retractors/Left_Lateral/anonymous_003_103_298_00_1727864717921_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727868277532.jpg,duplicate_of,Dataset/Images/retractors/Left_Lateral/anonymous_003_103_299_01_1727868080003_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727868672042.jpg,duplicate_of,Dataset/Images/no_retractors/Left_Lateral/anonymous_003_103_300_00_1727868501855_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727870920176.jpg,duplicate_of,Dataset/Images/retractors/Left_Lateral/anonymous_003_103_301_01_1727870655318_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727871554832.jpg,duplicate_of,Dataset/Images/no_retractors/Left_Lateral/anonymous_003_103_303_00_1727871236587_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727873698984.jpg,duplicate_of,Dataset/Images/retractors/Left_Lateral/anonymous_003_103_304_01_1727873448702_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727874131436.jpg,duplicate_of,Dataset/Images/no_retractors/Left_Lateral/anonymous_003_103_305_00_1727873872476_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727875767700.jpg,duplicate_of,Dataset/Images/retractors/Left_Lateral/anonymous_003_103_306_01_1727875509639_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727876098461.jpg,duplicate_of,Dataset/Images/no_retractors/Left_Lateral/anonymous_003_103_307_00_1727875920267_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727877375379.jpg,duplicate_of,Dataset/Images/retractors/Left_Lateral/anonymous_003_103_308_01_1727877227409_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727877664761.jpg,duplicate_of,Dataset/Images/no_retractors/Left_Lateral/anonymous_003_103_309_00_1727877534946_Left_Lateral_View.jpg
+Dataset/Images/pilot/Left_Lateral/anonymous-leftLateralView-1727879926503.jpg,duplicate_of,Dataset/Images/no_retractors/Left_Lateral/anonymous_003_103_310_00_1727879635589_Left_Lateral_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727864656191.jpg,duplicate_of,Dataset/Images/retractors/Mandibular/anonymous_003_103_297_01_1727863917233_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727865092793.jpg,duplicate_of,Dataset/Images/no_retractors/Mandibular/anonymous_003_103_298_00_1727864717921_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727868418747.jpg,duplicate_of,Dataset/Images/retractors/Mandibular/anonymous_003_103_299_01_1727868080003_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727868820474.jpg,duplicate_of,Dataset/Images/no_retractors/Mandibular/anonymous_003_103_300_00_1727868501855_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727871049870.jpg,duplicate_of,Dataset/Images/retractors/Mandibular/anonymous_003_103_301_01_1727870655318_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727871833598.jpg,duplicate_of,Dataset/Images/no_retractors/Mandibular/anonymous_003_103_303_00_1727871236587_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727873809936.jpg,duplicate_of,Dataset/Images/retractors/Mandibular/anonymous_003_103_304_01_1727873448702_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727874329470.jpg,duplicate_of,Dataset/Images/no_retractors/Mandibular/anonymous_003_103_305_00_1727873872476_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727875877197.jpg,duplicate_of,Dataset/Images/retractors/Mandibular/anonymous_003_103_306_01_1727875509639_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727876204700.jpg,duplicate_of,Dataset/Images/no_retractors/Mandibular/anonymous_003_103_307_00_1727875920267_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727877464494.jpg,duplicate_of,Dataset/Images/retractors/Mandibular/anonymous_003_103_308_01_1727877227409_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727877767615.jpg,duplicate_of,Dataset/Images/no_retractors/Mandibular/anonymous_003_103_309_00_1727877534946_Mandibular_View.jpg
+Dataset/Images/pilot/Mandibular/anonymous-mandibularView-1727880039817.jpg,duplicate_of,Dataset/Images/no_retractors/Mandibular/anonymous_003_103_310_00_1727879635589_Mandibular_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727864559466.jpg,duplicate_of,Dataset/Images/retractors/Maxillary_Occlusal/anonymous_003_103_297_01_1727863917233_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727865011963.jpg,duplicate_of,Dataset/Images/no_retractors/Maxillary_Occlusal/anonymous_003_103_298_00_1727864717921_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727868347839.jpg,duplicate_of,Dataset/Images/retractors/Maxillary_Occlusal/anonymous_003_103_299_01_1727868080003_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727868739995.jpg,duplicate_of,Dataset/Images/no_retractors/Maxillary_Occlusal/anonymous_003_103_300_00_1727868501855_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727870975790.jpg,duplicate_of,Dataset/Images/retractors/Maxillary_Occlusal/anonymous_003_103_301_01_1727870655318_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727871602633.jpg,duplicate_of,Dataset/Images/no_retractors/Maxillary_Occlusal/anonymous_003_103_303_00_1727871236587_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727873753992.jpg,duplicate_of,Dataset/Images/retractors/Maxillary_Occlusal/anonymous_003_103_304_01_1727873448702_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727874204253.jpg,duplicate_of,Dataset/Images/no_retractors/Maxillary_Occlusal/anonymous_003_103_305_00_1727873872476_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727875819210.jpg,duplicate_of,Dataset/Images/retractors/Maxillary_Occlusal/anonymous_003_103_306_01_1727875509639_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727876144453.jpg,duplicate_of,Dataset/Images/no_retractors/Maxillary_Occlusal/anonymous_003_103_307_00_1727875920267_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727877409990.jpg,duplicate_of,Dataset/Images/retractors/Maxillary_Occlusal/anonymous_003_103_308_01_1727877227409_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727877709208.jpg,duplicate_of,Dataset/Images/no_retractors/Maxillary_Occlusal/anonymous_003_103_309_00_1727877534946_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Maxillary_Occlusal/anonymous-maxillaryView-1727879986025.jpg,duplicate_of,Dataset/Images/no_retractors/Maxillary_Occlusal/anonymous_003_103_310_00_1727879635589_Maxillary_Occlusal_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727864470758.jpg,duplicate_of,Dataset/Images/retractors/Right_Lateral/anonymous_003_103_297_01_1727863917233_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727864925514.jpg,duplicate_of,Dataset/Images/no_retractors/Right_Lateral/anonymous_003_103_298_00_1727864717921_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727868231772.jpg,duplicate_of,Dataset/Images/retractors/Right_Lateral/anonymous_003_103_299_01_1727868080003_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727868621582.jpg,duplicate_of,Dataset/Images/no_retractors/Right_Lateral/anonymous_003_103_300_00_1727868501855_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727870857602.jpg,duplicate_of,Dataset/Images/retractors/Right_Lateral/anonymous_003_103_301_01_1727870655318_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727871487401.jpg,duplicate_of,Dataset/Images/no_retractors/Right_Lateral/anonymous_003_103_303_00_1727871236587_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727873648476.jpg,duplicate_of,Dataset/Images/retractors/Right_Lateral/anonymous_003_103_304_01_1727873448702_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727874072518.jpg,duplicate_of,Dataset/Images/no_retractors/Right_Lateral/anonymous_003_103_305_00_1727873872476_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727875722314.jpg,duplicate_of,Dataset/Images/retractors/Right_Lateral/anonymous_003_103_306_01_1727875509639_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727876053493.jpg,duplicate_of,Dataset/Images/no_retractors/Right_Lateral/anonymous_003_103_307_00_1727875920267_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727877334079.jpg,duplicate_of,Dataset/Images/retractors/Right_Lateral/anonymous_003_103_308_01_1727877227409_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727877627985.jpg,duplicate_of,Dataset/Images/no_retractors/Right_Lateral/anonymous_003_103_309_00_1727877534946_Right_Lateral_View.jpg
+Dataset/Images/pilot/Right_Lateral/anonymous-rightLateralView-1727879886967.jpg,duplicate_of,Dataset/Images/no_retractors/Right_Lateral/anonymous_003_103_310_00_1727879635589_Right_Lateral_View.jpg
+Dataset/Images/retractors/Frontal/anonymous_003-007-1141-01_1732595713489_Frontal_View.jpg,label_box_outside_image,"1 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/retractors/Frontal/anonymous_003-007-1209-01_1732857661861_Frontal_View.jpg,label_box_outside_image,"1 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/retractors/Frontal/anonymous_003-008-1139-01_1732537527555_Frontal_View.jpg,label_box_outside_image,"3 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/retractors/Left_Lateral/anonymous_003-008-1139-01_1732537527555_Left_Lateral_View.jpg,label_box_outside_image,"3 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/retractors/Left_Lateral/anonymous_003-008-1187-01_1732714576631_Left_Lateral_View.jpg,label_box_outside_image,"2 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/retractors/Right_Lateral/anonymous_003-007-1213-01_1732862150627_Right_Lateral_View.jpg,label_box_outside_image,"1 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/retractors/Right_Lateral/anonymous_003-008-1115-01_1732364427758_Right_Lateral_View.jpg,label_box_outside_image,"3 YOLO line(s) outside [0,1]; exclude image or drop boxes"
+Dataset/Images/retractors/Right_Lateral/anonymous_003-008-1187-01_1732714576631_Right_Lateral_View.jpg,label_box_outside_image,"5 YOLO line(s) outside [0,1]; exclude image or drop boxes"

@@ -1,16 +1,37 @@
-# Class map for Ahmed 2025 (Zenodo 14827784) -> DentisAI canonical classes.
-# STATUS: PLACEHOLDER. The real label names/ids were NOT inspected (dataset not downloaded here).
-# Steps (see ../scripts/fetch_ahmed2025.md):
-#   1. Download, then read classes from the COCO 'categories' / YOLO classes file / data.yaml.
-#   2. Put the YOLO id order into `yolo_names` and list every source name under `map`.
-#   3. Decide each mapping WITH the supervising dentist (drg): which source labels mean
-#      cavitated vs non-cavitated? If the dataset has a single "caries" label, mapping it to
-#      caries_cavitated is a clinical decision and `caries_noncavitated` will have NO training data.
-#   4. Values: caries_cavitated | caries_noncavitated | __drop__ ; null = undecided -> converter refuses.
-#   5. Set status: reviewed, reviewed_by, reviewed_at.
-status: PLACEHOLDER
-reviewed_by: null
+# Class map for Ahmed 2025 (Zenodo 14827784, v1, Dataset.zip md5 89307871ac2f08f4a8f3a7da1f18db31)
+# -> DentisAI canonical classes (ADR 014): caries_permanent | caries_primary | __drop__ ; null = undecided.
+#
+# STATUS: decided by the product owner in ADR 014 (2026-10-10). This is a product decision about
+# which classes the detector outputs, not a clinical validation: no drg has reviewed the labels.
+#
+# Verified source labels (YOLO has no classes.txt; ids proven by matching every YOLO line to the
+# LabelMe rectangle of the same file: 6,228/6,228 id0->"D", 552/552 id1->"d", centres within 3 px):
+#   id 0 "D"  — decay in a PERMANENT tooth  (6,228 boxes in LabelMe/VOC; 6,188 valid YOLO lines)
+#   id 1 "d"  — decay in a PRIMARY tooth    (  554 boxes in LabelMe/VOC;   552 valid YOLO lines)
+#   (paper: "'d' and 'D' denoting primary and permanent tooth decay"; a box surrounds "a tooth with
+#    visible decay" -> boxes are TOOTH-level, not lesion-level)
+#   COCO json files use DIFFERENT category ids per file (test.json: 1=D,2=d; train/valid.json: 1=d,2=D)
+#   -> always map by NAME, never by COCO id.
+#   LabelMe-only extras (not exported to YOLO/VOC/COCO, undocumented): "M" x44, "m" x1, 2 "line" shapes.
+#
+# Rationale (ADR 014): the dataset encodes DENTITION, not severity — there is no cavitated vs
+# non-cavitated distinction, so classes follow the labels (permanent vs primary tooth), which also
+# matches the app's age focus. Severity must NEVER be inferred from box size: boxes cover whole
+# teeth and tooth size varies between people and tooth types. Model output = "indication to be
+# checked on a primary/permanent tooth", never a diagnosis or a severity grade.
+status: decided
+decision_ref: "docs/decisions/014-detection-classes-by-dentition.md"
+decided_by: product_owner
+decided_at: "2026-10-10"
+reviewed_by: null   # no drg review yet (no clinical claims, ADR 014)
 reviewed_at: null
-yolo_names: []          # [PERLU VERIFIKASI] fill from the dataset in id order
+source:
+  dataset: ahmed2025
+  verified_at: "2026-10-09"
+  evidence: "../DATASET_REPORT.md §3"
+yolo_names: ["D", "d"]   # VERIFIED (id order), see header
 map:
-  caries: null          # [PERLU VERIFIKASI] placeholder name; replace with the real label names
+  D: caries_permanent   # ADR 014 §1
+  d: caries_primary     # ADR 014 §1
+  M: __drop__   # LabelMe-only, undocumented meaning, absent from YOLO/VOC/COCO [PERLU VERIFIKASI with authors]
+  m: __drop__   # LabelMe-only, 1 box, undocumented

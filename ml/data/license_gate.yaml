@@ -5,30 +5,52 @@
 # status (datasets):  allowed | blocked_unverified | internal_only | forbidden
 # status (models):    candidate | forbidden_in_product
 # "verified: true" ONLY when a person (or agent) actually read the LICENSE / record page; cite it.
+# models.<id>.{code,weights}.owner_accepted_risk (optional, default false): the product owner accepted an
+#   UNVERIFIED licence for a stated scope. It never makes `verified` true. Required companions:
+#   owner_accepted_risk_at (date), owner_accepted_risk_reason, owner_accepted_risk_ref (ADR). Gates should
+#   treat it as a distinct state ("owner_accepted_risk"): allowed for internal/competition use, but
+#   `export.py --release` for commercial/public distribution must still refuse until verified.
 schema_version: 1
-updated_at: "2026-10-08"
+updated_at: "2026-10-10"
 
 datasets:
   ahmed2025:
     name: "Annotated intraoral image dataset for dental caries detection"
     url: "https://zenodo.org/records/14827784"
     doi: "10.5281/zenodo.14827784"
+    concept_doi: "10.5281/zenodo.14827783"   # all versions; v1 is the only (and latest) version
     version: "v1"
+    published: "2025-02-07"
+    creators: ["Ahmed, Syed Muhammad Faizan", "Ghori, Huzaifa", "Khalid, Aamna", "Nooruddin, Ayesha",
+               "Adnan, Niha", "Lal, Abhishek", "Umer, Fahad"]   # Zenodo creators, all Aga Khan University
+    article:   # companion data descriptor; the ARTICLE is CC BY-NC-ND 4.0 (do not copy its figures/text)
+      citation: "Ahmed SMF et al. Annotated intraoral image dataset for dental caries detection. Sci Data 12, 1297 (2025)"
+      doi: "10.1038/s41597-025-05647-9"
+      pmid: "40715095"
+      pmcid: "PMC12297690"
+      verified_source: "Europe PMC full text PMC12297690 (read 2026-10-09)"
+    files:   # Zenodo API https://zenodo.org/api/records/14827784 (read 2026-10-09); MD5 re-computed locally
+      - {key: "Dataset.zip", size: 1576115314, md5: "89307871ac2f08f4a8f3a7da1f18db31",
+         sha256: "4ea6f6be818702041d07409aa982ee1fb84e096bf53621475dba98e56551fc4c", downloaded_and_verified: "2026-10-09"}
+      - {key: "Data tree.txt", size: 4133, md5: "a56d8d3964bb2352d5ebb706c7a763dc",
+         sha256: "e546fb6b7a006fddc70600bf3a38d448d25910ea810351e2c68f9c28827600b6", downloaded_and_verified: "2026-10-09"}
+      - {key: "Benchmarking Dataset.zip", size: 1569536122, md5: "852520f16faf65f4704ee06bd82561fa",
+         sha256: null, downloaded_and_verified: null}   # not downloaded (disk); central directory read via HTTP Range only
     license: "CC-BY-4.0"
     license_url: "https://creativecommons.org/licenses/by/4.0/"
     license_verified: true
-    verified_source: "Zenodo record page https://zenodo.org/records/14827784 (read 2026-10-08)"
+    verified_source: "Zenodo record page (read 2026-10-08) + Zenodo REST API metadata.license.id = cc-by-4.0 (read 2026-10-09)"
     status: allowed
     may_upload_to_third_party_compute: true   # public data -> Kaggle/Colab allowed
     attribution_en: >-
-      Contains data from "Annotated intraoral image dataset for dental caries detection" by
+      Contains data from "Annotated intraoral image dataset for dental caries detection" (v1, 2025) by
       S. M. F. Ahmed, H. Ghori, A. Khalid, A. Nooruddin, N. Adnan, A. Lal and F. Umer
       (Aga Khan University), Zenodo, doi:10.5281/zenodo.14827784, licensed under CC BY 4.0
       (https://creativecommons.org/licenses/by/4.0/). Changes: annotations re-mapped to DentisAI
       classes, images resized; the dataset was used to train a model.
     attribution_id: >-
       Model ini dilatih memakai data dari "Annotated intraoral image dataset for dental caries
-      detection" oleh S. M. F. Ahmed, H. Ghori, A. Khalid, A. Nooruddin, N. Adnan, A. Lal dan
+      detection" (v1, 2025) oleh S. M. F. Ahmed, H. Ghori, A. Khalid, A. Nooruddin, N. Adnan, A. Lal dan
       F. Umer (Aga Khan University), Zenodo, doi:10.5281/zenodo.14827784, lisensi CC BY 4.0
       (https://creativecommons.org/licenses/by/4.0/). Perubahan: label dipetakan ulang ke kelas
       DentisAI dan ukuran gambar diubah.
@@ -66,11 +88,11 @@ models:
       verified: true
       source: "https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE (read 2026-10-08); PyPI mediapipe-model-maker 0.2.1.4 license 'Apache 2.0'"
     weights:
-      license: null
-      verified: false   # [PERLU VERIFIKASI] pretrained MobileNetV2/MultiHW-AVG checkpoint terms not stated on docs page
-      source: "https://developers.google.com/edge/mediapipe/solutions/customization/object_detector"
+      license: "Apache-2.0"
+      verified: true   # MOBILENET_V2 (i256) ONLY; other Model Maker variants not verified (adapter refuses them)
+      source: "Ckpt URL storage.googleapis.com/tf_model_garden/vision/qat/mobilenetv2_ssd_coco/mobilenetv2_ssd_i256_ckpt.tar.gz in https://github.com/google-ai-edge/mediapipe/blob/master/mediapipe/model_maker/python/vision/object_detector/model_spec.py; same checkpoint published by https://github.com/tensorflow/models/blob/master/official/projects/qat/vision/README.md (License section: Apache License 2.0; 'trained on COCO train set from scratch') (read 2026-10-09 ML engineer; re-read 2026-10-10 data engineer)"
     status: candidate
-    notes: "Docs page marked Deprecated ('no longer actively maintained'); last PyPI release 2024-04-22; classifiers Python 3.8-3.10."
+    notes: "Docs page marked Deprecated ('no longer actively maintained'); last PyPI release 2024-04-22; classifiers Python 3.8-3.10. Residual: COCO image provenance (detection/WEIGHT_LICENSES.md §2, Q-W2)."
   yolox_nano:
     code:
       license: "Apache-2.0"
@@ -78,30 +100,36 @@ models:
       source: "https://github.com/Megvii-BaseDetection/YOLOX/blob/main/LICENSE (read 2026-10-08; 'Copyright (c) 2021-2022 Megvii Inc.')"
     weights:
       license: null
-      verified: false   # [PERLU VERIFIKASI] yolox_nano.pth in GitHub releases; COCO-pretrained
-      source: "https://github.com/Megvii-BaseDetection/YOLOX/releases"
+      verified: false   # NO explicit weights licence ("implied Apache-2.0" is NOT verification)
+      owner_accepted_risk: true   # NOT a verification: product-owner risk acceptance (ADR 014 §5)
+      owner_accepted_risk_at: "2026-10-10"
+      owner_accepted_risk_reason: "competition use; implicit Apache-2.0 accepted by product owner; revisit before commercial/public release"
+      owner_accepted_risk_ref: "docs/decisions/014-detection-classes-by-dentition.md §5"
+      source: "yolox_nano.pth = release asset (0.1.1rc0) of the Apache-2.0 repo, no separate terms; maintainer question https://github.com/Megvii-BaseDetection/YOLOX/issues/1865 (2026-03-31) open with 0 comments (re-checked 2026-10-10)"
     status: candidate
-    notes: "PyPI 'yolox' 0.3.0 last uploaded 2022-04-22 -> install from a pinned git commit."
+    notes: "PyPI 'yolox' 0.3.0 last uploaded 2022-04-22 -> install from pinned commit 6ddff4824372906469a7fae2dc3206c7aa4bbaee (tags < 0.2.0 contained GPL-3.0 YOLOv5 code, YOLOX#765). Licence-free alternative: random init (see WEIGHT_LICENSES.md §3.1)."
   efficientdet_lite0:
     code:
       license: "Apache-2.0"
       verified: true
       source: "https://github.com/google/automl/blob/master/LICENSE (read 2026-10-08; 'Copyright 2020 Google Research')"
     weights:
-      license: null
-      verified: false   # [PERLU VERIFIKASI] Kaggle Models / TF Hub efficientdet-lite0 page did not render
-      source: "https://www.kaggle.com/models/tensorflow/efficientdet"
+      license: "Apache-2.0"
+      verified: true
+      source: "Kaggle Models API GET https://www.kaggle.com/api/v1/models/tensorflow/efficientdet/get: instances lite0-feature-vector, lite0-detection (TF2), lite0-detection-default/-metadata, lite0-int8 (TFLite) licenseName 'Apache 2.0' (read 2026-10-09 ML engineer; re-read 2026-10-10 data engineer)"
     status: candidate
+    notes: "Licence OK; toolchain risk: tflite-model-maker deprecated (last release 2024-01-23) -> fallback only."
   rfdetr_nano:
     code:
       license: "Apache-2.0"
-      verified: false   # README license section read; LICENSE file URL returned 404 -> [PERLU VERIFIKASI]
-      source: "https://github.com/roboflow/rf-detr README (read 2026-10-08): Nano/Small/Medium/Large Apache-2.0; XL/2XL (and per tables Atto/Femto/Pico) PML 1.0"
+      verified: true
+      source: "https://github.com/roboflow/rf-detr/blob/develop/LICENSE (default branch develop; Apache License 2.0) (read 2026-10-09; re-read 2026-10-10)"
     weights:
-      license: "Apache-2.0 (README table)"
-      verified: false
-      source: "https://github.com/roboflow/rf-detr"
+      license: "Apache-2.0"
+      verified: true   # RF-DETR-N only; Atto/Femto/Pico/XL/2XL = PML 1.0 -> never usable
+      source: "https://github.com/roboflow/rf-detr/blob/develop/README.md model table: RF-DETR-N 'Apache 2.0', Params 30.5 M (read 2026-10-09; re-read 2026-10-10)"
     status: candidate
+    notes: "EXCLUDED from the bake-off by size: 30.5 M params -> ~30 MB even at INT8 > 15 MB gate; no documented TFLite path."
   ultralytics_yolov8:
     code:
       license: "AGPL-3.0"
