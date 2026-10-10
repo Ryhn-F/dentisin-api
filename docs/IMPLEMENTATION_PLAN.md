@@ -3,6 +3,21 @@
 > Disusun 2026-10-09. Acuan: `PRD.md` §13 (timeline 10 minggu), `CLAUDE.md` backend §15 (pertanyaan terbuka), ADR 001/005/008/009/010. Minggu 1 = 8–14 Okt 2026.
 > Legenda: **[Selesai]** terbukti dijalankan · **[Ditulis]** ada kode tetapi belum terbukti di lingkungan asli · **[Terblokir]** menunggu pihak lain · 🧑 pemilik produk · 🦷 drg pembimbing · ⚖ penasihat hukum · 📱 tim frontend · 🤖 dikerjakan Claude (Opus high untuk area berat, Sonnet high untuk area kecil, Opus max hanya untuk bug sulit).
 
+## Status per 2026-10-10
+| Item | Status |
+|---|---|
+| 1.1 pgTAP asli, 1.5 hapus data e2e, 1.6 RLS lewat HTTP | **Selesai** (lokal): 217 tes pgTAP, 88/88 HTTP, 29/29 e2e; bug audit GoTrue diperbaiki (migrasi 20261010000100) |
+| 1.2 Auth dev (password 8, redirect, MFA off) | **Selesai** (push ke dev). Hook Send Email + CAPTCHA belum aktif |
+| 1.3 Pages `app.ryhnfir.dev` (callback + Turnstile) | **Selesai** (200). Mailer `mailer.ryhnfir.dev` (Vercel) **terblokir**: deployment gagal build, butuh Build Logs |
+| 1.4 dev/prod terpisah | **Ditunda** (prod disiapkan di akhir, keputusan pemilik) |
+| 1.7 backup `age` | Menunggu pemilik |
+| 1.9 Deno | **Selesai** (34 tes, CI job) |
+| 2.1–2.2 dataset + split | **Selesai** (heuristik per pasien, 0 kebocoran) |
+| 2.4 lisensi bobot | **Selesai**; YOLOX = `owner_accepted_risk` (ADR 014 §5) |
+| 2.3 pelatihan Kaggle | **Berjalan** (dijalankan pemilik) |
+| 2.5–2.7 ekspor INT8, spike S1, ADR 013 | Menunggu hasil pelatihan + HP uji |
+| ADR 014 (kelas D/d, tanpa keparahan dari ukuran kotak) | **Diterapkan** di ml, triase, API, DB, dokumen |
+
 ## Gerbang (gate) yang mengatur urutan
 | Gerbang | Isi | Target | Akibat bila belum |
 |---|---|---|---|
@@ -42,14 +57,14 @@ Tujuan: mengubah semua yang bertanda **[Ditulis]** menjadi **[Selesai]**.
 Tujuan: memilih detektor permisif dan membuktikan ekspor LiteRT INT8.
 | # | Pekerjaan | Pemilik | Model |
 |---|---|---|---|
-| 2.1 | Unduh Ahmed 2025 (CC BY 4.0), `verify_dataset.py`, tentukan pemetaan kelas (apakah ada non-kavitas?) | 🧑 + 🤖 | Opus high |
+| 2.1 | Unduh Ahmed 2025 (CC BY 4.0), `verify_dataset.py`, pemetaan kelas D→`caries_permanent`, d→`caries_primary` (ADR 014) **[Selesai]** | 🧑 + 🤖 | Opus high |
 | 2.2 | `make_splits.py` per pasien (heuristik EXIF) + simpan hash split | 🤖 | Sonnet high |
 | 2.3 | Latih kandidat #1 (YOLOX-Nano) & #2 (EfficientDet-Lite0 / MediaPipe Model Maker di env Py ≤ 3.10) di Kaggle/Colab — **data publik saja** | 🧑 jalankan | — |
 | 2.4 | Verifikasi lisensi **bobot** pra-latih tiap kandidat; isi `license_gate.yaml` | 🤖 + 🧑 | Opus high |
 | 2.5 | Ekspor INT8, `check_int8_parity.py`, gerbang ≤ 15 MB, tulis dekoder keluaran (`DECODE_SPEC.md`) | 🤖 | Opus high |
 | 2.6 | Spike S1 di ≥ 3 HP (RAM 3/4/6 GB) bersama 📱: latensi & memori | 📱 + 🧑 | — |
 | 2.7 | `bake_off/compare.py` → ADR hasil bake-off (ADR 013) | 🤖 | Sonnet high |
-**Keluar (G2):** 1 model terpilih; INT8 ≤ 15 MB; latensi terukur; lisensi bobot jelas; ADR 013. **Risiko:** sens kavitas di bawah target → turunkan klaim, pakai ukuran lebih besar. Bila Ahmed tak membedakan non-kavitas: `caries_noncavitated` ditunda ke data lokal.
+**Keluar (G2):** 1 model terpilih; INT8 ≤ 15 MB; latensi terukur; lisensi bobot jelas; ADR 013. **Risiko:** sens karies di bawah target → turunkan klaim, pakai ukuran lebih besar. Dataset Ahmed tidak membedakan kavitas/ non-kavitas dan kotaknya melingkupi seluruh gigi → tidak ada klaim kavitas/ keparahan (ADR 014).
 
 ## Fase 3 — Aturan klinis (minggu 3–6) → G1 → G4 **[Terblokir 🦷]**
 Tujuan: mengganti semua `PLACEHOLDER` dengan nilai yang ditandatangani drg.
@@ -83,7 +98,7 @@ Tujuan: artefak aturan/model sampai ke app secara terverifikasi dan dapat di-rol
 - 5.3 Hak hapus dari app → `deletion_request` → bukti; mode anak tanpa akun tidak mengirim apa pun.
 - 5.4 Pemantauan kuota gratis (DB 500 MB, storage 1 GB, MAU, email/hari) — view admin + peringatan.
 - 5.5 Telemetri agregat tanpa PII; verifikasi log tidak memuat PII/foto.
-- 5.6 Perbaiki kontrak: kuesioner 9 pertanyaan vs batas 7 layar (FR-10), `lesions[]` vs `teeth[]` — putuskan bersama 📱/🦷.
+- 5.6 Perbaiki kontrak: kuesioner 9 pertanyaan vs batas 7 layar (FR-10), `lesions[]` (keluaran triase; `teeth[]` di `app/CLAUDE.md` usang) — selaraskan dengan 📱; kuesioner 9 vs 7 layar → 🦷.
 **Keluar:** APK demo menjalankan skrining → triase → sinkron ke Supabase tanpa pelanggaran privasi.
 
 ## Fase 6 — Kesiapan uji lapangan (minggu 9) → G3

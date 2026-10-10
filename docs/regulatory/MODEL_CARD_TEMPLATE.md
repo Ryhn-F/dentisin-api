@@ -15,7 +15,7 @@
 | Entri CHANGELOG | `[ISI]` |
 
 ## 2. Tujuan penggunaan (intended use)
-- Alat bantu **skrining** (indikasi, bukan diagnosis) pada foto gigi depan anak usia sekolah oleh orang tua/kader, dengan rujukan ke dokter gigi. Bounding box untuk: `caries_cavitated`, `caries_noncavitated` (ADR 003, pembaruan) `[sesuaikan dengan labels.json: classes]`.
+- Alat bantu **skrining** (indikasi, bukan diagnosis) pada foto gigi depan anak usia sekolah oleh orang tua/kader, dengan rujukan ke dokter gigi. Bounding box untuk: `caries_permanent`, `caries_primary` (ADR 014; kotak hanya untuk overlay, bukan ukuran keparahan) `[sesuaikan dengan labels.json: classes]`.
 - Bukan untuk: diagnosis, keputusan terapi, rontgen, rongga mulut dewasa `[PERLU VERIFIKASI cakupan usia data]`, kelainan non-karies, abses/fistula (bukan target model v1).
 - Pengguna: orang tua, kader, guru UKS. Lingkungan: HP Android kelas menengah-bawah, offline, senter.
 - Tidak boleh dipakai di luar `intended_use` pada `labels.json`.
@@ -48,8 +48,9 @@ Rujuk `DATA_LINEAGE.md` (ID dataset) dan `ml/data/LICENSES.md` / `ml/data/licens
 
 | Kelas | Sens | Spes | PPV | NPV | mAP50 | n positif | n negatif | CI |
 |---|---|---|---|---|---|---|---|---|
-| caries_cavitated | `[ISI]` | `[ISI]` | `[ISI]` | `[ISI]` | `[ISI]` | `[ISI]` | `[ISI]` | `[ISI]` |
-| caries_noncavitated (kepercayaan rendah; dilaporkan **terpisah**) | `[ISI]` | | | | | | | |
+| caries_permanent (gigi tetap) | `[ISI]` | `[ISI]` | `[ISI]` | `[ISI]` | `[ISI]` | `[ISI]` | `[ISI]` | `[ISI]` |
+| caries_primary (gigi sulung; data latih hanya ±8% kotak) | `[ISI]` | | | | | | | |
+| ada indikasi karies (tingkat citra) | `[ISI]` | | | | | | | |
 
 Confusion matrix: `[ISI]`. Validasi lokal di Indonesia (mis. dibandingkan pemeriksaan drg): `[ISI — belum ada]`.
 
@@ -67,7 +68,7 @@ Wajib dilaporkan (sel kosong = belum dievaluasi, **bukan** "tidak ada perbedaan"
 Keterbatasan representasi data latih (mis. satu perangkat, rentang usia, negara asal): `[ISI]`.
 
 ## 7. Batasan dan mode kegagalan yang diketahui
-- Lesi awal/non-kavitas sulit dilihat pada foto ponsel; foto tidak melihat sela gigi/ bagian dalam (ditampilkan di layar hasil, FR-33).
+- Dataset tidak membedakan lesi berlubang/ tidak berlubang dan tidak menilai keparahan; lesi awal sulit dilihat pada foto ponsel; foto tidak melihat sela gigi/ bagian dalam (ditampilkan di layar hasil, FR-33).
 - Kegagalan pada foto buram, gelap, bibir menutupi, gigi belakang (quality gate mengurangi tetapi tidak menghilangkan).
 - Hasil hanya "indikasi"; false negative tetap mungkin → CTA rujukan dan skrining ulang selalu ditampilkan.
 - Batasan lain dari evaluasi: `[ISI]`. Risiko terkait: lihat `RISK_REGISTER.md` R-03..R-06, R-14, R-15.

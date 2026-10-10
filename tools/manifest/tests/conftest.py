@@ -121,7 +121,7 @@ def artifacts(tmp_path: Path) -> Artifacts:
     labels = write_json(
         model_dir / "labels.json",
         {
-            "classes": ["caries_cavitated", "caries_noncavitated"],
+            "classes": ["caries_permanent", "caries_primary"],
             "input": {"width": 320, "height": 320},
             "license": "Apache-2.0",
             "license_verified": True,
