@@ -37,9 +37,8 @@ enabled = true
 port = 54323
 api_url = "http://127.0.0.1"
 
-# Local e-mail catcher. With [auth.email.smtp] enabled below, local mails go to
-# Resend instead; set RESEND_API_KEY in backend/.env or temporarily disable SMTP
-# for offline development (see README "Local development").
+# Local e-mail catcher (Mailpit/Inbucket, UI on :54324). Local mail goes here whenever
+# [auth.email.smtp] below is disabled, i.e. AUTH_SMTP_ENABLED=false (the local default).
 [local_smtp]
 enabled = true
 port = 54324
@@ -50,10 +49,18 @@ enabled = true
 # (dataset_photos 500 KiB JPEG only) and are defined in migration 0600.
 file_size_limit = "50MiB"
 
+# LOCAL vs REMOTE SAFETY (ADR 008): the Supabase CLI also reads backend/.env, which holds the
+# owner's REAL Resend/CAPTCHA secrets. Two switches keep a plain `supabase start` harmless:
+#   AUTH_SMTP_ENABLED    "false" (default for local) -> local mail goes to Mailpit, Resend is never used
+#   AUTH_CAPTCHA_ENABLED "false" (default for local) -> no CAPTCHA locally, the real secret is never used
+# Both are REQUIRED booleans: if unset/empty the CLI fails with CliConfigParseError (fail closed).
+# Put `false` for both in backend/.env; set them to `true` only on the command line of
+# `supabase config push` (see docs/runbooks/auth-setup.md). Verified with CLI 2.120: env() is
+# accepted on these booleans and a non-boolean value is rejected at parse time.
 [auth]
 enabled = true
 # Confirmation / reset links land on a static page that opens the app via
-# deep link (dentisai://). https://app.ryhnfir.dev/auth/callback  (TODO owner)
+# deep link (dentisai://): https://app.ryhnfir.dev/auth/callback (web/auth/callback).
 site_url = "env(AUTH_SITE_URL)"
 additional_redirect_urls = ["env(AUTH_REDIRECT_URL)", "dentisai://auth/callback"]
 # Access token lifetime (seconds). 1 h + refresh-token rotation.
@@ -65,22 +72,29 @@ enable_signup = true
 # and anonymous users would inflate MAU/abuse surface without a privacy gain.
 enable_anonymous_sign_ins = false
 enable_manual_linking = false
-minimum_password_length = 10
+minimum_password_length = 8   # owner decision 2026-10-10 (was 10)
 password_requirements = "lower_upper_letters_digits"
 
 [auth.rate_limit]
-# Resend Free allows 100 e-mails/day; cap Supabase well below it.
-email_sent = 10
-sms_sent = 0
-anonymous_users = 0
+# Resend Free = 100 e-mails/day hard cap (3000/month). This limit is per HOUR for the whole
+# project; 30/h lets a class of parents sign up in one sitting, CAPTCHA + the 60 s per-user
+# limit (auth.email.max_frequency) stop bulk abuse, and Resend itself refuses beyond 100/day.
+email_sent = 30
+sms_sent = 1   # API minimum is 1; phone auth is disabled (no SMS provider)
+anonymous_users = 1   # API minimum is 1; anonymous sign-ins are disabled anyway
 token_refresh = 150
 sign_in_sign_ups = 30
 token_verifications = 30
 
 [auth.captcha]
-# FR-04: CAPTCHA on signup/sign-in/reset. Provider: "hcaptcha" or "turnstile".
-enabled = true
-provider = "env(CAPTCHA_PROVIDER)"
+# FR-04: CAPTCHA on signup/sign-in/reset. Must be "true" for the pushed remote config
+# (AUTH_CAPTCHA_ENABLED=true on the push command); "false" locally so the real secret is unused.
+# Provider is Cloudflare Turnstile (free, no mandatory challenge UI). To use hCaptcha instead,
+# change `provider` to "hcaptcha" and use hCaptcha keys.
+# To exercise CAPTCHA locally use Cloudflare's published always-pass TEST secret, inline only:
+#   AUTH_CAPTCHA_ENABLED=true CAPTCHA_SECRET=1x0000000000000000000000000000000AA supabase start
+enabled = "env(AUTH_CAPTCHA_ENABLED)"
+provider = "turnstile"
 secret = "env(CAPTCHA_SECRET)"
 
 [auth.email]
@@ -94,9 +108,19 @@ max_frequency = "60s"
 otp_length = 6
 otp_expiry = 3600
 
+# Send Email hook (owner's mailer at https://mailer.ryhnfir.dev, repo smtp-handler): when enabled,
+# Supabase does NOT use [auth.email.smtp]; it POSTs a Standard-Webhooks-signed payload and the
+# mailer builds the verification link and sends the mail. Local = false (Mailpit); push with
+# AUTH_SEND_EMAIL_HOOK_ENABLED=true only after the mailer is deployed with the same secret.
+[auth.hook.send_email]
+enabled = "env(AUTH_SEND_EMAIL_HOOK_ENABLED)"
+uri = "https://mailer.ryhnfir.dev/hooks/send-email"
+secrets = "env(SEND_EMAIL_HOOK_SECRET)"
+
 # Custom SMTP: Resend Free, sender on subdomain auth.ryhnfir.dev (ADR 008 r3).
 [auth.email.smtp]
-enabled = true
+# "true" only for `config push` (AUTH_SMTP_ENABLED=true); "false" locally -> Mailpit.
+enabled = "env(AUTH_SMTP_ENABLED)"
 host = "smtp.resend.com"
 port = 465
 user = "resend"
@@ -104,26 +128,26 @@ pass = "env(RESEND_API_KEY)"
 admin_email = "no-reply@auth.ryhnfir.dev"
 sender_name = "DentisAI"
 
-# E-mails contain only a link — never child data (ADR 008).
-[auth.email.template.confirmation]
-subject = "Konfirmasi email akun DentisAI"
-content_path = "./supabase/templates/confirmation.html"
-
-[auth.email.template.recovery]
-subject = "Atur ulang kata sandi DentisAI"
-content_path = "./supabase/templates/recovery.html"
-
-[auth.email.template.email_change]
-subject = "Konfirmasi perubahan email DentisAI"
-content_path = "./supabase/templates/email_change.html"
-
 [auth.sms]
 # No SMS OTP (paid) — PRD FR-04.
 enable_signup = false
 enable_confirmations = false
 
+# MFA is not used by the app (no TOTP/phone/WebAuthn flows): keep the surface closed.
 [auth.mfa]
 max_enrolled_factors = 10
+
+[auth.mfa.totp]
+enroll_enabled = false
+verify_enabled = false
+
+[auth.mfa.phone]
+enroll_enabled = false
+verify_enabled = false
+
+[auth.mfa.web_authn]
+enroll_enabled = false
+verify_enabled = false
 
 [edge_runtime]
 enabled = true
@@ -131,9 +155,10 @@ policy = "per_worker"
 inspector_port = 8083
 deno_version = 2
 
-# Service-only functions: the platform JWT gate is off because they are
-# invoked by cron with the service key and verify it themselves (constant-time
-# compare against SUPABASE_SERVICE_ROLE_KEY, fail closed).
+# Service-only functions: the platform JWT gate is off because they are invoked by an external
+# scheduler (GitHub Actions) and verify the caller themselves: constant-time compare of the
+# Bearer token with the CRON_SECRET function secret (>= 32 chars), fail closed. The
+# service_role key is deliberately NOT accepted as a credential. Tests: functions/**/*_test.ts.
 [functions.process-deletion]
 enabled = true
 verify_jwt = false
@@ -144,3 +169,9 @@ verify_jwt = false
 
 [analytics]
 enabled = false
+
+# E-mail templates are NOT managed here anymore: Supabase Free refuses template changes while the
+# default e-mail provider is active ("Email template modification is not available for free tier
+# projects using the default email provider"), and with the Send Email hook the mailer
+# (repo smtp-handler, templates/*.html) renders every message. Local `supabase start` uses
+# Mailpit with the default templates. Source of the Indonesian templates: backend/supabase/templates/.

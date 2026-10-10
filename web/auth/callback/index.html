@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+<title>Membuka DentisAI</title>
+<!--
+  DentisAI auth callback (static, no trackers, no external requests, no cookies/storage).
+  Supabase sends confirmation / password-reset links to https://app.ryhnfir.dev/auth/callback.
+  This page only forwards the query string and the URL fragment (which carry the one-time
+  code/token) to the app deep link dentisai://auth/callback. The destination is a fixed constant,
+  so it cannot be abused as an open redirect. Nothing is sent to any server by this page.
+  Host: GitHub Pages / Cloudflare Pages (see docs/runbooks/auth-setup.md, step D).
+-->
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0;
+         min-height: 100vh; display: grid; place-items: center; padding: 16px;
+         background: #f6f8fa; color: #1f2933; }
+  main { max-width: 28rem; background: #fff; border-radius: 12px; padding: 24px;
+         box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  h1 { font-size: 1.25rem; margin: 0 0 12px; }
+  p { line-height: 1.5; margin: 0 0 12px; }
+  a.btn { display: block; text-align: center; padding: 14px 16px; border-radius: 10px;
+          background: #0b6bcb; color: #fff; text-decoration: none; font-weight: 600; }
+  small { color: #52606d; }
+  [hidden] { display: none; }
+  @media (prefers-color-scheme: dark) {
+    body { background: #12181f; color: #e4e7eb; }
+    main { background: #1c252e; }
+    small { color: #9aa5b1; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Membuka aplikasi DentisAI</h1>
+  <p id="msg">Sebentar, aplikasi DentisAI di HP Anda akan terbuka.</p>
+  <p><a id="open" class="btn" href="dentisai://auth/callback">Buka aplikasi DentisAI</a></p>
+  <div id="help" hidden>
+    <p>Jika aplikasi tidak terbuka, ketuk tombol di atas. Pastikan aplikasi DentisAI sudah terpasang
+       di HP ini dan buka tautan dari email di HP yang sama.</p>
+    <p><small>Jika Anda membuka tautan ini di komputer, buka email Anda lagi lewat HP yang memiliki
+       aplikasi DentisAI.</small></p>
+  </div>
+  <noscript>
+    <p>Aktifkan JavaScript, atau ketuk tombol di atas untuk membuka aplikasi DentisAI.</p>
+  </noscript>
+  <p><small>Halaman ini tidak menyimpan data apa pun. Jika Anda tidak meminta email ini, abaikan saja.</small></p>
+</main>
+<script>
+(function () {
+  "use strict";
+  var TARGET = "dentisai://auth/callback";
+  // Forward ?code=... (PKCE) and #access_token=... / #error=... exactly as received.
+  var dest = TARGET + window.location.search + window.location.hash;
+  document.getElementById("open").setAttribute("href", dest);
+  // Remove the one-time code/token from the address bar and history of this page.
+  try { window.history.replaceState(null, "", window.location.pathname); } catch (e) {}
+  try { window.location.replace(dest); } catch (e) {}
+  // If the browser blocked the automatic jump (needs a tap), show the help text.
+  window.setTimeout(function () {
+    document.getElementById("msg").textContent =
+      "Ketuk tombol di bawah untuk membuka aplikasi DentisAI.";
+    document.getElementById("help").hidden = false;
+  }, 1500);
+})();
+</script>
+</body>
+</html>

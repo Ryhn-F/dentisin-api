@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Verifikasi keamanan DentisAI</title>
+<!--
+  Cloudflare Turnstile host page for the DentisAI app (opened inside a WebView).
+  Usage: https://app.ryhnfir.dev/captcha/?sitekey=<TURNSTILE_SITE_KEY>[&action=signup]
+  The site key is PUBLIC (not a secret). On success the page hands the one-time token to the app:
+    - React Native WebView: window.ReactNativeWebView.postMessage(JSON.stringify({type:"turnstile",token}))
+    - fallback: location change to dentisai://captcha?token=<token>
+  The app then calls supabase.auth.signUp / signInWithPassword / resetPasswordForEmail with
+  options.captchaToken = token. Supabase verifies it server-side with the Turnstile SECRET key.
+  No cookies, no storage, no analytics. Only external origin: challenges.cloudflare.com.
+-->
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; min-height: 100vh;
+         display: grid; place-items: center; padding: 16px; background: #f6f8fa; color: #1f2933; }
+  main { text-align: center; max-width: 24rem; }
+  p { line-height: 1.5; }
+  @media (prefers-color-scheme: dark) { body { background: #12181f; color: #e4e7eb; } }
+</style>
+</head>
+<body>
+<main>
+  <p id="msg">Memeriksa keamanan, mohon tunggu sebentar…</p>
+  <div id="widget"></div>
+  <p><button id="retry" hidden onclick="location.reload()">Coba lagi</button></p>
+</main>
+<script>
+  "use strict";
+  var params = new URLSearchParams(location.search);
+  var sitekey = params.get("sitekey") || "";
+  var action = (params.get("action") || "").replace(/[^a-z0-9_-]/gi, "").slice(0, 32);
+  var msg = document.getElementById("msg");
+  function send(payload) {
+    var json = JSON.stringify(payload);
+    if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+      window.ReactNativeWebView.postMessage(json);
+    } else if (payload.type === "turnstile") {
+      location.href = "dentisai://captcha?token=" + encodeURIComponent(payload.token);
+    }
+  }
+  function fail(text, code) {
+    msg.textContent = text;
+    document.getElementById("retry").hidden = false;
+    send({ type: "turnstile_error", code: String(code || "") });
+  }
+  window.onloadTurnstile = function () {
+    if (!/^[0-9A-Za-z_-]{10,64}$/.test(sitekey)) { fail("Kunci verifikasi tidak valid.", "bad_sitekey"); return; }
+    turnstile.render("#widget", {
+      sitekey: sitekey,
+      action: action || undefined,
+      callback: function (token) { msg.textContent = "Verifikasi berhasil."; send({ type: "turnstile", token: token }); },
+      "error-callback": function (c) { fail("Verifikasi gagal. Periksa koneksi lalu coba lagi.", c); },
+      "expired-callback": function () { fail("Verifikasi kedaluwarsa. Coba lagi.", "expired"); }
+    });
+  };
+</script>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstile&render=explicit" async defer></script>
+</body>
+</html>
