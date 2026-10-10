@@ -11,7 +11,7 @@ npx supabase db reset              # applies migrations/ + seed/seed.sql
 npx supabase test db               # pgTAP suite in supabase/tests/*.test.sql
 ```
 
-Env for `config.toml` (read from the process / `supabase/.env`; never commit values): `AUTH_SITE_URL`, `AUTH_REDIRECT_URL`, `RESEND_API_KEY`, `CAPTCHA_PROVIDER` (`hcaptcha`|`turnstile`), `CAPTCHA_SECRET`. With CAPTCHA enabled the CLI refuses to load the config when `CAPTCHA_PROVIDER` is empty. For offline local development without a Resend key set `[auth.email.smtp] enabled = false` temporarily (mail then goes to the local SMTP catcher on :54324) — do not commit that change.
+Env for `config.toml` (read from the process and from `backend/.env` / `supabase/.env`; never commit values): `AUTH_SITE_URL`, `AUTH_REDIRECT_URL`, `RESEND_API_KEY`, `CAPTCHA_SECRET`, plus two **required boolean switches** `AUTH_SMTP_ENABLED` and `AUTH_CAPTCHA_ENABLED` (the CLI aborts with `CliConfigParseError` if they are unset/empty or not `true|false`). **Local safe default:** put `false` for both in `backend/.env` -> `supabase start` sends mail to Mailpit (http://127.0.0.1:54324) and never uses the real Resend key or CAPTCHA secret. They are set to `true` **only inline** on `supabase config push` (see `../docs/runbooks/auth-setup.md`, step E). To try CAPTCHA locally: `AUTH_CAPTCHA_ENABLED=true CAPTCHA_SECRET=1x0000000000000000000000000000000AA supabase start` (Cloudflare Turnstile always-pass test secret). The CAPTCHA provider is fixed to `turnstile` in `config.toml` (`CAPTCHA_PROVIDER` is no longer read).
 
 **Fallback without Docker** (what was used to verify this folder): a throwaway PostgreSQL 17 + minimal Supabase stubs (roles `anon/authenticated/service_role`, `auth.users`/`auth.uid()`, `storage.buckets/objects` + `protect_delete`) + a small pgTAP-compatible shim:
 
@@ -33,11 +33,12 @@ It applies all migrations + seed, re-applies all migrations (re-runnability chec
 | `migrations/0600_storage` | buckets `manifests`, `dataset_photos`; storage policies; `admin_storage_usage()` |
 | `migrations/0700_deletion_retention` | `request_deletion()`, deletion executor + proof, retention, service RPCs, pg_cron jobs |
 | `migrations/0800_aggregates_admin_keepalive` | `facility_screening_summary()`, audited admin RPCs, `keepalive()` |
-| `functions/process-deletion`, `functions/retention-sweep` | Edge Functions (Deno, hanya `CRON_SECRET`, log hanya jumlah) |
+| `functions/process-deletion`, `functions/retention-sweep`, `functions/_shared` | Edge Functions (Deno, hanya `CRON_SECRET`, log hanya jumlah). `handler.ts` = logika (diuji), `index.ts` = `Deno.serve`. Uji: `cd functions && deno task ci` (check + lint + fmt + 34 tes, tanpa jaringan Supabase; CI job `edge-functions`) |
 | `seed/seed.sql` | SYNTHETIC data only (`*.invalid` e-mails, `5eed…` UUIDs, no names/photos/passwords) |
 | `tests/*.test.sql` + `tests/_helpers.psql` | pgTAP suite (helpers are included with `\ir`) |
-| `templates/*.html` | e-mail templates (Indonesian, link only, no child data) |
-| `scripts/local-harness/` | Docker-free fallback runner (local only, never for a hosted DB) |
+| `templates/*.html` | e-mail templates (Indonesian, link only, no child data; `reauthentication.html` berisi kode 6 digit saja) |
+| `scripts/local-harness/` | **Legacy** Docker-free fallback runner (local only, never for a hosted DB); replaced by `supabase test db` once that runs |
+| `scripts/local_stack.py`, `rls_http_check.py`, `deletion_e2e_check.py` | HTTP checks against the local `supabase start` stack only (see "Uji HTTP lokal") |
 
 Migration lain (mis. `20261009000100_ml_review_queue.sql` milik engineer FastAPI) **wajib** `enable` + `force row level security` pada setiap tabel baru — `tests/00_meta.test.sql` gagal bila tidak.
 
@@ -78,14 +79,16 @@ Retensi: `image_upload_ttl_days` (default 365 — **[PERLU VERIFIKASI] sesuai pr
 - Proyek **dijeda setelah ±1 minggu tanpa aktivitas** → ping eksternal `POST /rest/v1/rpc/keepalive` (anon key) via `../.github/workflows/keepalive.yml`. **pg_cron tidak dapat membangunkan proyek yang sudah dijeda**, dan apakah aktivitas pg_cron internal mencegah penjedaan **[PERLU VERIFIKASI]**.
 - **Tanpa backup otomatis** → `../tools/backup_db.sh` (pg_dump terenkripsi age), jangan simpan dump di repo/CI publik.
 - Kuota: DB 500 MB, Storage 1 GB (maks. 50 MB/berkas), egress 5 GB, 2 proyek (dev+prod) **[PERLU VERIFIKASI berkala di supabase.com/pricing]**; pantau dengan `admin_storage_usage()` (estimasi sisa kapasitas foto 500 KiB).
-- SMTP bawaan Supabase hanya 2 email/jam → SMTP Resend wajib; Resend Free 100 email/hari → `auth.rate_limit.email_sent = 10`/jam, email hanya konfirmasi & reset.
+- SMTP bawaan Supabase hanya 2 email/jam → SMTP Resend wajib; Resend Free 100 email/hari → `auth.rate_limit.email_sent = 30`/jam (+ `max_frequency` 60 dtk/pengguna, CAPTCHA), email hanya konfirmasi & reset.
 
 ## TODO pemilik produk: DNS / SMTP / redirect
+> Langkah rinci untuk non-ahli: **`../docs/runbooks/auth-setup.md`** (halaman redirect siap pakai di `../web/auth/callback/index.html`). Daftar di bawah hanya ringkasan.
+
 - [ ] Resend: tambah domain `auth.ryhnfir.dev`, pasang rekaman **SPF (TXT), DKIM (TXT), MX** (bounce) persis seperti di dashboard Resend; tunggu status *Verified*.
 - [ ] DMARC `_dmarc.auth.ryhnfir.dev` mulai `v=DMARC1; p=none; rua=mailto:<alamat-laporan>`; setelah laporan bersih ±2–4 minggu naikkan ke `p=quarantine`.
 - [ ] Buat API key Resend (akses *sending* saja) → simpan di Supabase Dashboard → Auth → SMTP (bukan di repo); host `smtp.resend.com`, port 465, user `resend`, pengirim `no-reply@auth.ryhnfir.dev`, nama "DentisAI".
 - [ ] Halaman statis `https://app.ryhnfir.dev/auth/callback` (GitHub Pages/Cloudflare Pages) yang meneruskan ke `dentisai://auth/callback`; set *Site URL* + *Redirect URLs* (juga `dentisai://auth/callback`); opsional Android App Links (`/.well-known/assetlinks.json`).
-- [ ] CAPTCHA: daftar hCaptcha/Turnstile (gratis), isi `CAPTCHA_PROVIDER/SECRET` di dashboard; site key di app.
+- [ ] CAPTCHA: daftar hCaptcha/Turnstile (gratis), secret → `CAPTCHA_SECRET` di `.env` (provider tetap `turnstile` di `config.toml`); site key di app.
 - [ ] Uji kirim konfirmasi & reset ke kotak masuk Gmail/Yahoo; cek header SPF/DKIM/DMARC = pass.
 - [ ] Admin pertama: di SQL editor `insert into public.user_role (user_id, role) values ('<uuid>', 'admin');`
 - [ ] Jadwalkan `process-deletion` (≥ harian) dan `retention-sweep` (harian) dari scheduler eksternal.
@@ -103,7 +106,18 @@ Retensi: `image_upload_ttl_days` (default 365 — **[PERLU VERIFIKASI] sesuai pr
 9. Anonymous sign-in **mati** (mode anak tidak memerlukan akun sama sekali). Panjang kata sandi minimal 10 + huruf besar/kecil/angka.
 10. Edge Functions memakai `verify_jwt = false` + pembandingan *constant-time* dengan secret fungsi `CRON_SECRET` (fail-closed bila kosong/ < 32 karakter); kunci service_role yang disuntikkan platform tidak sama dengan kunci di dashboard, jadi tidak dipakai sebagai kredensial penjadwal.
 
-## Status verifikasi (2026-10-09)
-- `supabase test db` / `supabase start`: **belum dijalankan** (Docker daemon tidak bisa dinyalakan). `config.toml` dimuat oleh Supabase CLI 2.120.0 tanpa galat (gagal hanya di langkah Docker) bila env CAPTCHA terisi.
-- Harness PG17 + stub: semua migrasi + seed + penerapan ulang migrasi berhasil; 9 berkas uji / 196 asersi lulus; uji mutasi (tabel tanpa RLS, kolom nama, kebijakan bocor) terbukti membuat suite gagal.
-- **Tidak diuji**: Edge Functions (Deno tidak tersedia; belum di-typecheck), pg_cron (tidak ada di PG lokal), perilaku nyata Storage API/GoTrue/PostgREST, pgTAP asli (shim lokal dipakai).
+## Uji HTTP lokal (Supabase CLI) — `scripts/`
+- `scripts/rls_http_check.py` (item 1.6): RLS/Storage lewat Kong → PostgREST/GoTrue/Storage API dengan JWT asli (anon, guardian A/B, kader, facility_viewer, admin): isolasi baris, eskalasi peran via REST, idempotensi `sync_events`, aturan unggah `dataset_photos`, bucket `manifests`.
+- `scripts/deletion_e2e_check.py` (item 1.5): akun → data + foto (Storage API) → `request_deletion('account')` → Edge Function `process-deletion` (bila di-serve lokal) atau RPC yang sama → pindai **semua tabel semua skema** untuk id/e-mail, blob di disk kontainer Storage, `auth.sessions/refresh_tokens/identities/audit_log_entries`.
+- Keduanya stdlib saja, **menolak URL non-localhost dan kunci yang bukan kunci demo lokal** (`iss = supabase-demo`). Jalankan dari `backend/`: `eval "$(npx supabase status -o env)"; export API_URL ANON_KEY SERVICE_ROLE_KEY; python supabase/scripts/rls_http_check.py`.
+- Jalur Edge untuk `deletion_e2e_check.py`: `supabase functions serve --env-file <berkas lokal berisi CRON_SECRET=<nilai lokal ≥32 char>>`, lalu `LOCAL_CRON_SECRET=<nilai yang sama> python supabase/scripts/deletion_e2e_check.py --via edge`. Tanpa itu runtime menjawab `503 not_configured` dan skrip memakai `--via rpc`.
+- **Peringatan env:** Supabase CLI ikut memuat `backend/.env` (godotenv, tidak menimpa env yang sudah ada). Lokal wajib `AUTH_SMTP_ENABLED=false` dan `AUTH_CAPTCHA_ENABLED=false` (Mailpit, tanpa CAPTCHA; secret Resend/CAPTCHA asli tidak dipakai). `--exclude studio,imgproxy,vector,logflare,postgres-meta,supavisor,realtime` menghemat disk.
+
+## Status verifikasi (2026-10-10, Supabase CLI 2.120.0, Docker 28.3, image Postgres 17.11.0.004)
+- `supabase start` + `supabase db reset`: 10 migrasi + seed berhasil.
+- `supabase test db` (pgTAP asli): **9 berkas / 199 asersi PASS**. Asersi baru di `07_deletion` terbukti gagal (3/26) sebelum migrasi `20261010000100` diterapkan.
+- `rls_http_check.py`: **88/88** lewat Kong/PostgREST/GoTrue/Storage asli. Unggah Storage API berhasil tanpa kebijakan SELECT tambahan.
+- `deletion_e2e_check.py`: **28/28** (`--via rpc`) dan **29/29** (`--via edge`, Edge Function `process-deletion` di-serve, termasuk 403 untuk secret salah). `retention-sweep` menjawab 200.
+- Temuan diperbaiki: `auth.audit_log_entries` (GoTrue, tanpa FK) masih menyimpan id + e-mail setelah hapus akun → migrasi `20261010000100_deletion_purge_auth_audit.sql`. [PERLU VERIFIKASI] hak DELETE `postgres` atas tabel itu di proyek hosted.
+- Di luar DB (informasi): log kontainer `auth` dan `storage` masih memuat id/e-mail (retensi log platform).
+- Harness PG17 + stub (`scripts/local-harness/`) kini hanya cadangan.

@@ -2,7 +2,7 @@
 -- proof; afterwards NO trace of the subject id in any table or storage object.
 begin;
 \ir _helpers.psql
-select plan(23);
+select plan(26);
 
 -- Scans every table in public/private/storage/auth for a text fragment.
 create or replace function tests.tables_containing(p_fragment text)
@@ -130,7 +130,30 @@ do $$ begin
 end $$;
 select public.request_deletion('account') as req2 \gset
 select tests.as_owner();
+-- GoTrue audit trail as written by the real auth server (no FK to auth.users):
+-- id + e-mail inside the JSON payload. A's entry is the control.
+insert into auth.audit_log_entries (instance_id, id, payload, created_at, ip_address) values
+  ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), json_build_object(
+     'action', 'user_signedup', 'actor_id', '00000000-0000-4000-8000-0000000000b1',
+     'actor_username', 'tst-00000000-0000-4000-8000-0000000000b1@example.invalid', 'log_type', 'team',
+     'traits', json_build_object('provider', 'email', 'user_id', '00000000-0000-4000-8000-0000000000b1',
+                                 'user_email', 'tst-00000000-0000-4000-8000-0000000000b1@example.invalid')), now(), ''),
+  ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), json_build_object(
+     'action', 'login', 'actor_id', '00000000-0000-4000-8000-0000000000b1', 'log_type', 'account',
+     'traits', json_build_object('provider', 'email')), now(), ''),
+  ('00000000-0000-0000-0000-000000000000', gen_random_uuid(), json_build_object(
+     'action', 'login', 'actor_id', '00000000-0000-4000-8000-0000000000a1', 'log_type', 'account',
+     'actor_username', 'tst-00000000-0000-4000-8000-0000000000a1@example.invalid',
+     'traits', json_build_object('provider', 'email')), now(), '');
+select is((select count(*)::int from auth.audit_log_entries
+           where payload::text like '%00000000-0000-4000-8000-0000000000b1%'), 2,
+          'fixture: GoTrue audit entries mention the account id/e-mail');
 select is(private.run_pending_deletions(), 1, 'cron pass completes the account deletion (no photos)');
+select is((select (rows_deleted ->> 'auth_audit_log_entries')::int from public.deletion_request where id = :'req2'), 2,
+          'proof counts the purged GoTrue audit entries');
+select is((select count(*)::int from auth.audit_log_entries
+           where payload::text like '%00000000-0000-4000-8000-0000000000a1%'), 1,
+          'other accounts'' GoTrue audit entries are kept');
 select ok(not exists (select 1 from auth.users where id = '00000000-0000-4000-8000-0000000000b1'),
           'auth account removed');
 select is_empty($$ select * from tests.tables_containing('00000000-0000-4000-8000-0000000000b1') $$,
