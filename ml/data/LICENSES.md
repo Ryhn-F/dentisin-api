@@ -48,6 +48,8 @@ Versi = yang di-resolve `uv.lock` pada 2026-10-09. Lisensi paket dasar & dev **d
 |---|---|---|---|---|
 | `numpy` | 2.5.3 | dasar | BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0 | metadata terpasang |
 | `pillow` | 12.3.0 | dasar | MIT-CMU | metadata terpasang |
+| `numpy`, `pillow` (FastAPI `api`, extra `vision`) | lihat atas | opsional (quality gate sisi server) | BSD-3-Clause / MIT-CMU | dipakai hanya jalur `/v1/screening/analyze`; tidak dikirim ke app |
+| `hypothesis` | per `uv.lock` modul | dev saja (triage, recommender, api) | MPL-2.0 | alat uji, tidak dikirim ke produk; verifikasi per versi [PERLU VERIFIKASI] |
 | `pyyaml` | 6.0.3 | dasar | MIT | metadata terpasang |
 | `jsonschema` | 4.26.0 | dasar | MIT | metadata terpasang |
 | `defusedxml` | 0.7.1 | dasar (parser VOC XML aman) | PSF License | metadata terpasang |
