@@ -121,7 +121,7 @@ PowerShell: `$env:AUTH_SMTP_ENABLED="true"; $env:AUTH_CAPTCHA_ENABLED="true"; np
 - `site_url` dan `additional_redirect_urls` berisi alamat asli (`https://app.ryhnfir.dev/auth/callback`, `dentisai://auth/callback`) — **bukan** teks `env(AUTH_SITE_URL)` dan bukan kosong. Jika masih `env(...)`, batalkan dan hubungi tim backend.
 - SMTP: host `smtp.resend.com`, port `465`, user `resend`, pengirim `no-reply@auth.ryhnfir.dev`, nama `DentisAI`. Password tidak ditampilkan (wajar).
 - CAPTCHA aktif, provider `turnstile`.
-- Konfirmasi email aktif; panjang kata sandi minimum 10; `anonymous sign-ins` mati; 3 jenis MFA mati.
+- Konfirmasi email aktif; panjang kata sandi minimum 8; `anonymous sign-ins` mati; 3 jenis MFA mati.
 - Rate limit email `30`/jam.
 
 Setelah `config push`: di dasbor **Authentication → Providers → Email** dan **Settings → SMTP**, pastikan tampil custom SMTP aktif. Tidak perlu `db push` (skema tidak berubah).
@@ -135,7 +135,7 @@ Lakukan setelah E, dengan alamat Gmail pribadi (bukan alamat `.invalid`):
 - [ ] Email "Konfirmasi email akun DentisAI" tiba **di Kotak Masuk** (bukan Spam) dalam < 1 menit; pengirim `DentisAI <no-reply@auth.ryhnfir.dev>`.
 - [ ] Gmail → titik tiga → **Tampilkan asli** (*Show original*): SPF = **PASS**, DKIM = **PASS**, DMARC = **PASS**.
 - [ ] Ketuk tautan di HP → halaman "Membuka aplikasi DentisAI" → app terbuka dan akun terkonfirmasi.
-- [ ] Masuk dengan email + kata sandi (kata sandi < 10 karakter atau tanpa huruf besar/kecil/angka harus ditolak).
+- [ ] Masuk dengan email + kata sandi (kata sandi < 8 karakter harus ditolak; aturan huruf besar/kecil/angka belum terbukti diterapkan di hosted).
 - [ ] "Lupa kata sandi" → email "Atur ulang kata sandi DentisAI" tiba → tautan membuka app → kata sandi baru berhasil, masuk dengan kata sandi baru.
 - [ ] Tautan yang sudah dipakai/kedaluwarsa (1 jam) menampilkan pesan galat yang ramah di app, bukan layar kosong.
 - [ ] Resend → **Emails**: setiap pengiriman berstatus *Delivered*.
@@ -153,7 +153,7 @@ Lakukan setelah E, dengan alamat Gmail pribadi (bukan alamat `.invalid`):
 ## Keputusan yang masih menunggu pemilik
 1. **CAPTCHA**: setuju Turnstile (rekomendasi) atau hCaptcha? Siapa membuat halaman widget untuk WebView?
 2. **Anonymous sign-in**: dibiarkan **mati** (mode anak tidak butuh akun; menghemat MAU & permukaan serangan). Ubah hanya bila ingin akun tamu yang dinaikkan ke email.
-3. **Kata sandi**: minimal 10 karakter + huruf besar, kecil, angka. Terlalu berat untuk sebagian orang tua? Alternatif: minimal 8 (`minimum_password_length = 8`).
+3. **Kata sandi**: diputuskan minimal 8 karakter (`minimum_password_length = 8`).
 4. **Batas email 30/jam** dan jadwal naik DMARC (`none` → `quarantine`).
 5. **Dua proyek** (dev & prod): sekarang push mengubah satu-satunya proyek; item 1.4 menyarankan memisahkannya sebelum pengguna nyata.
 

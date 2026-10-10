@@ -103,7 +103,7 @@ Retensi: `image_upload_ttl_days` (default 365 — **[PERLU VERIFIKASI] sesuai pr
 6. **audit_log** menyimpan hash HMAC (pepper DB-internal), bukan id; append-only bahkan untuk owner. Setelah penghapusan, hash tetap ada tetapi tidak dapat ditautkan tanpa id asli.
 7. **Penarikan consent (c)** → foto ditandai `withdrawn` **dan dihapus** dari Storage oleh `retention-sweep` (lebih privat dari sekadar dikeluarkan dari pelatihan). Model yang sudah dilatih tidak dapat melupakan — wajib disebut di lembar persetujuan.
 8. **Penghapusan akun** menghapus baris `auth.users` lewat SQL (cascade ke identities/sessions). Log audit internal GoTrue (`auth.audit_log_entries`) dapat memuat e-mail — retensinya **[PERLU VERIFIKASI]**.
-9. Anonymous sign-in **mati** (mode anak tidak memerlukan akun sama sekali). Panjang kata sandi minimal 10 + huruf besar/kecil/angka.
+9. Anonymous sign-in **mati** (mode anak tidak memerlukan akun sama sekali). Panjang kata sandi minimal **8** (keputusan pemilik 2026-10-10) + huruf besar/kecil/angka di `config.toml` (`password_requirements` belum terbukti diterapkan di proyek hosted — CLI melaporkannya 'not returned'; [PERLU VERIFIKASI])
 10. Edge Functions memakai `verify_jwt = false` + pembandingan *constant-time* dengan secret fungsi `CRON_SECRET` (fail-closed bila kosong/ < 32 karakter); kunci service_role yang disuntikkan platform tidak sama dengan kunci di dashboard, jadi tidak dipakai sebagai kredensial penjadwal.
 
 ## Uji HTTP lokal (Supabase CLI) — `scripts/`
