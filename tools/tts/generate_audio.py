@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build-time TTS for child-facing instructions (ADR 010 Gemini default; ADR 007 Azure backup).
+"""Build-time TTS for child-facing instructions (ADR 012 Gemini default; ADR 007 Azure backup).
 
 Reads a script CSV (columns: id,text,approved_by) and writes one audio file per row plus
 ``MANIFEST.json`` next to it (override with ``--out-dir``). The production script lives in the
@@ -10,7 +10,7 @@ Providers (``--provider gemini|azure``, default gemini, or env TTS_PROVIDER)
   * gemini: Gemini API ``generateContent`` REST, WAV output (PCM 16-bit mono 24 kHz wrapped with
     the stdlib ``wave`` module). Env: GEMINI_API_KEY, GEMINI_TTS_MODEL, GEMINI_TTS_VOICE,
     optional GEMINI_TTS_STYLE. ``--generated-under free|paid``. Only the static approved script
-    text is sent (ADR 010): never child data. Retry/backoff on 429/5xx, request cap and a pause
+    text is sent (ADR 012): never child data. Retry/backoff on 429/5xx, request cap and a pause
     between requests protect the free-tier quota.
   * azure: Azure Speech REST (ADR 007), MP3 output. Env: AZURE_SPEECH_KEY, AZURE_SPEECH_REGION,
     AZURE_SPEECH_VOICE. ``--generated-under student|payg``. The voices-list endpoint is queried
@@ -101,7 +101,7 @@ AZURE_MODEL = "azure-speech-neural"
 SSML_VERSION = "1"
 REGION_RE = re.compile(r"^[a-z0-9]{3,32}$")
 
-# --- Gemini (ADR 010) ---
+# --- Gemini (ADR 012) ---
 # [PERLU VERIFIKASI] Shape checked against ai.google.dev (speech-generation, 2026-10-09): the
 # "Generate Content API (Legacy)" page documents POST .../models/{model}:generateContent with
 # header x-goog-api-key, generationConfig.responseModalities=["AUDIO"], speechConfig, response in
@@ -344,7 +344,7 @@ def synthesize(
     raise TtsError(f"Synthesis failed ({last}).", EXIT_SYNTH)
 
 
-# --------------------------------------------------------------------------- Gemini (ADR 010)
+# --------------------------------------------------------------------------- Gemini (ADR 012)
 
 
 def pcm_to_wav(pcm: bytes, rate: int = GEMINI_SAMPLE_RATE) -> bytes:
@@ -680,7 +680,7 @@ def run_build(
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        description="Generate instruction audio at build time (Gemini default, ADR 010; "
+        description="Generate instruction audio at build time (Gemini default, ADR 012; "
         "Azure Speech backup, ADR 007).",
         epilog="No TTS at runtime. Only static approved script text is sent. Get Google's written "
         "confirmation (or switch provider) before a public/commercial release. "
@@ -863,7 +863,7 @@ def main(
         )
         if provider == "gemini":
             log(
-                "reminder (ADR 010): Gemini terms on under-18 apps / medical advice are "
+                "reminder (ADR 012): Gemini terms on under-18 apps / medical advice are "
                 "unconfirmed; get Google's written confirmation or switch provider before a "
                 "public/commercial release. The About screen must say the voice is AI-made."
             )

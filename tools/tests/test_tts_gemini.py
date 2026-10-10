@@ -349,7 +349,7 @@ def test_manifest_fields(env: Env) -> None:
         assert hashlib.sha256(data).hexdigest() == entry["sha256"]
         assert entry["bytes"] == len(data)
     assert not [p for p in env.dir.iterdir() if p.name.endswith(".tmp")]
-    assert "ADR 010" in out and "free-tier" in out
+    assert "ADR 012" in out and "free-tier" in out
     assert KEY not in (env.dir / "MANIFEST.json").read_text(encoding="utf-8")
 
 

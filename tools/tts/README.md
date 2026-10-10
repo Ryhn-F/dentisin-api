@@ -1,10 +1,10 @@
-# tools/tts — suara instruksi (build-time, ADR 010; Azure = cadangan, ADR 007)
+# tools/tts — suara instruksi (build-time, ADR 012; Azure = cadangan, ADR 007)
 
 `generate_audio.py` membuat berkas audio dari naskah anak. Penyedia bawaan: **Gemini API TTS** (`--provider gemini`). Azure Speech tetap ada sebagai cadangan (`--provider azure`). Dijalankan **di PC pengembang saat build**; aplikasi hanya membawa berkas hasilnya.
 
 **Tidak ada panggilan TTS saat runtime. Tidak ada STT dari suara anak di v1.**
 
-## Pernyataan risiko (ADR 010, wajib dibaca)
+## Pernyataan risiko (ADR 012, wajib dibaca)
 
 - Syarat tambahan Gemini API melarang penggunaan layanan sebagai bagian dari aplikasi yang ditujukan/mungkin diakses anak < 18 th dan memuat larangan saran medis **[PERLU VERIFIKASI teks terkini]**. Aplikasi ini ditujukan untuk anak dan bertema kesehatan gigi.
 - Risiko ini **diterima secara sadar** oleh pemilik produk untuk pilot. **Sebelum rilis publik/komersial: minta konfirmasi tertulis dari Google, atau buat ulang semua audio dengan penyedia lain** (audio hanyalah berkas yang dapat dibuat ulang).

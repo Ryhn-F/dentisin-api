@@ -20,7 +20,7 @@ uv run ruff check . && uv run mypy .
 | `BACKUP_OUTPUT_DIR` | backup_db.sh | folder yang sudah ada, **di luar repo** |
 | `KEEPALIVE_URL` | keepalive/ping.py (GitHub secret) | `…/rest/v1/rpc/keepalive` |
 | `SUPABASE_ANON_KEY` | keepalive/ping.py (GitHub secret) | **anon saja**; kunci service_role ditolak |
-| `GEMINI_API_KEY`, `GEMINI_TTS_MODEL`, `GEMINI_TTS_VOICE` (opsional `GEMINI_TTS_STYLE`) | tts/generate_audio.py (bawaan, ADR 010) | kunci dari akun Google AI Studio khusus proyek |
+| `GEMINI_API_KEY`, `GEMINI_TTS_MODEL`, `GEMINI_TTS_VOICE` (opsional `GEMINI_TTS_STYLE`) | tts/generate_audio.py (bawaan, ADR 012) | kunci dari akun Google AI Studio khusus proyek |
 | `TTS_PROVIDER` | tts (opsional) | `gemini` (bawaan) atau `azure`; `--provider` menang |
 | `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION`, `AZURE_SPEECH_VOICE` | tts/generate_audio.py (cadangan, `--provider azure`) | region `japaneast`/`japanwest` |
 | `DATASET_EXPORT_DIR` | export_dataset | folder ada, di luar repo, disk terenkripsi |
@@ -106,7 +106,7 @@ uv run python export_dataset.py --i-have-ethics-approval --execute    # unduh
 
 ## tts/ — suara instruksi
 
-Lihat [`tts/README.md`](tts/README.md). Ringkas: `uv run python tts/generate_audio.py --generated-under free|paid [--provider gemini|azure] [--dry-run] [--script ../app/assets/audio/script.csv]` (Gemini bawaan, ADR 010; `azure` memakai `student|payg`); isi `GEMINI_API_KEY`/`GEMINI_TTS_MODEL`/`GEMINI_TTS_VOICE` di `backend/.env` (dikosongkan di `.env.example`, jangan di-commit); naskah produksi ada di app (di luar `backend/`) sehingga jalurnya lewat `--script` atau `TTS_SCRIPT_PATH` (bawaan: `tts/script.sample.csv`, perlu `--allow-sample`); hanya teks naskah statis yang disetujui yang dikirim, tanpa data anak; **risiko syarat Google (aplikasi anak/medis) belum dikonfirmasi: minta konfirmasi tertulis atau ganti provider sebelum rilis publik/komersial**; tanpa TTS saat runtime; label "suara dibuat dengan AI" wajib di layar Tentang.
+Lihat [`tts/README.md`](tts/README.md). Ringkas: `uv run python tts/generate_audio.py --generated-under free|paid [--provider gemini|azure] [--dry-run] [--script ../app/assets/audio/script.csv]` (Gemini bawaan, ADR 012; `azure` memakai `student|payg`); isi `GEMINI_API_KEY`/`GEMINI_TTS_MODEL`/`GEMINI_TTS_VOICE` di `backend/.env` (dikosongkan di `.env.example`, jangan di-commit); naskah produksi ada di app (di luar `backend/`) sehingga jalurnya lewat `--script` atau `TTS_SCRIPT_PATH` (bawaan: `tts/script.sample.csv`, perlu `--allow-sample`); hanya teks naskah statis yang disetujui yang dikirim, tanpa data anak; **risiko syarat Google (aplikasi anak/medis) belum dikonfirmasi: minta konfirmasi tertulis atau ganti provider sebelum rilis publik/komersial**; tanpa TTS saat runtime; label "suara dibuat dengan AI" wajib di layar Tentang.
 
 ## lint_forbidden_phrases.py — frasa terlarang
 
