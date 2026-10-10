@@ -156,3 +156,15 @@ Lakukan setelah E, dengan alamat Gmail pribadi (bukan alamat `.invalid`):
 3. **Kata sandi**: minimal 10 karakter + huruf besar, kecil, angka. Terlalu berat untuk sebagian orang tua? Alternatif: minimal 8 (`minimum_password_length = 8`).
 4. **Batas email 30/jam** dan jadwal naik DMARC (`none` → `quarantine`).
 5. **Dua proyek** (dev & prod): sekarang push mengubah satu-satunya proyek; item 1.4 menyarankan memisahkannya sebelum pengguna nyata.
+
+## Setiap `config push` ke dev/prod: set tiga saklar secara inline
+`backend/.env` menyimpan `false` untuk ketiganya supaya `supabase start` lokal memakai Mailpit. Saat **push**, atur inline, jika tidak hook akan **mati** karena config dianggap `false`:
+
+```bash
+export AUTH_SMTP_ENABLED=false AUTH_CAPTCHA_ENABLED=false AUTH_SEND_EMAIL_HOOK_ENABLED=true
+npx supabase config push --project-ref <ref>      # periksa diff, jawab y
+```
+
+- `AUTH_SEND_EMAIL_HOOK_ENABLED=true`: email dikirim oleh mailer (`https://mailer.ryhnfir.dev/hooks/send-email`, repo `smtp-handler`); `AUTH_SMTP_ENABLED` tetap `false` karena SMTP bawaan Supabase tidak dipakai.
+- `AUTH_CAPTCHA_ENABLED=true` hanya setelah app mengirim token Turnstile (halaman `web/captcha/`).
+- Mailer di Vercel harus `configured:true` (`/healthz`) dan `SEND_EMAIL_HOOK_SECRET`-nya sama dengan yang di Supabase.
