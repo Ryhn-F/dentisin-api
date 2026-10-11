@@ -1,4 +1,4 @@
-# Scheduled Supabase maintenance jobs (right-to-delete + photo retention).
+# Scheduled Supabase maintenance jobs (right-to-delete + photo retention + free-tier quota alert).
 # The Edge Functions are service-only: they compare the bearer token with their CRON_SECRET
 # function secret and fail closed. It lives ONLY in GitHub Actions secrets + Supabase secrets.
 #
@@ -15,12 +15,13 @@ on:
   schedule:
     - cron: "17 */6 * * *"   # process-deletion: every 6 hours
     - cron: "43 20 * * *"    # retention-sweep: daily 20:43 UTC (03:43 WIB)
+    - cron: "7 1 * * *"      # quota-check: daily 01:07 UTC (08:07 WIB)
   workflow_dispatch:
     inputs:
       job:
         description: "Which job to run"
         type: choice
-        options: [both, process-deletion, retention-sweep]
+        options: [both, process-deletion, retention-sweep, quota-check]
         default: both
 
 permissions: {}
@@ -41,7 +42,7 @@ jobs:
         env:
           JOB: ${{ github.event.inputs.job }}
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ "${JOB}" = "retention-sweep" ]; then
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && { [ "${JOB}" = "retention-sweep" ] || [ "${JOB}" = "quota-check" ]; }; then
             echo "run=false" >> "$GITHUB_OUTPUT"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
@@ -75,7 +76,7 @@ jobs:
         env:
           JOB: ${{ github.event.inputs.job }}
         run: |
-          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ "${JOB}" = "process-deletion" ]; then
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && { [ "${JOB}" = "process-deletion" ] || [ "${JOB}" = "quota-check" ]; }; then
             echo "run=false" >> "$GITHUB_OUTPUT"
           else
             echo "run=true" >> "$GITHUB_OUTPUT"
@@ -95,3 +96,48 @@ jobs:
                 "${SUPABASE_URL%/}/functions/v1/retention-sweep")
           echo "HTTP ${code}"; cat body.json; echo
           [ "${code}" = "200" ]
+
+  # Free-tier quota alert (IMPLEMENTATION_PLAN 5.4). The function always answers 200 with
+  # numbers only; THIS step turns the status into the alert: warn -> yellow annotation,
+  # critical -> failed run (GitHub e-mails the owner about failed scheduled runs: Rp0).
+  # Egress and Edge Function invocations are not measurable from SQL -> dashboard Usage page.
+  quota-check:
+    if: ${{ github.event_name != 'schedule' || github.event.schedule == '7 1 * * *' }}
+    runs-on: ubuntu-latest
+    environment: development # secrets live in the `development` environment, not repo-level
+    timeout-minutes: 5
+    steps:
+      - name: Skip when not selected
+        id: sel
+        env:
+          JOB: ${{ github.event.inputs.job }}
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ] && [ "${JOB}" != "quota-check" ] && [ "${JOB}" != "both" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Invoke quota-check
+        if: steps.sel.outputs.run == 'true'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          : "${SUPABASE_URL:?missing secret SUPABASE_URL}"
+          : "${CRON_SECRET:?missing secret CRON_SECRET}"
+          code=$(printf 'header = "Authorization: Bearer %s"\n' "$CRON_SECRET" \
+            | curl -sS --max-time 60 --retry 2 --retry-delay 5 -X POST \
+                -K - -o body.json -w '%{http_code}' \
+                "${SUPABASE_URL%/}/functions/v1/quota-check")
+          echo "HTTP ${code}"; cat body.json; echo
+          [ "${code}" = "200" ]
+          jq -r '.metrics[] | "\(.metric): \(.used) / \(.limit) \(.unit) (\(.pct)%) \(.status)"' body.json
+          jq -r '.metrics[] | select(.status != "ok")
+                 | "::warning title=quota \(.status)::\(.metric) \(.used)/\(.limit) \(.unit) (\(.pct)%)"' body.json
+          overall=$(jq -r '.overall_status' body.json)
+          echo "overall_status=${overall}"
+          if [ "${overall}" = "critical" ]; then
+            echo "::error title=quota critical::Supabase Free quota >= critical_pct; see supabase/README.md (Kuota)"
+            exit 1
+          fi

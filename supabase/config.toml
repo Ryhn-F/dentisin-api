@@ -167,6 +167,10 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+[functions.quota-check]
+enabled = true
+verify_jwt = false
+
 [analytics]
 enabled = false
 

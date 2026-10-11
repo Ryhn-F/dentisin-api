@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "check": "deno check --quiet _shared/*.ts process-deletion/*.ts retention-sweep/*.ts",
+    "check": "deno check --quiet _shared/*.ts process-deletion/*.ts retention-sweep/*.ts quota-check/*.ts",
     "lint": "deno lint",
     "fmt": "deno fmt",
     "fmt:check": "deno fmt --check",

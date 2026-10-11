@@ -16,6 +16,7 @@
 | 2.4 lisensi bobot | **Selesai**; YOLOX = `owner_accepted_risk` (ADR 014 §5) |
 | 2.3 pelatihan Kaggle | **Berjalan** (dijalankan pemilik) |
 | 2.5–2.7 ekspor INT8, spike S1, ADR 013 | Menunggu hasil pelatihan + HP uji |
+| 5.4 pemantauan kuota Free | **Selesai** (lokal, 2026-10-11): RPC admin/service, Edge `quota-check`, job harian; 24 pgTAP + 7 Deno. Belum: `db push` + deploy fungsi ke dev (🧑), uji alert di GitHub |
 | ADR 014 (kelas D/d, tanpa keparahan dari ukuran kotak) | **Diterapkan** di ml, triase, API, DB, dokumen |
 
 ## Gerbang (gate) yang mengatur urutan
@@ -96,7 +97,7 @@ Tujuan: artefak aturan/model sampai ke app secara terverifikasi dan dapat di-rol
 - 5.1 Uji kontrak `sync_events` dari klien nyata (outbox → RPC): idempoten, retry, batas ukuran, penarikan consent (b) menghentikan sinkron 🤖 Opus high + 📱.
 - 5.2 Alur auth e2e (daftar → konfirmasi email → login → reset), CAPTCHA, batas 100 email/hari terpantau.
 - 5.3 Hak hapus dari app → `deletion_request` → bukti; mode anak tanpa akun tidak mengirim apa pun.
-- 5.4 Pemantauan kuota gratis (DB 500 MB, storage 1 GB, MAU, email/hari) — view admin + peringatan.
+- 5.4 **[Selesai lokal]** Pemantauan kuota gratis (DB 500 MB, storage 1 GB, MAU, email/hari) — `admin_quota_usage()` + Edge `quota-check` + job `scheduled-jobs.yml` (`critical` → run merah). Egress/pemanggilan fungsi tetap manual di dashboard.
 - 5.5 Telemetri agregat tanpa PII; verifikasi log tidak memuat PII/foto.
 - 5.6 Perbaiki kontrak: kuesioner 9 pertanyaan vs batas 7 layar (FR-10), `lesions[]` (keluaran triase; `teeth[]` di `app/CLAUDE.md` usang) — selaraskan dengan 📱; kuesioner 9 vs 7 layar → 🦷.
 **Keluar:** APK demo menjalankan skrining → triase → sinkron ke Supabase tanpa pelanggaran privasi.

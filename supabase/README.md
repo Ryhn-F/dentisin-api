@@ -33,7 +33,7 @@ It applies all migrations + seed, re-applies all migrations (re-runnability chec
 | `migrations/0600_storage` | buckets `manifests`, `dataset_photos`; storage policies; `admin_storage_usage()` |
 | `migrations/0700_deletion_retention` | `request_deletion()`, deletion executor + proof, retention, service RPCs, pg_cron jobs |
 | `migrations/0800_aggregates_admin_keepalive` | `facility_screening_summary()`, audited admin RPCs, `keepalive()` |
-| `functions/process-deletion`, `functions/retention-sweep`, `functions/_shared` | Edge Functions (Deno, hanya `CRON_SECRET`, log hanya jumlah). `handler.ts` = logika (diuji), `index.ts` = `Deno.serve`. Uji: `cd functions && deno task ci` (check + lint + fmt + 34 tes, tanpa jaringan Supabase; CI job `edge-functions`) |
+| `functions/process-deletion`, `functions/retention-sweep`, `functions/quota-check`, `functions/_shared` | Edge Functions (Deno, hanya `CRON_SECRET`, log hanya jumlah). `handler.ts` = logika (diuji), `index.ts` = `Deno.serve`. Uji: `cd functions && deno task ci` (check + lint + fmt + 41 tes, tanpa jaringan Supabase; CI job `edge-functions`) |
 | `seed/seed.sql` | SYNTHETIC data only (`*.invalid` e-mails, `5eed…` UUIDs, no names/photos/passwords) |
 | `tests/*.test.sql` + `tests/_helpers.psql` | pgTAP suite (helpers are included with `\ir`) |
 | `templates/*.html` | e-mail templates (Indonesian, link only, no child data; `reauthentication.html` berisi kode 6 digit saja) |
@@ -77,6 +77,7 @@ Retensi: `image_upload_ttl_days` (default 365 — **[PERLU VERIFIKASI] sesuai pr
 
 ## Kendala Free plan (ADR 008, `../CLAUDE.md` §6)
 - Proyek **dijeda setelah ±1 minggu tanpa aktivitas** → ping eksternal `POST /rest/v1/rpc/keepalive` (anon key) via `../.github/workflows/keepalive.yml`. **pg_cron tidak dapat membangunkan proyek yang sudah dijeda**, dan apakah aktivitas pg_cron internal mencegah penjedaan **[PERLU VERIFIKASI]**.
+- **Pantau kuota (item 5.4)** → migrasi `20261011000100_quota_monitoring.sql`: `admin_quota_usage()` (admin, diaudit `quota_read`) dan `service_quota_usage()` (service, dipanggil Edge Function `quota-check`). Metrik: `db_size` (MB), `storage_size` (MB, jumlah `metadata.size` semua bucket), `mau` (login bulan kalender berjalan, UTC — platform menghitung per siklus tagihan **[PERLU VERIFIKASI]**), `auth_email_24h` (entri audit GoTrue yang mengirim email dalam 24 jam; `unknown` bila tabel audit tidak ada/terbaca). Batas & ambang di `app_setting`: `quota_db_mb` 500, `quota_storage_mb` 1024, `quota_mau` 50000, `quota_email_per_day` 100, `quota_warn_pct` 70, `quota_critical_pct` 90 (tidak pernah < warn). Status per metrik `ok|warn|critical|unknown`; `overall_status` = terburuk. Job `quota-check` di `scheduled-jobs.yml` (harian 08:07 WIB): `warn` → anotasi kuning, `critical` → run merah (GitHub mengirim email ke pemilik). **Tidak terukur dari SQL:** egress 5 GB dan pemanggilan Edge Function → cek halaman *Usage* dashboard secara manual. Aksi email terverifikasi lokal (GoTrue CLI 2.120): invite → `user_invited`; recovery & magic link → `user_recovery_requested`; `user_confirmation_requested` (daftar) **[PERLU VERIFIKASI]** (CAPTCHA lokal aktif saat diuji). `admin/generate_link` juga tercatat sebagai `user_recovery_requested` walau tidak mengirim email → hitungan bisa sedikit berlebih (aman).
 - **Tanpa backup otomatis** → `../tools/backup_db.sh` (pg_dump terenkripsi age), jangan simpan dump di repo/CI publik.
 - Kuota: DB 500 MB, Storage 1 GB (maks. 50 MB/berkas), egress 5 GB, 2 proyek (dev+prod) **[PERLU VERIFIKASI berkala di supabase.com/pricing]**; pantau dengan `admin_storage_usage()` (estimasi sisa kapasitas foto 500 KiB).
 - SMTP bawaan Supabase hanya 2 email/jam → SMTP Resend wajib; Resend Free 100 email/hari → `auth.rate_limit.email_sent = 30`/jam (+ `max_frequency` 60 dtk/pengguna, CAPTCHA), email hanya konfirmasi & reset.
@@ -112,6 +113,11 @@ Retensi: `image_upload_ttl_days` (default 365 — **[PERLU VERIFIKASI] sesuai pr
 - Keduanya stdlib saja, **menolak URL non-localhost dan kunci yang bukan kunci demo lokal** (`iss = supabase-demo`). Jalankan dari `backend/`: `eval "$(npx supabase status -o env)"; export API_URL ANON_KEY SERVICE_ROLE_KEY; python supabase/scripts/rls_http_check.py`.
 - Jalur Edge untuk `deletion_e2e_check.py`: `supabase functions serve --env-file <berkas lokal berisi CRON_SECRET=<nilai lokal ≥32 char>>`, lalu `LOCAL_CRON_SECRET=<nilai yang sama> python supabase/scripts/deletion_e2e_check.py --via edge`. Tanpa itu runtime menjawab `503 not_configured` dan skrip memakai `--via rpc`.
 - **Peringatan env:** Supabase CLI ikut memuat `backend/.env` (godotenv, tidak menimpa env yang sudah ada). Lokal wajib `AUTH_SMTP_ENABLED=false` dan `AUTH_CAPTCHA_ENABLED=false` (Mailpit, tanpa CAPTCHA; secret Resend/CAPTCHA asli tidak dipakai). `--exclude studio,imgproxy,vector,logflare,postgres-meta,supavisor,realtime` menghemat disk.
+
+## Status verifikasi kuota (2026-10-11, CLI 2.120.0)
+- `supabase db reset` (11 migrasi) + `supabase test db`: **11 berkas / 241 asersi PASS** (24 baru di `10_quota`).
+- `deno task ci` (Deno 2.9.6): **41 tes PASS** (7 baru di `quota-check`).
+- `quota-check` di-serve lokal: 200 dengan angka saja; secret salah → 403; GET → 405.
 
 ## Status verifikasi (2026-10-10, Supabase CLI 2.120.0, Docker 28.3, image Postgres 17.11.0.004)
 - `supabase start` + `supabase db reset`: 10 migrasi + seed berhasil.

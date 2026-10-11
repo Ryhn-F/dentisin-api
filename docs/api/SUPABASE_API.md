@@ -198,6 +198,7 @@ Galat: `forbidden` (42501: bukan `facility_viewer` berscope atau admin), `invali
 | `admin_revoke_role` | `p_user uuid`, `p_role app_role` | void | `forbidden`; `cannot_revoke_own_admin` (22023) |
 | `admin_set_feature_flag` | `p_key text`, `p_enabled boolean`, `p_approval_ref text = null` | void | `forbidden`; `approval_ref_required` (22023: mengaktifkan `dataset_contribution` tanpa nomor persetujuan KEPK); `unknown_flag` (22023). `p_approval_ref` cocok `^[A-Za-z0-9./_-]{1,64}$` |
 | `admin_get_child_record` | `p_child uuid`, `p_reason_code text` (`^[a-z][a-z0-9_]{2,39}$`) | jsonb | `forbidden`; `reason_code_required` (22023) |
+| `admin_quota_usage` | – | jsonb `{checked_at, warn_pct, critical_pct, overall_status, metrics[{metric, unit, used, limit, pct, status}]}` | `forbidden`. Diaudit `quota_read` (hanya `overall_status`). Tanpa id/email/path |
 | `admin_storage_usage` | - | jsonb (juga untuk `service_role`) | `forbidden` |
 
 `admin_get_child_record` mengembalikan `{"child":{...tanpa owner_id},"consent":[...],"screening":[...],"referral":[...],"brushing_event_count":n,"image_upload_count":n}` (kolom pelaku dibuang); `null` bila anak tidak ada; pembacaan tetap tercatat di `audit_log`.

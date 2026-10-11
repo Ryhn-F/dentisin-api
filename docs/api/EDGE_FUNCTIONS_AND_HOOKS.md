@@ -1,10 +1,10 @@
 # Edge Functions, job terjadwal, dan hook email
 
-> **Ringkasan (ID).** Dua Edge Function milik Supabase (`process-deletion`, `retention-sweep`) hanya untuk scheduler, bukan untuk app: diautentikasi dengan `Bearer <CRON_SECRET>`, gagal-tutup, dan responsnya hanya hitungan. Email Auth (konfirmasi, reset) dikirim oleh layanan mailer terpisah (`smtp-handler`) yang menerima **Send Email hook** Supabase bertanda tangan Standard Webhooks. Dokumen ini adalah kontrak untuk ops dan backend; app tidak memanggil satu pun dari ini secara langsung.
+> **Ringkasan (ID).** Tiga Edge Function milik Supabase (`process-deletion`, `retention-sweep`, `quota-check`) hanya untuk scheduler, bukan untuk app: diautentikasi dengan `Bearer <CRON_SECRET>`, gagal-tutup, dan responsnya hanya hitungan. Email Auth (konfirmasi, reset) dikirim oleh layanan mailer terpisah (`smtp-handler`) yang menerima **Send Email hook** Supabase bertanda tangan Standard Webhooks. Dokumen ini adalah kontrak untuk ops dan backend; app tidak memanggil satu pun dari ini secara langsung.
 
 ## 1. Edge Functions (Deno)
 
-Sumber: `supabase/functions/{process-deletion,retention-sweep,_shared}`. Konfigurasi: `[functions.*] enabled = true`, `verify_jwt = false` (gerbang JWT platform dimatikan karena pemanggilnya scheduler eksternal; fungsi memverifikasi sendiri).
+Sumber: `supabase/functions/{process-deletion,retention-sweep,quota-check,_shared}`. Konfigurasi: `[functions.*] enabled = true`, `verify_jwt = false` (gerbang JWT platform dimatikan karena pemanggilnya scheduler eksternal; fungsi memverifikasi sendiri).
 
 Pemanggilan (hanya scheduler / PC tim):
 
@@ -52,6 +52,18 @@ Alur: `service_retention_candidates(p_limit=500)` -> baris `image_upload` dengan
 | 500 | `{"error":"list_failed"}` atau `{"error":"image_purge_failed","candidates":n,"removed":n}` | gagal; coba lagi pada jadwal berikut |
 | 503/405/403 | lihat 1.1 | |
 
+### 1.3b `quota-check` (kuota Supabase Free, item 5.4)
+
+Alur: `service_quota_usage()` -> snapshot -> disaring (hanya kode & angka yang di-whitelist) -> respons. Tidak menulis apa pun.
+
+| Status | Body | Arti |
+|---|---|---|
+| 200 | `{"overall_status":"ok","warn_pct":70,"critical_pct":90,"metrics":[{"metric":"db_size","unit":"mb","used":13.1,"limit":500,"pct":2.6,"status":"ok"}, ...]}` | snapshot terbaca; **juga 200 bila `critical`** (pemanggil yang memutuskan peringatan) |
+| 500 | `{"error":"rpc_failed"}` atau `{"error":"bad_snapshot"}` | RPC gagal / bentuk tak valid |
+| 503/405/403 | lihat 1.1 | |
+
+Metrik: `db_size` (mb), `storage_size` (mb), `mau` (users), `auth_email_24h` (emails). `used`/`pct` bisa `null` dengan `status: "unknown"`.
+
 ### 1.4 Job di dalam database (pg_cron, bila ekstensi tersedia)
 
 | Job | Jadwal | Isi |
@@ -69,9 +81,10 @@ Environment GitHub `development`. Lokasi: `.github/workflows/`.
 |---|---|---|---|
 | `scheduled-jobs.yml` job `process-deletion` | `17 */6 * * *` (tiap 6 jam) | `POST $SUPABASE_URL/functions/v1/process-deletion` | `SUPABASE_URL`, `CRON_SECRET` |
 | `scheduled-jobs.yml` job `retention-sweep` | `43 20 * * *` (harian 03:43 WIB) | `POST $SUPABASE_URL/functions/v1/retention-sweep` | sama |
+| `scheduled-jobs.yml` job `quota-check` | `7 1 * * *` (harian 08:07 WIB) | `POST $SUPABASE_URL/functions/v1/quota-check`; `warn` → anotasi `::warning`, `critical` → job gagal | sama |
 | `keepalive.yml` | `17 3 */3 * *` (tiap 3 hari) | `POST <KEEPALIVE_URL>` = `.../rest/v1/rpc/keepalive` dengan anon key | `KEEPALIVE_URL`, `SUPABASE_ANON_KEY` (anon saja; kunci privileged ditolak `ping.py`) |
 
-Perilaku `scheduled-jobs.yml`: `workflow_dispatch` punya input `job` (`both`, `process-deletion`, `retention-sweep`); curl `--max-time 120 --retry 2`, `timeout-minutes: 5`; token dikirim lewat stdin (`-K -`) agar tidak muncul di daftar proses; job **sukses hanya bila HTTP 200** (207 membuat job merah agar kegagalan sebagian terlihat). Cron GitHub bisa tertunda atau dilewati, dan workflow terjadwal dimatikan GitHub setelah 60 hari tanpa aktivitas repo `[PERLU VERIFIKASI]` untuk repo privat. Pemilik harus mengisi secret `SUPABASE_URL` dan `CRON_SECRET` di GitHub (status pengisian `[PERLU VERIFIKASI]`).
+Perilaku `scheduled-jobs.yml`: `workflow_dispatch` punya input `job` (`both`, `process-deletion`, `retention-sweep`, `quota-check`); curl `--max-time 120 --retry 2`, `timeout-minutes: 5`; token dikirim lewat stdin (`-K -`) agar tidak muncul di daftar proses; job **sukses hanya bila HTTP 200** (207 membuat job merah agar kegagalan sebagian terlihat). Cron GitHub bisa tertunda atau dilewati, dan workflow terjadwal dimatikan GitHub setelah 60 hari tanpa aktivitas repo `[PERLU VERIFIKASI]` untuk repo privat. Pemilik harus mengisi secret `SUPABASE_URL` dan `CRON_SECRET` di GitHub (status pengisian `[PERLU VERIFIKASI]`).
 
 ## 3. Hook Send Email (Supabase Auth -> mailer)
 

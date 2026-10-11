@@ -2,6 +2,11 @@
 
 Format: tanggal (YYYY-MM-DD), perubahan pada kontrak yang didokumentasikan. Perubahan kontrak nyata (migrasi, aturan, model) tetap dicatat di `../regulatory/CHANGELOG.md` dan ADR; berkas ini hanya melacak dokumen di `docs/api/`.
 
+## 2026-10-11 (kuota)
+
+- Migrasi `20261011000100_quota_monitoring.sql`: RPC `admin_quota_usage()` (admin, diaudit) dan `service_quota_usage()` (service); 6 baris `app_setting` `quota_*`.
+- Edge Function `quota-check` (`CRON_SECRET`) + job `quota-check` di `scheduled-jobs.yml`. Didokumentasikan di `SUPABASE_API.md` dan `EDGE_FUNCTIONS_AND_HOOKS.md` §1.3b/§2.
+
 ## 2026-10-11
 
 - Dokumen awal: `README.md` (indeks, arsitektur, peran, galat umum), `SUPABASE_API.md`, `SYNC_EVENTS.md`, `EDGE_FUNCTIONS_AND_HOOKS.md`, `CLIENT_CONTRACTS.md`.
