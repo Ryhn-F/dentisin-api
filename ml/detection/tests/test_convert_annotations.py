@@ -183,7 +183,7 @@ def test_coco_dict() -> None:
 @pytest.mark.parametrize(
     ("layout", "split", "ann", "imgdir"),
     [
-        ("mediapipe", "train", "train/labels.json", "train/data"),
+        ("mediapipe", "train", "train/labels.json", "train/images"),
         ("yolox", "val", "annotations/instances_val.json", "val"),
         ("roboflow", "val", "valid/_annotations.coco.json", "valid"),
     ],
@@ -295,3 +295,22 @@ def test_coco_layout_link_and_cli_resize(tmp_path: Path, make_image: Callable[..
     coco = json.loads((tmp_path / "lay2" / "annotations" / "instances_train.json").read_text())
     assert coco["images"][0]["width"] == 20 and coco["annotations"][0]["bbox"] == [0.5, 0.5, 4.0, 4.0]
     assert (tmp_path / "lay2" / "train" / "x.jpg").is_file()
+
+
+def test_mediapipe_layout_matches_model_maker_from_coco_folder(tmp_path: Path, make_image: Callable[..., Path]) -> None:
+    """mediapipe-model-maker 0.2.1.4 ``Dataset.from_coco_folder(<split>/)`` documents
+    ``<split>/images/<file>.jpg`` + ``<split>/labels.json`` (it lists ``images/``; a ``data/`` folder
+    crashed the Kaggle run with FileNotFoundError). Category id 0 is reserved for "background"."""
+    root = tmp_path / "src"
+    make_image(root / "d" / "x" / "a.jpg")
+    make_image(root / "d" / "y" / "a.jpg")
+    out = tmp_path / "out"
+    ca.write_coco_layout(_records(), out, layout="mediapipe", split="train", images_root=root)
+    split_dir = out / "train"
+    assert (split_dir / "images").is_dir()
+    assert not (split_dir / "data").exists()
+    labels = json.loads((split_dir / "labels.json").read_text(encoding="utf-8"))
+    on_disk = {p.name for p in (split_dir / "images").iterdir()}
+    assert {img["file_name"] for img in labels["images"]} <= on_disk
+    assert all(c["id"] >= 1 for c in labels["categories"])  # 0 would have to be "background"
+    assert all(len(a["bbox"]) == 4 for a in labels["annotations"])

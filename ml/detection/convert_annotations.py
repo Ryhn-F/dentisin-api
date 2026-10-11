@@ -344,8 +344,10 @@ def to_coco_dict(records: Iterable[ImageAnnotation]) -> dict[str, Any]:
 
 def _layout_paths(out_dir: Path, layout: Layout, split: str) -> tuple[Path, Path]:
     """Return (annotation_json_path, image_dir) for a layout and split."""
-    if layout == "mediapipe":  # Dataset.from_coco_folder(<split>/) expects data/ + labels.json
-        return out_dir / split / "labels.json", out_dir / split / "data"
+    if layout == "mediapipe":
+        # mediapipe-model-maker 0.2.1.4 Dataset.from_coco_folder(<split>/): "<data_dir>/images/<file>.jpg" +
+        # "<data_dir>/labels.json" (read from the wheel's docstring; the old TFLite Model Maker used data/).
+        return out_dir / split / "labels.json", out_dir / split / "images"
     if layout == "yolox":  # COCODataset(data_dir, json_file=instances_<split>.json, name=<split>)
         return out_dir / "annotations" / f"instances_{split}.json", out_dir / split
     if layout == "roboflow":  # rfdetr: <split>/_annotations.coco.json; uses 'valid' for val
