@@ -9,6 +9,7 @@ injectable so the logic is unit-tested without either (``tests/test_kaggle_tools
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import csv
 import hashlib
@@ -795,10 +796,8 @@ def dir_size_mb(path: Path) -> int:
     total = 0
     for root, _dirs, files in os.walk(path):
         for name in files:
-            try:
+            with contextlib.suppress(OSError):
                 total += os.lstat(os.path.join(root, name)).st_size
-            except OSError:
-                pass
     return total // (1 << 20)
 
 
