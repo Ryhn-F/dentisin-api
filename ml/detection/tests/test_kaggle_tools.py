@@ -258,6 +258,14 @@ def test_mediapipe_helpers(tmp_path: Path) -> None:
     assert mediapipe_mm.VERIFIED_VARIANTS == ("MOBILENET_V2",)
 
 
+def test_mediapipe_worker_env_is_headless_and_clean() -> None:
+    """Kaggle run 2026-10-12: the kernel's inline matplotlib backend and PYTHONPATH must not reach the 3.10 venv."""
+    env = mediapipe_mm.child_environment(
+        {"MPLBACKEND": "module://matplotlib_inline.backend_inline", "PYTHONPATH": "/k", "PYTHONHOME": "/h", "PATH": "/bin"}
+    )
+    assert env == {"MPLBACKEND": "Agg", "PATH": "/bin"}
+
+
 def test_mm_anchor_extraction_matches_model_maker_formula() -> None:
     class T:
         def __init__(self, a: list[list[float]]) -> None:

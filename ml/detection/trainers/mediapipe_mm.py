@@ -31,6 +31,16 @@ INSTALL_HINT = ("a Python 3.10 env: uv venv --python 3.10 /kaggle/tmp/venv-mm &&
 VERIFIED_VARIANTS = ("MOBILENET_V2",)
 
 
+def child_environment(environ: Mapping[str, str]) -> dict[str, str]:
+    """Environment for the Python 3.10 Model Maker worker: no kernel PYTHONPATH/PYTHONHOME (they would shadow the venv's
+    packages) and a headless matplotlib backend. Kaggle/Colab kernels export
+    ``MPLBACKEND=module://matplotlib_inline.backend_inline``, which is invalid inside this venv (mediapipe imports
+    ``matplotlib.pyplot``) -- Kaggle run 2026-10-12."""
+    env = {k: v for k, v in environ.items() if k not in ("PYTHONPATH", "PYTHONHOME")}
+    env["MPLBACKEND"] = "Agg"
+    return env
+
+
 def options(ctx: TrainContext) -> dict[str, Any]:
     opts: dict[str, Any] = dict(ctx.cfg.get("trainer_options", {}))
     opts.setdefault("work_dir", str(ctx.run_dir / "work"))
@@ -69,7 +79,7 @@ def train(ctx: TrainContext) -> dict[str, Any]:  # pragma: no cover - needs a Py
         write_coco_layout(small, layout_dir, layout="mediapipe", split=split, images_root=work / "images", link=True)
     export_dir = ctx.run_dir / "exported"
     cmd = build_command(ctx, opts, layout_dir, export_dir)
-    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONHOME")}  # never leak kernel paths into the 3.10 venv
+    env = child_environment(os.environ)
     subprocess.run(cmd, check=True, env=env, timeout=None if opts.get("time_budget_h") is None else float(opts["time_budget_h"]) * 3600)
     result: dict[str, Any] = json.loads((export_dir / "mm_result.json").read_text(encoding="utf-8"))
     result["command"] = cmd
