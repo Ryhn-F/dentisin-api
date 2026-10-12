@@ -47,7 +47,7 @@ uv run python export.py verify-bundle ../exports/0.1.0
 | `thresholds.py` | Ambang skor per kelas dipilih di **val** (status `set_on_val`, tetap butuh tinjauan drg untuk rilis) |
 | `artifacts.py` | `collect` (zip unduhan notebook; menolak gambar/`.npy`/checkpoint) · `pack-code` (zip kode untuk dataset privat Kaggle) |
 | `WEIGHT_LICENSES.md` | Verifikasi lisensi **bobot** pra-latih tiap kandidat (sumber primer, 2026-10-09) + patch `license_gate.yaml` |
-| `kaggle/` | Notebook Kaggle/Colab (`*_kaggle.py` sumber, `.ipynb` dibangkitkan `make_ipynb.py`), `nbkit.py`, `mm_train_py310.py`, **`RUNBOOK.md`** |
+| `kaggle/` | Notebook Kaggle/Colab (`*_kaggle.py` sumber, `.ipynb` dibangkitkan `make_ipynb.py`; `bootstrap.py` di-*inline* ke sel 1: preflight + ambil kode via `GITHUB_TOKEN`), `nbkit.py` (data Zenodo/ split/ venv terkunci `requirements/*.txt`), `mm_train_py310.py`, `local_simulate.py` (simulasi Kaggle lokal), **`RUNBOOK.md`** |
 
 ## Metrik (`eval.py`)
 Per kelas (gigi tetap dan gigi sulung **terpisah**) + `any_caries` ("ada indikasi karies pada gigi"): tingkat **gambar** (sens, spes, PPV, NPV, matriks 2×2)

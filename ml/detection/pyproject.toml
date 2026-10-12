@@ -75,7 +75,8 @@ ignore = ["RUF001", "RUF002", "RUF003"]  # Indonesian text / typographic dashes 
 [tool.ruff.lint.isort]
 known-first-party = ["canonical", "convert_annotations", "decode", "eval", "export", "license_gate", "quality_gate",
                      "quality_gate_vectors", "train", "trainers", "check_int8_parity", "bake_off", "make_splits", "verify_dataset",
-                     "preprocess", "predict", "thresholds", "artifacts", "nbkit", "make_ipynb", "mm_train_py310"]
+                     "preprocess", "predict", "thresholds", "artifacts", "nbkit", "make_ipynb", "mm_train_py310",
+                     "bootstrap", "local_simulate"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -83,9 +84,10 @@ strict = true
 mypy_path = [".", "../data/scripts", "kaggle"]
 explicit_package_bases = true
 # Notebooks (kaggle/*_kaggle.py) are excluded from mypy (top-level notebook code); ruff + tests cover them.
-files = ["*.py", "trainers", "bake_off", "tests", "../data/scripts", "kaggle/nbkit.py", "kaggle/make_ipynb.py", "kaggle/mm_train_py310.py"]
+files = ["*.py", "trainers", "bake_off", "tests", "../data/scripts", "kaggle/nbkit.py", "kaggle/bootstrap.py",
+         "kaggle/make_ipynb.py", "kaggle/mm_train_py310.py"]
 
 [[tool.mypy.overrides]]
 module = ["mediapipe_model_maker.*", "tflite_model_maker.*", "rfdetr.*", "yolox.*", "torch.*", "onnx2tf.*",
-          "ai_edge_litert.*", "tensorflow.*", "mlflow.*", "onnxruntime.*"]
+          "ai_edge_litert.*", "tensorflow.*", "mlflow.*", "onnxruntime.*", "kaggle_secrets", "google.colab"]
 ignore_missing_imports = true

@@ -11,7 +11,7 @@ from photos), checkpoints/archives and anything above ``--max-file-mb``: hosted-
 must never carry images (backend/CLAUDE.md §3.5).
 
 ``pack-code`` zips the pipeline code needed on Kaggle/Colab (ml/detection without .venv/caches
-+ ml/data/scripts, class_maps, license_gate.yaml, LICENSES.md) for upload as a PRIVATE Kaggle
++ ml/data/scripts, class_maps, the committed splits/, license_gate.yaml, LICENSES.md) for upload as a PRIVATE Kaggle
 dataset. ``--with-processed`` adds ``ml/data/processed/ahmed2025`` annotation files
 (canonical.jsonl, splits/*.json, verify_report.json) -- text only; images are never packed.
 """
@@ -125,6 +125,9 @@ def code_files(ml_root: Path = ML, *, with_processed: bool = False) -> list[tupl
         for f in sorted((data / sub).glob("*")):
             if f.is_file() and f.suffix in {".py", ".md", ".yaml", ".yml", ".csv"}:
                 out.append((f, f"data/{sub}/{f.name}"))
+    for f in sorted((data / "splits").rglob("*")):  # committed, sha256-pinned patient-level splits (text only)
+        if f.is_file() and f.suffix in {".json", ".csv"}:
+            out.append((f, f"data/{f.relative_to(data).as_posix()}"))
     if with_processed:
         proc = data / "processed" / "ahmed2025"
         for name in PROCESSED_FILES:

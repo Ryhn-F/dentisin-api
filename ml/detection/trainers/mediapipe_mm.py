@@ -16,6 +16,7 @@ listed by the Apache-2.0 TF Model Garden QAT project; MULTI_AVG checkpoints are 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from collections.abc import Mapping
 from pathlib import Path
@@ -68,8 +69,11 @@ def train(ctx: TrainContext) -> dict[str, Any]:  # pragma: no cover - needs a Py
         write_coco_layout(small, layout_dir, layout="mediapipe", split=split, images_root=work / "images", link=True)
     export_dir = ctx.run_dir / "exported"
     cmd = build_command(ctx, opts, layout_dir, export_dir)
-    subprocess.run(cmd, check=True, timeout=None if opts.get("time_budget_h") is None else float(opts["time_budget_h"]) * 3600)
+    env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "PYTHONHOME")}  # never leak kernel paths into the 3.10 venv
+    subprocess.run(cmd, check=True, env=env, timeout=None if opts.get("time_budget_h") is None else float(opts["time_budget_h"]) * 3600)
     result: dict[str, Any] = json.loads((export_dir / "mm_result.json").read_text(encoding="utf-8"))
     result["command"] = cmd
+    # Model Maker 0.2.1.4 (dataset_util.COCOCacheFilesWriter) SKIPS images without boxes: negatives never reach training.
+    result["negatives_skipped_by_model_maker"] = {s: sum(1 for r in parts[s] if not r.boxes) for s in ("train", "val")}
     result["note"] = "Model Maker COCO metrics are NOT the DentisAI report; run predict.py + eval.py on the exported INT8 model."
     return result

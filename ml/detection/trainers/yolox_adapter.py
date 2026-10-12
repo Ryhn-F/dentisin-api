@@ -213,7 +213,7 @@ def export_onnx(exp_file: Path, ckpt: Path, out: Path, *, opset: int = 13, raw_l
 
     exp = get_exp(str(exp_file), None)
     model = exp.get_model()
-    state = torch.load(str(ckpt), map_location="cpu")
+    state = torch.load(str(ckpt), map_location="cpu", weights_only=False)  # own/YOLOX ckpt (numpy scalars; torch>=2.6 default)
     model.load_state_dict(state.get("model", state))
     model = replace_module(model, nn.SiLU, SiLU)  # export-friendly SiLU, as upstream export_onnx.py
     model.head.decode_in_inference = False
