@@ -790,8 +790,13 @@ def test_lock_files_keep_pkg_resources() -> None:
     found = list(locks.glob("*.txt"))
     assert found
     for lock in found:
-        m = re.search(r"^setuptools==([0-9]+)[.]", lock.read_text(encoding="utf-8"), re.M)
-        assert m is not None and int(m.group(1)) <= 80, f"{lock.name} must pin setuptools <= 80.x"
+        text = lock.read_text(encoding="utf-8")
+        m = re.search(r"^setuptools==([0-9]+)[.]", text, re.M)
+        assert m is not None, f"{lock.name} must pin setuptools"
+        if lock.name.startswith("mm_"):  # Model Maker: tensorflow-hub / tensorboard need pkg_resources
+            assert int(m.group(1)) <= 80, f"{lock.name} must pin setuptools <= 80.x"
+        elif "onnx2tf==2.6.9" in text:  # onnx2tf 2.6.9 requires setuptools==81.0.0 exactly (uv resolution error 2026-10-12)
+            assert "setuptools==81.0.0" in text, f"{lock.name}: onnx2tf 2.6.9 needs setuptools==81.0.0"
 
 
 class _Res:
