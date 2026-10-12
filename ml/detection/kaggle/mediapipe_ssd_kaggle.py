@@ -78,6 +78,7 @@ nbkit.metadata_from_splits(P["splits"], META_CSV)
 UV = nbkit.uv_command()
 MM_VENV = TMP / "venv-mm"
 MM_PY = nbkit.ensure_venv(MM_VENV, nbkit.MM_PY, nbkit.MM_LOCK, uv=UV)
+nbkit.require_imports(MM_PY, ["pkg_resources", "tensorflow_hub", "mediapipe_model_maker.python.vision.object_detector"])  # fail fast, in seconds
 GPUS = nbkit.ensure_tf_gpu(MM_PY, MM_VENV, need=ENV != "local")
 EXPORT_PY = nbkit.ensure_venv(TMP / "venv-export", nbkit.EXPORT_PY, nbkit.EXPORT_LOCK, uv=UV)
 nbkit.sh([EXPORT_PY, "-c", "import ai_edge_litert, numpy; print('litert ok, numpy', numpy.__version__)"])

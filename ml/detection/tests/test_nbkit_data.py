@@ -10,6 +10,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import types
@@ -781,3 +782,33 @@ def test_harness_range_server_and_layout_checks(tmp_path: Path) -> None:
     (yd / "annotations" / "instances_train.json").write_text(json.dumps({"images": [{"file_name": "z.jpg"}], "categories": [{"id": 0}]}),
                                                              encoding="utf-8")
     assert len(sim.check_yolox_layout(yd, "train")) == 2
+
+
+def test_lock_files_keep_pkg_resources() -> None:
+    """setuptools >= 81 has no pkg_resources; tensorflow-hub/tensorboard import it (Kaggle run 2026-10-12)."""
+    locks = Path(__file__).resolve().parents[1] / "kaggle" / "requirements"
+    found = list(locks.glob("*.txt"))
+    assert found
+    for lock in found:
+        m = re.search(r"^setuptools==([0-9]+)[.]", lock.read_text(encoding="utf-8"), re.M)
+        assert m is not None and int(m.group(1)) <= 80, f"{lock.name} must pin setuptools <= 80.x"
+
+
+class _Res:
+    def __init__(self, rc: int, err: str = "") -> None:
+        self.returncode, self.stderr, self.stdout = rc, err, ""
+
+
+def _fake_run(cmd: list[str], **_: object) -> _Res:
+    if cmd[-1] == "import ok":
+        return _Res(0)
+    return _Res(1, "Traceback (most recent call last):\nModuleNotFoundError: No module named 'pkg_resources'")
+
+
+def test_import_failures_reports_last_error_line(tmp_path: Path) -> None:
+    bad = nbkit.import_failures(tmp_path / "python", ["ok", "pkg_resources"], run=_fake_run)
+    assert list(bad) == ["pkg_resources"]
+    assert "No module named 'pkg_resources'" in bad["pkg_resources"]
+    with pytest.raises(RuntimeError, match=re.escape("setuptools==80.9.0")):
+        nbkit.require_imports(tmp_path / "python", ["pkg_resources"], run=_fake_run)
+    nbkit.require_imports(tmp_path / "python", ["ok"], run=_fake_run)

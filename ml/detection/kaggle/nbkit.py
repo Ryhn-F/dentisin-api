@@ -859,6 +859,27 @@ def nvidia_lib_dirs(venv: Path) -> list[str]:
     return sorted(str(p) for p in venv.glob("lib/python3*/site-packages/nvidia/*/lib") if p.is_dir())
 
 
+def import_failures(py: Path, modules: Sequence[str], *, run: Callable[..., Any] = subprocess.run) -> dict[str, str]:
+    """Modules that do NOT import inside a venv -> last error line. Run right after creating a venv so
+    a missing/removed dependency (e.g. ``pkg_resources`` after setuptools >= 81) fails in seconds."""
+    failures: dict[str, str] = {}
+    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}  # the kernel's packages must not leak in
+    for mod in modules:
+        res = run([str(py), "-c", f"import {mod}"], capture_output=True, text=True, check=False, timeout=900, env=env)
+        if res.returncode != 0:
+            lines = [ln for ln in ((res.stderr or "") + (res.stdout or "")).strip().splitlines() if ln.strip()]
+            failures[mod] = lines[-1] if lines else f"exit {res.returncode}"
+    return failures
+
+
+def require_imports(py: Path, modules: Sequence[str], *, run: Callable[..., Any] = subprocess.run) -> None:
+    bad = import_failures(py, modules, run=run)
+    if bad:
+        detail = "; ".join(f"{m}: {e}" for m, e in bad.items())
+        raise RuntimeError(f"Paket di venv tidak bisa di-import ({detail}). Periksa kaggle/requirements/*.txt (pin setuptools==80.9.0).")
+    print("venv import check ok:", ", ".join(modules))
+
+
 TF_GPU_PROBE = "import tensorflow as tf; print('TF', tf.__version__); print('GPUS=%d' % len(tf.config.list_physical_devices('GPU')))"
 
 
