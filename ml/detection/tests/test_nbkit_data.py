@@ -678,6 +678,14 @@ def test_child_env_strips_kernel_paths_for_foreign_interpreters() -> None:
     assert "PYTHONPATH" not in venv and "PYTHONHOME" not in venv and venv["X"] == "1" and venv["PATH"] == "/bin"
 
 
+def test_child_env_forces_agg_matplotlib_backend_for_venv_programs() -> None:
+    """Kaggle kernels set MPLBACKEND=module://matplotlib_inline.backend_inline; a venv without matplotlib_inline then
+    fails `import matplotlib.pyplot` (mediapipe imports it)."""
+    base = {"MPLBACKEND": "module://matplotlib_inline.backend_inline", "PATH": "/bin"}
+    assert nbkit.child_env("/tmp/venv-mm/bin/python", None, base)["MPLBACKEND"] == "Agg"
+    assert nbkit.child_env(sys.executable, None, base)["MPLBACKEND"] == base["MPLBACKEND"]  # the kernel keeps its own
+
+
 def test_child_env_puts_venv_bin_on_path(tmp_path: Path) -> None:
     (tmp_path / "venv" / "bin").mkdir(parents=True)
     (tmp_path / "venv" / "pyvenv.cfg").write_text("home = /usr\n", encoding="utf-8")

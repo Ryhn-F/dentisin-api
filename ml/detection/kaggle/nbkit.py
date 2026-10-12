@@ -766,6 +766,9 @@ def child_env(exe: str, extra: Mapping[str, str] | None = None, environ: Mapping
     if not same:
         for k in FOREIGN_PY_VARS:
             env.pop(k, None)
+        # Kaggle/Colab kernels export MPLBACKEND=module://matplotlib_inline.backend_inline, which a plain venv
+        # does not have -> `import matplotlib.pyplot` (pulled in by mediapipe) raised ValueError (Kaggle run 2026-10-12)
+        env["MPLBACKEND"] = "Agg"
         bindir = os.path.dirname(os.path.abspath(exe))
         if os.path.isfile(os.path.join(bindir, "activate")) or os.path.isfile(os.path.join(bindir, "pyvenv.cfg")) \
                 or os.path.isfile(os.path.join(os.path.dirname(bindir), "pyvenv.cfg")):
@@ -863,7 +866,7 @@ def import_failures(py: Path, modules: Sequence[str], *, run: Callable[..., Any]
     """Modules that do NOT import inside a venv -> last error line. Run right after creating a venv so
     a missing/removed dependency (e.g. ``pkg_resources`` after setuptools >= 81) fails in seconds."""
     failures: dict[str, str] = {}
-    env = {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}  # the kernel's packages must not leak in
+    env = child_env(str(py))  # no kernel PYTHONPATH, MPLBACKEND=Agg, venv bin on PATH
     for mod in modules:
         res = run([str(py), "-c", f"import {mod}"], capture_output=True, text=True, check=False, timeout=900, env=env)
         if res.returncode != 0:
