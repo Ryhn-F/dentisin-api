@@ -93,7 +93,10 @@ print(nbkit.mini_layout(P["canonical"], P["splits"], DATA_ROOT, MINI, layout="me
 t_check = time.time()
 nbkit.sh([MM_PY, DET / "kaggle" / "mm_train_py310.py", "--train", MINI / "data/train", "--val", MINI / "data/val",
           "--export-dir", MINI / "exported", "--epochs", "1", "--batch-size", "4", "--qat-epochs", "1", "--cache-dir", MINI / "cache"])
-assert (MINI / "exported" / "model_int8_qat.tflite").is_file(), "Model Maker toolcheck produced no QAT model -- see log above"
+_have = {p.name for p in (MINI / "exported").iterdir()}
+assert "model_fp32.tflite" in _have, "Model Maker toolcheck produced no float model -- see log above"
+assert {"model_int8_qat.tflite", "model_int8_ptq.tflite"} & _have, "Model Maker toolcheck produced no INT8 model (QAT and PTQ both failed) -- see log above"
+print("INT8 method in the toolcheck:", "QAT" if "model_int8_qat.tflite" in _have else "post-training quantization (QAT failed, see warning above)")
 print(f"toolcheck OK in {time.time() - t_check:.0f}s:", sorted(p.name for p in (MINI / "exported").iterdir()))
 
 # %% 5. Konfigurasi run + gerbang lisensi (dry run). Penolakan di sini final -- jangan mengubah gerbang dari notebook.
@@ -124,8 +127,15 @@ print(run["status"], json.dumps(run.get("results"), indent=1))
 assert rc == 0, f"training failed: {run.get('error')} -- lihat log di atas (RUNBOOK §8)"
 EXPORTED = RUN_JSON.parent / "exported"
 FP32, QAT, ANCHORS = EXPORTED / "model_fp32.tflite", EXPORTED / "model_int8_qat.tflite", EXPORTED / "anchors.json"
-assert QAT.is_file(), "no QAT INT8 model (QAT_EPOCHS = 0?) -- Model Maker offers no INT8 without QAT"
-print({p.name: round(p.stat().st_size / 2**20, 2) for p in (FP32, QAT)}, "anchors:", len(json.loads(ANCHORS.read_text())))
+PTQ = EXPORTED / "model_int8_ptq.tflite"
+# INT8 = QAT when it worked, else post-training INT8 calibrated on training photos (Kaggle 2026-10-12: tfmot QAT
+# crashed on Conv2DBNBlock). Both are uint8-in/uint8-out Model Maker exports, so the later cells are identical.
+INT8_MODEL = QAT if QAT.is_file() else PTQ
+INT8_METHOD = "qat" if INT8_MODEL == QAT else "ptq"
+assert INT8_MODEL.is_file(), "no INT8 model: QAT and post-training INT8 both failed -- see mm_result.json export_errors above"
+print({p.name: round(p.stat().st_size / 2**20, 2) for p in (FP32, INT8_MODEL)}, "INT8 method:", INT8_METHOD, "anchors:", len(json.loads(ANCHORS.read_text())))
+if INT8_METHOD == "ptq":
+    print("PERINGATAN: INT8 hasil post-training quantization (bukan QAT); akurasi bisa lebih rendah -- nilai lewat paritas & evaluasi di bawah.")
 
 # %% 7. Sampel paritas (split VAL, 50 foto; QAT tidak butuh set kalibrasi). Disimpan di TMP: tidak pernah diekspor.
 PARITY = TMP / "export" / "parity_val.npy"
@@ -136,7 +146,7 @@ nbkit.sh([EXPORT_PY, "preprocess.py", "calib", "--cfg", RUN_CFG, "--split", "val
 EXPORTS = WORK / "exports"
 VERSION_BASE = "0.1.0"
 BUNDLE = EXPORTS / nbkit.next_dev_version(EXPORTS, VERSION_BASE)
-nbkit.sh([EXPORT_PY, "export.py", "--cfg", RUN_CFG, "--format", "tflite", "--int8", "--tflite-in", QAT, "--anchors", ANCHORS,
+nbkit.sh([EXPORT_PY, "export.py", "--cfg", RUN_CFG, "--format", "tflite", "--int8", "--tflite-in", INT8_MODEL, "--anchors", ANCHORS,
           "--out", BUNDLE, "--run-id", run["run_id"], "--allow-unverified-license"], cwd=DET)
 print(json.dumps(json.loads((BUNDLE / "labels.json").read_text())["output"]["tensors"], indent=1))
 PARITY_JSON = WORK / "out" / "parity.json"
@@ -168,7 +178,7 @@ for split, preds in (("val", "preds_int8_val.jsonl"), ("test", "preds_int8_test.
 
 # %% 11. Bundel final dengan ambang + bukti; verifikasi
 FINAL = EXPORTS / nbkit.next_dev_version(EXPORTS, VERSION_BASE)
-nbkit.sh([EXPORT_PY, "export.py", "--cfg", RUN_CFG, "--format", "tflite", "--int8", "--tflite-in", QAT, "--anchors", ANCHORS,
+nbkit.sh([EXPORT_PY, "export.py", "--cfg", RUN_CFG, "--format", "tflite", "--int8", "--tflite-in", INT8_MODEL, "--anchors", ANCHORS,
           "--out", FINAL, "--run-id", run["run_id"], "--thresholds", THR, "--eval-report", OUT / "report_int8_test.json",
           "--parity-report", PARITY_JSON, "--allow-unverified-license"], cwd=DET)
 nbkit.sh([EXPORT_PY, "export.py", "verify-bundle", FINAL], cwd=DET)
@@ -177,7 +187,8 @@ nbkit.sh([EXPORT_PY, "export.py", "verify-bundle", FINAL], cwd=DET)
 MEAS = OUT / "measurements_partial.json"
 MEAS.write_text(json.dumps({CANDIDATE: {
     "int8_size_mb": round((FINAL / "model.tflite").stat().st_size / 2**20, 3),
-    "export_notes": "Model Maker 0.2.1.4 QAT export_model (uint8 I/O, raw boxes+scores, anchors.json)",
+    "export_notes": f"Model Maker 0.2.1.4 export_model, INT8 method={INT8_METHOD} (uint8 I/O, raw boxes+scores, anchors.json)",
+    "int8_method": INT8_METHOD,
     "parity_passed": parity["passed"], "weight_license_clarity": "clear", "smoke_test": SMOKE_TEST}}, indent=1), encoding="utf-8")
 (OUT / "env.json").write_text(json.dumps(nbkit.env_record({"processed": info, "code": CODE_INFO, "data_source": DATA["source"],
                                                            "smoke_test": SMOKE_TEST, "tf_gpus": GPUS}), indent=1), encoding="utf-8")

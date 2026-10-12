@@ -55,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs medi
     random.seed(args.seed)
     import tensorflow as tf
     from mediapipe_model_maker import object_detector as od
+    from mediapipe_model_maker.python.core.utils import quantization as mm_quant
 
     tf.keras.utils.set_random_seed(args.seed)
     train_data = od.Dataset.from_coco_folder(str(args.train), cache_dir=str(args.cache_dir / "train"))
@@ -72,16 +73,36 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - needs medi
                               "label_names": list(getattr(train_data, "label_names", [])),
                               "artifacts": ["model_fp32.tflite", "anchors.json", "metadata.json"],
                               "python": sys.version.split()[0], "tensorflow": tf.__version__}
+    # Post-training quantization first (before QAT touches the model): float16 and full-integer INT8 calibrated on
+    # the training data. Kaggle 2026-10-12: QAT conversion crashed (tfmot "Conv2DBNBlock is not supported"), so INT8 must
+    # not depend on it.
+    export_errors: dict[str, str] = {}
+    for name, make_cfg in (("model_fp16.tflite", mm_quant.QuantizationConfig.for_float16),
+                           ("model_int8_ptq.tflite", lambda: mm_quant.QuantizationConfig.for_int8(train_data))):
+        try:
+            model.export_model(name, make_cfg())
+            result["artifacts"].append(name)
+        except Exception as exc:  # report and continue; the float model is already exported
+            export_errors[name] = f"{type(exc).__name__}: {str(exc)[-300:]}"
+            print(f"warning: export {name} failed: {export_errors[name]}", file=sys.stderr)
     if args.qat_epochs > 0:
-        qat = od.QATHParams(learning_rate=args.qat_learning_rate, batch_size=args.batch_size, epochs=args.qat_epochs)
-        model.quantization_aware_training(train_data, validation_data=val_data, qat_hparams=qat)
-        _qloss, qcoco = model.evaluate(val_data, batch_size=args.batch_size)
-        model.export_model("model_int8_qat.tflite")
-        result["val_coco_qat_model_maker"] = {k: float(v) for k, v in dict(qcoco).items()}
-        result["artifacts"].append("model_int8_qat.tflite")
+        try:
+            qat = od.QATHParams(learning_rate=args.qat_learning_rate, batch_size=args.batch_size, epochs=args.qat_epochs)
+            model.quantization_aware_training(train_data, validation_data=val_data, qat_hparams=qat)
+            _qloss, qcoco = model.evaluate(val_data, batch_size=args.batch_size)
+            model.export_model("model_int8_qat.tflite")
+            result["val_coco_qat_model_maker"] = {k: float(v) for k, v in dict(qcoco).items()}
+            result["artifacts"].append("model_int8_qat.tflite")
+        except Exception as exc:  # QAT is best effort; PTQ INT8 above is the fallback
+            export_errors["qat"] = f"{type(exc).__name__}: {str(exc)[-400:]}"
+            print(f"warning: QAT failed, using post-training INT8 instead: {export_errors['qat']}", file=sys.stderr)
+    if export_errors:
+        result["export_errors"] = export_errors
+    int8_files = [a for a in ("model_int8_qat.tflite", "model_int8_ptq.tflite") if a in result["artifacts"]]
+    result["int8_method"] = "qat" if "model_int8_qat.tflite" in int8_files else ("ptq" if int8_files else "none")
     (args.export_dir / "mm_result.json").write_text(json.dumps(result, indent=1) + "\n", encoding="utf-8")
     print(json.dumps(result, indent=1))
-    return 0
+    return 0 if result["int8_method"] != "none" else 3  # no INT8 model at all = the run is useless for the app
 
 
 if __name__ == "__main__":
