@@ -38,7 +38,7 @@ from bootstrap import compute_env, default_dirs, free_gb
 __all__ = ["compute_env", "default_dirs", "free_gb"]  # re-exported (bootstrap is inlined into notebook cell 1)
 
 #: Bumped when notebooks need new nbkit functions (bootstrap.REQUIRED_NBKIT_API checks it).
-NBKIT_API = 2
+NBKIT_API = 3
 HERE = Path(__file__).resolve().parent
 LOCKS = HERE / "requirements"
 

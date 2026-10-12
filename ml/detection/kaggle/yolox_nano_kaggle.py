@@ -55,6 +55,10 @@ REPORT = preflight(need_gpu=True, hosts=HOSTS_COMMON, disk_paths={"tmp": TMP, "w
 CODE, CODE_INFO = acquire_code(roots=[DIRS["inputs"]], tmp=TMP, ref=CODE_REF)
 DET = CODE / "ml" / "detection"
 sys.path[:0] = [str(DET), str(DET / "kaggle")]
+# Re-running this cell in a kernel that already imported an OLDER nbkit would silently keep the stale module
+# (AttributeError: module 'nbkit' has no attribute ...): drop it so the freshly fetched code is used.
+for _m in [m for m in sys.modules if m == "nbkit" or m.startswith("nbkit.")]:
+    del sys.modules[_m]
 import nbkit
 
 check_nbkit_api(nbkit.NBKIT_API)

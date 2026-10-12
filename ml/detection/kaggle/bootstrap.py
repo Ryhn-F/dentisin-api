@@ -32,7 +32,7 @@ from typing import Any
 
 BOOTSTRAP_VERSION = 1
 #: nbkit.NBKIT_API must be >= this, otherwise the fetched code is older than the notebook.
-REQUIRED_NBKIT_API = 2
+REQUIRED_NBKIT_API = 3
 REQUIRED_PY = (3, 11)
 REPO_URL = "https://github.com/Ryhn-F/dentisin-api.git"
 REPO_SLUG = "Ryhn-F/dentisin-api"
