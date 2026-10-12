@@ -13,6 +13,10 @@ Gates: license gate (same as train.py), TFLite flatbuffer identifier, INT8 size 
 (MiB, default from config = 15), labels.json schema + semantic checks. ``--release`` additionally
 requires verified licenses, reviewed thresholds, verified tensors and validation evidence, so it
 fails today by design. Nothing here signs the manifest (tools/sign_manifest.py does that).
+
+Dev bundles only (never with ``--release``): ``--precision float16|float32`` packages the float fallback of the
+notebook conversion chain (labels.json ``model.int8`` = false), and ``--size-gate report`` turns the size gate into a
+printed warning + ``size_gate`` in the CLI summary instead of a refusal (SMOKE_TEST runs).
 """
 
 from __future__ import annotations
@@ -55,6 +59,8 @@ MAY_RAISE = {"caries_permanent": True, "caries_primary": True}
 DENTITION = {"caries_permanent": "permanent", "caries_primary": "primary"}
 #: ADR 014 §2: boxes surround whole teeth; their size/area must never be used for severity.
 BOX_USE = "ui_overlay_only"
+PRECISIONS = ("int8", "float16", "float32")
+SIZE_GATES = ("enforce", "report")
 
 
 class ExportError(RuntimeError):
@@ -128,6 +134,7 @@ def build_labels(
     run_id: str | None = None,
     eval_report_sha256: str | None = None,
     parity: Mapping[str, Any] | None = None,
+    int8: bool | None = None,
 ) -> dict[str, Any]:
     m = cfg["model"]
     pre = m["preprocess"]
@@ -153,7 +160,7 @@ def build_labels(
             "eval_report_sha256": eval_report_sha256,
             "sha256": model_sha256,
             "size_bytes": size_bytes,
-            "int8": bool(cfg["export"]["int8"]),
+            "int8": bool(cfg["export"]["int8"]) if int8 is None else int8,
         },
         "validation_status": "NOT_VALIDATED",
         "intended_use": "screening_only",
@@ -334,7 +341,8 @@ def write_sha256(bundle: Path, files: Sequence[str] = BUNDLE_FILES) -> str:
     return text
 
 
-def verify_bundle(bundle: Path, *, max_size_mb: float = 15.0) -> list[str]:
+def verify_bundle(bundle: Path, *, max_size_mb: float | None = 15.0) -> list[str]:
+    """Problems of a bundle (empty = valid). ``max_size_mb=None`` skips the size gate (the caller reports it)."""
     problems: list[str] = []
     for f in (*BUNDLE_FILES, "SHA256"):
         if not (bundle / f).is_file():
@@ -350,10 +358,11 @@ def verify_bundle(bundle: Path, *, max_size_mb: float = 15.0) -> list[str]:
     model = (bundle / "model.tflite").read_bytes()
     if not is_tflite(model):
         problems.append("model.tflite is not a TFLite flatbuffer")
-    try:
-        check_size(len(model), max_size_mb)
-    except ExportError as exc:
-        problems.append(str(exc))
+    if max_size_mb is not None:
+        try:
+            check_size(len(model), max_size_mb)
+        except ExportError as exc:
+            problems.append(str(exc))
     labels = json.loads((bundle / "labels.json").read_text(encoding="utf-8"))
     problems += validate_labels(labels)
     if labels.get("model", {}).get("sha256") != sha256_bytes(model):
@@ -375,6 +384,8 @@ def release_blockers(cfg: Mapping[str, Any], decision: GateDecision, labels: Map
         b.append("output tensors not verified with an interpreter")
     if not cfg["model"].get("output_format_verified", False):
         b.append("output format not verified (spike S1)")
+    if not labels["model"].get("int8", False):
+        b.append("model is not INT8 (float fallback of the conversion chain)")
     b.append("no clinical validation evidence (PRD §12, ADR 002); validation_status stays NOT_VALIDATED")
     return b
 
@@ -436,8 +447,17 @@ def build_bundle(
     force: bool = False,
     gate_path: Path = DEFAULT_GATE_PATH,
     now: datetime | None = None,
+    precision: str = "int8",
+    size_gate: str = "enforce",
 ) -> dict[str, Any]:
+    """Returns labels.json content; the CLI summary key ``_size_gate`` is added to the returned dict only."""
     cfg, _ = load_config(cfg_path)
+    if precision not in PRECISIONS:
+        raise ExportError(f"precision must be one of {PRECISIONS}, got {precision!r}")
+    if size_gate not in SIZE_GATES:
+        raise ExportError(f"size_gate must be one of {SIZE_GATES}, got {size_gate!r}")
+    if release and (precision != "int8" or size_gate != "enforce"):
+        raise ExportError("--release needs --precision int8 and --size-gate enforce")
     if not SEMVER.match(out.name):
         raise ExportError(f"--out must end in a semver directory (e.g. ml/exports/0.1.0), got {out.name!r}")
     if out.exists() and not force:
@@ -463,7 +483,11 @@ def build_bundle(
         model = src.read_bytes()
         if not is_tflite(model):
             raise ExportError(f"{src} is not a TFLite flatbuffer (missing 'TFL3' identifier)")
-        check_size(len(model), limit)
+        size_info = {"size_mb": round(len(model) / MIB, 3), "max_mb": limit, "ok": len(model) <= limit * MIB, "mode": size_gate}
+        if size_gate == "enforce":
+            check_size(len(model), limit)
+        elif not size_info["ok"]:
+            print(f"WARNING (size gate, report only): model is {size_info['size_mb']} MiB > {limit} MiB", file=sys.stderr)
         details = inspect_tflite(src)
         tensors = None
         input_q = None
@@ -490,7 +514,7 @@ def build_bundle(
             cfg, decision, version=out.name, model_sha256=sha256_bytes(model), size_bytes=len(model),
             created_at=(now or datetime.now(UTC)).isoformat(), anchors=anchors, tensors=tensors,
             tensors_verified=details is not None, input_quantization=input_q, thresholds=thresholds,
-            distribution=distribution, run_id=run_id, eval_report_sha256=eval_sha, parity=parity,
+            distribution=distribution, run_id=run_id, eval_report_sha256=eval_sha, parity=parity, int8=precision == "int8",
         )
         if release:
             blockers = release_blockers(cfg, decision, labels)
@@ -506,14 +530,14 @@ def build_bundle(
         (stage / "MODEL_CARD.md").write_text(render_model_card(labels, eval_summary=eval_summary, limitations=DEFAULT_LIMITATIONS),
                                              encoding="utf-8")
         write_sha256(stage)
-        problems = verify_bundle(stage, max_size_mb=limit)
+        problems = verify_bundle(stage, max_size_mb=limit if size_gate == "enforce" else None)
         if problems:
             raise ExportError("bundle verification failed: " + "; ".join(problems))
         if out.exists():
             shutil.rmtree(out)
         out.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(stage, out)
-    return labels
+    return {**labels, "_size_gate": size_info}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -522,14 +546,19 @@ def main(argv: list[str] | None = None) -> int:
         v = argparse.ArgumentParser(prog="export.py verify-bundle")
         v.add_argument("bundle", type=Path)
         v.add_argument("--max-size-mb", type=float, default=15.0)
+        v.add_argument("--size-gate", choices=SIZE_GATES, default="enforce", help="report = size is a warning only")
         va = v.parse_args(argv[1:])
-        problems = verify_bundle(va.bundle, max_size_mb=va.max_size_mb)
-        print(json.dumps({"ok": not problems, "problems": problems}, indent=1))
+        problems = verify_bundle(va.bundle, max_size_mb=va.max_size_mb if va.size_gate == "enforce" else None)
+        warnings = [x for x in verify_bundle(va.bundle, max_size_mb=va.max_size_mb) if x not in problems]
+        print(json.dumps({"ok": not problems, "problems": problems, "size_gate_warnings": warnings}, indent=1))
         return 0 if not problems else 1
     b = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     b.add_argument("--cfg", type=Path, required=True)
     b.add_argument("--format", choices=["tflite"], default="tflite")
-    b.add_argument("--int8", action="store_true", required=True)
+    b.add_argument("--int8", action="store_true", help="accepted for compatibility; the precision is --precision")
+    b.add_argument("--precision", choices=PRECISIONS, default="int8",
+                   help="float16/float32 = dev bundle of the conversion chain's float fallback (never --release)")
+    b.add_argument("--size-gate", choices=SIZE_GATES, default="enforce", help="report = warn instead of refusing (SMOKE_TEST)")
     b.add_argument("--out", type=Path, required=True)
     b.add_argument("--tflite-in", type=Path)
     b.add_argument("--onnx-in", type=Path)
@@ -550,12 +579,14 @@ def main(argv: list[str] | None = None) -> int:
             anchors_path=args.anchors, thresholds_path=args.thresholds, run_id=args.run_id,
             eval_report=args.eval_report, parity_report=args.parity_report, max_size_mb=args.max_size_mb,
             allow_unverified_license=args.allow_unverified_license, release=args.release, force=args.force,
+            precision=args.precision, size_gate=args.size_gate,
         )
     except (ExportError, ConfigError) as exc:
         print(f"export refused: {exc}", file=sys.stderr)
         return 2
-    print(json.dumps({"bundle": str(args.out), "distribution": labels["distribution"],
-                      "thresholds": labels["thresholds"]["status"], "validation_status": labels["validation_status"]}, indent=1))
+    print(json.dumps({"bundle": str(args.out), "distribution": labels["distribution"], "int8": labels["model"]["int8"],
+                      "size_gate": labels["_size_gate"], "thresholds": labels["thresholds"]["status"],
+                      "validation_status": labels["validation_status"]}, indent=1))
     return 0
 
 

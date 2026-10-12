@@ -161,7 +161,8 @@ def test_class_map_and_outputs(tmp_path: Path) -> None:
         (tmp_path / n).write_bytes(b"x")
     out = nbkit.pick_onnx2tf_outputs(tmp_path)
     assert {k: v.name if v else None for k, v in out.items()} == {
-        "float32": "m_float32.tflite", "int8_float_io": "m_integer_quant.tflite", "int8_full": "m_full_integer_quant.tflite"}
+        "float32": "m_float32.tflite", "float16": "m_float16.tflite", "int8_float_io": "m_integer_quant.tflite",
+        "int8_full": "m_full_integer_quant.tflite"}
     exp = tmp_path / "exports"
     assert nbkit.next_dev_version(exp) == "0.1.0-dev.1"
     (exp / "0.1.0-dev.7").mkdir(parents=True)

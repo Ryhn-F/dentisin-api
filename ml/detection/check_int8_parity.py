@@ -207,9 +207,18 @@ def tflite_runner(model_path: Path) -> Runner:  # pragma: no cover - needs a Lit
     return run
 
 
+def model_runner(path: Path) -> Runner:  # pragma: no cover - needs a LiteRT interpreter / onnxruntime
+    """``.onnx`` (NCHW input, onnxruntime; e.g. the graph that was converted) or ``.tflite``."""
+    if path.suffix == ".onnx":
+        from predict import onnx_runner
+
+        return onnx_runner(path, nchw=True)
+    return tflite_runner(path)
+
+
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI over optional deps
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--float-model", type=Path, required=True)
+    p.add_argument("--float-model", type=Path, required=True, help=".tflite, or .onnx (NCHW) to check a conversion")
     p.add_argument("--int8-model", type=Path, required=True)
     p.add_argument("--samples", type=Path, required=True, help=".npy file of preprocessed inputs, shape (N, H, W, 3)")
     p.add_argument("--min-cosine", type=float, default=DEFAULT_MIN_COSINE)
@@ -222,7 +231,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - CLI over o
     decode = None
     if args.labels:
         decode = labels_decoder(json.loads(args.labels.read_text(encoding="utf-8")), score=args.agreement_score)
-    rep = compare(tflite_runner(args.float_model), tflite_runner(args.int8_model), (x[None, ...] for x in xs),
+    rep = compare(model_runner(args.float_model), model_runner(args.int8_model), (x[None, ...] for x in xs),
                   decode=decode, min_cosine=args.min_cosine, min_agreement=args.min_agreement)
     text = json.dumps(rep.to_dict(), indent=1)
     if args.report:

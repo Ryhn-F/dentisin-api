@@ -1,9 +1,15 @@
 """YOLOX adapter: writes a YOLOX Exp file + COCO layout and launches YOLOX's own tools/train.py.
 
-PARTLY UNTESTED HERE (no GPU / no torch in the base env): the pure helpers (Exp rendering, resume
-discovery, command building) are unit-tested; :func:`train` and :func:`export_onnx` need torch +
-YOLOX and run on Kaggle/Colab. YOLOX must be installed from a pinned git commit AFTER the
-GPL-3.0 code removal (YOLOX issue #765 / PR #781, Oct 2021) -- see :data:`YOLOX_COMMIT`.
+The pure helpers (Exp rendering, resume discovery, command/env building, budget stop, crash detection) are
+unit-tested; :func:`train` and :func:`export_onnx` need torch + YOLOX (GPU on Kaggle/Colab; the local simulation
+runs the real ``tools/train.py`` + Trainer on CPU through :data:`LAUNCHER_ENV`). YOLOX must come from a pinned git
+commit AFTER the GPL-3.0 code removal (YOLOX issue #765 / PR #781, Oct 2021) -- see :data:`YOLOX_COMMIT`.
+
+Checked against the YOLOX source at :data:`YOLOX_COMMIT` (2026-10-12): ``COCODataset(data_dir, json_file, name)`` reads
+``data_dir/annotations/<json_file>`` and ``data_dir/<name>/<file_name>`` (= convert_annotations ``layout="yolox"``);
+the Exp mirrors ``exps/default/yolox_nano.py``; tools/train.py's ``@logger.catch`` turns ANY crash into exit code 0
+(:func:`outcome` reads ``train_log.txt`` + the checkpoint epoch instead); ``best_ckpt.pth`` is only written when
+val AP improves.
 
 trainer_options (configs/yolox_nano.yaml):
 - ``yolox_repo``: local clone of YOLOX at :data:`YOLOX_COMMIT` (never committed here).
@@ -16,17 +22,20 @@ trainer_options (configs/yolox_nano.yaml):
   /kaggle/working so a committed notebook version preserves ``latest_ckpt.pth`` for resume).
 - ``resume_from``: list of directories/globs searched for ``latest_ckpt.pth`` (e.g. a previous
   notebook version attached as input); ``auto`` resume also looks in ``output_dir``.
-- ``time_budget_h``: stop the trainer after this many hours (Kaggle sessions end at ~12 h);
-  the last ``latest_ckpt.pth`` is kept and the next session resumes.
+- ``time_budget_h``: stop the trainer after this many hours (Kaggle sessions end at ~12 h), at the next epoch
+  checkpoint (``stop_grace_s``, default 1800 s, at most); the last ``latest_ckpt.pth`` is kept and the next session resumes.
+- ``devices``: GPUs (default 1; >1 only with ``allow_multi_gpu: true`` -- DDP on 2xT4 is unproven here).
 """
 
 from __future__ import annotations
 
+import contextlib
 import glob
+import os
 import subprocess
 import sys
 import time
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -44,9 +53,25 @@ import os
 from yolox.exp import Exp as MyExp
 
 
+def _plain_cocoeval():
+    # YOLOX's COCOeval_opt JIT-compiles C++ with -std=c++14 at the FIRST evaluation; current torch headers need C++17,
+    # and tools/train.py hides the crash behind exit code 0 (@logger.catch). Without the attribute, COCOEvaluator takes
+    # its own `except ImportError` branch and uses pycocotools' COCOeval (same metric, pure Python).
+    try:
+        import yolox.layers as layers
+    except Exception:
+        return
+    if hasattr(layers, "COCOeval_opt"):
+        delattr(layers, "COCOeval_opt")
+
+
+_plain_cocoeval()
+
+
 class Exp(MyExp):
     def __init__(self):
         super().__init__()
+        # = exps/default/yolox_nano.py @ YOLOX_COMMIT (depthwise, mosaic_prob 0.5, no mixup), 2 classes
         self.depth = 0.33
         self.width = 0.25
         self.act = "{act}"
@@ -54,6 +79,7 @@ class Exp(MyExp):
         self.test_size = ({h}, {w})
         self.random_size = (10, 20)
         self.mosaic_scale = (0.5, 1.5)
+        self.mosaic_prob = 0.5
         self.enable_mixup = False
         self.num_classes = {num_classes}
         self.max_epoch = {epochs}
@@ -94,8 +120,13 @@ class Exp(MyExp):
 
     def get_eval_dataset(self, **kwargs):
         from yolox.data import COCODataset, ValTransform
-        return COCODataset(data_dir=self.data_dir, json_file=self.val_ann, name="val",
-                           img_size=self.test_size, preproc=ValTransform(legacy=kwargs.get("legacy", False)))
+        ds = COCODataset(data_dir=self.data_dir, json_file=self.val_ann, name="val",
+                         img_size=self.test_size, preproc=ValTransform(legacy=kwargs.get("legacy", False)))
+        # YOLOX drops "info" from the GT (remove_useless_info); pycocotools 2.0.9/2.0.10 loadRes() then raises
+        # KeyError: 'info' at every evaluation (fixed in 2.0.11 with .get) -> put an empty one back.
+        ds.coco.dataset.setdefault("info", {{}})
+        ds.coco.dataset.setdefault("licenses", [])
+        return ds
 '''
 
 
@@ -110,7 +141,36 @@ def options(ctx: TrainContext) -> dict[str, Any]:
     opts.setdefault("max_side", 832)
     opts.setdefault("workers", 4)
     opts.setdefault("eval_interval", 10)
+    opts["devices"] = effective_devices(opts)
     return opts
+
+
+def effective_devices(opts: Mapping[str, Any]) -> int:
+    """GPUs for tools/train.py. ONE unless ``allow_multi_gpu: true``: Kaggle's "T4 x2" would otherwise tempt a DDP
+    launch (NCCL rendezvous, per-GPU batch split, dataloader workers x2) that has never run for this pipeline; a
+    hang there burns the whole session. Nano trains fine on one T4."""
+    devices = int(opts.get("devices", 1))
+    if devices < 1:
+        raise ValueError(f"trainer_options.devices must be >= 1, got {devices}")
+    if devices > 1 and not opts.get("allow_multi_gpu", False):
+        print(f"NOTE: trainer_options.devices={devices} ignored -> 1 GPU (set allow_multi_gpu: true to try DDP)", flush=True)
+        return 1
+    return devices
+
+
+def train_environment(environ: Mapping[str, str], repo: Path, devices: int) -> dict[str, str]:
+    """Environment for YOLOX ``tools/train.py`` (runs with the KERNEL's Python, so the kernel's packages are wanted):
+    the YOLOX checkout on PYTHONPATH, a headless matplotlib backend (the kernel exports the inline backend), full
+    ``torch.load`` for YOLOX's own checkpoints (they hold numpy scalars; torch >= 2.6 defaults to weights_only=True),
+    unbuffered logs, and only ``devices`` GPUs visible (unless the caller already restricted them)."""
+    env = dict(environ)
+    parts = [p for p in (env.get("PYTHONPATH") or "").split(os.pathsep) if p]
+    env["PYTHONPATH"] = os.pathsep.join([str(repo), *[p for p in parts if os.path.normcase(p) != os.path.normcase(str(repo))]])
+    env["MPLBACKEND"] = "Agg"
+    env["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
+    env["PYTHONUNBUFFERED"] = "1"
+    env.setdefault("CUDA_VISIBLE_DEVICES", ",".join(str(i) for i in range(devices)))
+    return env
 
 
 def render_exp(ctx: TrainContext, data_dir: Path, opts: Mapping[str, Any] | None = None) -> str:
@@ -118,10 +178,27 @@ def render_exp(ctx: TrainContext, data_dir: Path, opts: Mapping[str, Any] | None
     w, h = ctx.cfg["model"]["input_size"]
     t = ctx.cfg["train"]
     return EXP_TEMPLATE.format(
-        h=h, w=w, num_classes=len(ctx.cfg["data"]["classes"]), epochs=t["epochs"], no_aug_epochs=min(15, max(1, t["epochs"] // 10)),
+        h=h, w=w, num_classes=len(ctx.cfg["data"]["classes"]), epochs=t["epochs"], no_aug_epochs=no_aug_epochs(int(t["epochs"])),
         lr=t["learning_rate"], seed=ctx.seed, data_dir=data_dir.as_posix(), act=o["act"], workers=int(o["workers"]),
         eval_interval=int(o["eval_interval"]), output_dir=Path(str(o["output_dir"])).as_posix(),
     )
+
+
+def no_aug_epochs(epochs: int) -> int:
+    """YOLOX turns mosaic off when ``epoch + 1 == max_epoch - no_aug_epochs`` (1-based), i.e. the last
+    ``no_aug_epochs + 1`` epochs train without mosaic (+ L1 loss). 150 -> 15 (YOLOX default); a 2-epoch smoke run -> 0,
+    so epoch 1 still exercises MosaicDetection and epoch 2 the no-aug phase (``max(1, ...)`` closed mosaic at epoch 1)."""
+    return min(15, epochs // 10)
+
+
+def clear_stale_checkpoints(exp_dir: Path) -> list[str]:
+    """Before a FRESH (not resumed) run: remove checkpoints of an earlier run in the same output dir, so a crash before
+    the first save cannot pass for success and cell 7 never exports an older run's ``best_ckpt.pth``."""
+    gone = []
+    for p in sorted(exp_dir.glob("*_ckpt.pth")):
+        p.unlink()
+        gone.append(p.name)
+    return gone
 
 
 def find_resume_checkpoint(search: Iterable[Path], name: str = "latest_ckpt.pth") -> Path | None:
@@ -137,9 +214,14 @@ def find_resume_checkpoint(search: Iterable[Path], name: str = "latest_ckpt.pth"
     return max(found, key=lambda p: (p.stat().st_mtime, str(p)))
 
 
+#: Local simulation only (kaggle/local_simulate.py): a Python script that runs ``tools/train.py`` on CPU.
+LAUNCHER_ENV = "DENTISAI_YOLOX_LAUNCHER"
+
+
 def build_command(exp_path: Path, ctx: TrainContext, opts: Mapping[str, Any], *, resume: Path | None,
-                  python: str = sys.executable) -> list[str]:
-    cmd = [python, "tools/train.py", "-f", str(exp_path), "-d", str(opts.get("devices", 1)), "-b", str(ctx.cfg["train"]["batch_size"])]
+                  python: str = sys.executable, launcher: str | None = None) -> list[str]:
+    prefix = [python, launcher] if launcher else [python]
+    cmd = [*prefix, "tools/train.py", "-f", str(exp_path), "-d", str(opts.get("devices", 1)), "-b", str(ctx.cfg["train"]["batch_size"])]
     if opts.get("fp16", True):
         cmd.append("--fp16")
     if resume is not None:
@@ -157,11 +239,141 @@ def resume_candidates(opts: Mapping[str, Any]) -> list[Path]:
     return roots
 
 
-def train(ctx: TrainContext) -> dict[str, Any]:  # pragma: no cover - needs torch + YOLOX + GPU
-    require("torch", "Kaggle/Colab kernels ship torch; locally: uv sync --extra train")
-    require("yolox", INSTALL_HINT)
+#: Files carried over from a previous session's checkpoint dir (best_ckpt.pth: the best epoch may be in that session).
+RESUME_FILES = ("latest_ckpt.pth", "best_ckpt.pth")
+#: loguru's ``@logger.catch`` message: YOLOX tools/train.py wraps main() with it, so a crash still EXITS WITH CODE 0.
+CAUGHT_ERROR = "An error has been caught in function"
+
+
+def copy_resume_files(resume: Path, exp_dir: Path) -> list[str]:
+    """Copy ``latest_ckpt.pth`` (+ ``best_ckpt.pth`` when present) from a previous session into ``exp_dir``."""
     import shutil
 
+    copied = []
+    for name in RESUME_FILES:
+        src = resume if name == "latest_ckpt.pth" else resume.parent / name
+        dst = exp_dir / name
+        if src.is_file() and src.resolve() != dst.resolve():
+            shutil.copy2(src, dst)
+            copied.append(name)
+    return copied
+
+
+def caught_errors(log: Path, offset: int = 0) -> list[str]:
+    """Error blocks that loguru printed into YOLOX's ``train_log.txt`` after byte ``offset`` (this session only)."""
+    if not log.is_file():
+        return []
+    with log.open("rb") as fh:
+        fh.seek(offset)
+        text = fh.read().decode("utf-8", errors="replace")
+    blocks = []
+    for part in text.split(CAUGHT_ERROR)[1:]:
+        lines = [ln for ln in part.splitlines() if ln.strip()]
+        blocks.append("\n".join([CAUGHT_ERROR + (lines[0] if lines else ""), *lines[-12:]]))
+    return blocks
+
+
+def checkpoint_epoch(path: Path, load: Callable[[Path], Any] | None = None) -> int | None:
+    """``start_epoch`` (= epochs completed) stored in a YOLOX checkpoint; None if missing or unreadable (corrupt)."""
+    if not path.is_file():
+        return None
+    try:
+        if load is None:
+            import torch
+
+            ckpt = torch.load(str(path), map_location="cpu", weights_only=False)  # own checkpoint (numpy scalars)
+        else:
+            ckpt = load(path)
+        return int(ckpt["start_epoch"])
+    except Exception as exc:  # truncated file (killed mid-save), wrong format
+        print(f"WARNING: cannot read {path.name}: {type(exc).__name__}: {exc}", flush=True)
+        return None
+
+
+def _mtime(p: Path) -> float | None:
+    try:
+        return p.stat().st_mtime
+    except OSError:
+        return None
+
+
+def _stop(proc: Any, grace_s: float = 60.0) -> None:
+    """Terminate the trainer and its dataloader workers (own process group on POSIX)."""
+    import signal
+
+    if proc.poll() is not None:
+        return
+    try:
+        if sys.platform != "win32":
+            os.killpg(proc.pid, signal.SIGTERM)
+        else:
+            proc.terminate()
+        proc.wait(timeout=grace_s)
+    except Exception:
+        with contextlib.suppress(Exception):
+            if sys.platform != "win32":
+                os.killpg(proc.pid, signal.SIGKILL)
+            else:
+                proc.kill()
+            proc.wait(timeout=grace_s)
+
+
+def run_with_budget(cmd: Sequence[str], *, cwd: Path, env: Mapping[str, str], budget_s: float | None, watch: Path,
+                    grace_s: float = 1800.0, settle_s: float = 15.0, poll_s: float = 5.0,
+                    popen: Callable[..., Any] = subprocess.Popen, clock: Callable[[], float] = time.time,
+                    sleep: Callable[[float], None] = time.sleep) -> tuple[int | None, bool]:
+    """Run the trainer; when ``budget_s`` is used up, stop it RIGHT AFTER its next ``latest_ckpt.pth`` write (epoch
+    boundary + ``settle_s``), or after ``grace_s`` more seconds at the latest. Killing at a random moment (the old
+    ``subprocess.run(timeout=...)``) could truncate the checkpoint the next session resumes from.
+    Returns (exit code or None if stopped by us, stopped_for_budget)."""
+    proc = popen(list(cmd), cwd=str(cwd), env=dict(env), start_new_session=sys.platform != "win32")
+    started = clock()
+    mark: float | None = None
+    stop_at: float | None = None
+    try:
+        while True:
+            rc = proc.poll()
+            if rc is not None:
+                return int(rc), False
+            now = clock()
+            if budget_s is not None and stop_at is None and now - started >= budget_s:
+                mark, stop_at = _mtime(watch), now + grace_s
+                print(f"time budget reached ({budget_s / 3600:.2f} h): stopping after the next epoch checkpoint "
+                      f"(at most {grace_s / 60:.0f} min) ...", flush=True)
+            if stop_at is not None:
+                changed = _mtime(watch) is not None and _mtime(watch) != mark
+                if changed:
+                    sleep(settle_s)  # let torch.save finish (and an eval epoch's best_ckpt copy start/finish)
+                if changed or now >= stop_at:
+                    _stop(proc)
+                    return None, True
+            sleep(poll_s)
+    except BaseException:  # KeyboardInterrupt from the notebook: do not leave a GPU-holding orphan behind
+        _stop(proc, grace_s=10.0)
+        raise
+
+
+def outcome(*, rc: int | None, stopped: bool, errors: Sequence[str], epoch: int | None, max_epoch: int) -> str:
+    """Status of a YOLOX run or a RuntimeError with the reason (never "completed" on a crash hidden by exit code 0)."""
+    if errors:
+        raise RuntimeError("YOLOX training crashed (tools/train.py exits with code 0 on errors; from train_log.txt):\n"
+                           + "\n---\n".join(errors[-2:]))
+    if epoch is None:
+        raise RuntimeError("no readable latest_ckpt.pth after training (crashed before the first epoch ended, or the "
+                           "checkpoint is truncated) -- see the log above")
+    if stopped:
+        return "completed" if epoch >= max_epoch else "time_budget_reached_resume_next_session"
+    if rc not in (0, None):
+        raise RuntimeError(f"YOLOX tools/train.py exited with code {rc} after epoch {epoch}/{max_epoch} -- see the log above")
+    if epoch < max_epoch:
+        raise RuntimeError(f"YOLOX stopped after epoch {epoch} of {max_epoch} without a time-budget stop and without "
+                           "a logged error (killed? out of memory?) -- see the log above")
+    return "completed"
+
+
+def train(ctx: TrainContext) -> dict[str, Any]:  # pragma: no cover - needs torch + YOLOX (+ GPU; CPU in local_simulate)
+    require("torch", "Kaggle/Colab kernels ship torch; locally: uv sync --extra train")
+    require("yolox", INSTALL_HINT)
     from canonical import read_jsonl
     from convert_annotations import load_split_assignments, partition, resized_copy, write_coco_layout
 
@@ -183,21 +395,38 @@ def train(ctx: TrainContext) -> dict[str, Any]:  # pragma: no cover - needs torc
     exp_path = ctx.run_dir / f"{EXP_NAME}.py"
     exp_path.write_text(render_exp(ctx, data_dir, opts), encoding="utf-8")
     resume = find_resume_checkpoint(resume_candidates(opts)) if opts.get("resume", "auto") == "auto" else None
-    if resume is not None and resume.parent != exp_dir:
-        shutil.copy2(resume, exp_dir / "latest_ckpt.pth")
+    carried: list[str] = []
+    if resume is not None:
+        if checkpoint_epoch(resume) is None:
+            raise RuntimeError(f"resume checkpoint {resume} is unreadable; detach that input or set resume: off")
+        carried = copy_resume_files(resume, exp_dir)
         resume = exp_dir / "latest_ckpt.pth"
-    cmd = build_command(exp_path, ctx, opts, resume=resume)
+    else:
+        stale = clear_stale_checkpoints(exp_dir)
+        if stale:
+            print(f"fresh run: removed checkpoints of an earlier run in {exp_dir}: {stale}", flush=True)
+    cmd = build_command(exp_path, ctx, opts, resume=resume, launcher=os.environ.get(LAUNCHER_ENV) or None)
+    env = train_environment(os.environ, repo, int(opts["devices"]))
+    log = exp_dir / "train_log.txt"
+    offset = log.stat().st_size if log.is_file() else 0
     budget = opts.get("time_budget_h")
     started = time.time()
-    status = "completed"
-    try:
-        subprocess.run(cmd, cwd=repo, check=True, timeout=None if budget is None else float(budget) * 3600)
-    except subprocess.TimeoutExpired:
-        status = "time_budget_reached_resume_next_session"
+    print("$", " ".join(cmd), f"(cwd {repo})", flush=True)
+    rc, stopped = run_with_budget(cmd, cwd=repo, env=env, budget_s=None if budget is None else float(budget) * 3600,
+                                  watch=exp_dir / "latest_ckpt.pth", grace_s=float(opts.get("stop_grace_s", 1800)))
+    errors = caught_errors(log, offset)
+    epoch = checkpoint_epoch(exp_dir / "latest_ckpt.pth")
+    max_epoch = int(ctx.cfg["train"]["epochs"])
+    status = outcome(rc=rc, stopped=stopped, errors=errors, epoch=epoch, max_epoch=max_epoch)
+    best = exp_dir / "best_ckpt.pth"
+    if best.is_file() and checkpoint_epoch(best) is None:  # stopped during the best-checkpoint copy
+        best.unlink()
     return {"command": cmd, "exp_file": str(exp_path), "status": status, "resumed_from": None if resume is None else str(resume),
-            "hours": round((time.time() - started) / 3600, 3), "checkpoint_dir": str(exp_dir),
-            "best_ckpt": str(exp_dir / "best_ckpt.pth"), "latest_ckpt": str(exp_dir / "latest_ckpt.pth"),
-            "note": "Export with trainers.yolox_adapter.export_onnx (decode_in_inference=False)."}
+            "resume_files_copied": carried, "epochs_done": epoch, "max_epoch": max_epoch, "devices": int(opts["devices"]),
+            "stopped_for_time_budget": stopped, "hours": round((time.time() - started) / 3600, 3), "checkpoint_dir": str(exp_dir),
+            "best_ckpt": str(best), "latest_ckpt": str(exp_dir / "latest_ckpt.pth"),
+            "note": "Export with trainers.yolox_adapter.export_onnx (decode_in_inference=False). best_ckpt.pth is "
+                    "written only when val AP50:95 improves (absent after a 1-2 epoch smoke run -> use latest)."}
 
 
 def export_onnx(exp_file: Path, ckpt: Path, out: Path, *, opset: int = 13, raw_logits: bool = True) -> dict[str, Any]:  # pragma: no cover

@@ -34,12 +34,12 @@ from typing import Any
 
 import yaml
 
-from bootstrap import compute_env, default_dirs, free_gb
+from bootstrap import compute_env, default_dirs, free_gb, rmtree
 
-__all__ = ["compute_env", "default_dirs", "free_gb"]  # re-exported (bootstrap is inlined into notebook cell 1)
+__all__ = ["compute_env", "default_dirs", "free_gb", "rmtree"]  # re-exported (bootstrap is inlined into notebook cell 1)
 
 #: Bumped when notebooks need new nbkit functions (bootstrap.REQUIRED_NBKIT_API checks it).
-NBKIT_API = 3
+NBKIT_API = 4
 HERE = Path(__file__).resolve().parent
 LOCKS = HERE / "requirements"
 
@@ -59,10 +59,21 @@ EXPORT_TF_PKGS = ("tensorflow==2.21.0", "tf-keras==2.21.0", "keras==3.15.0")
 MM_PKGS = ("mediapipe-model-maker==0.2.1.4", "tensorflow[and-cuda]==2.15.1", "mediapipe==0.10.14")
 #: import name -> pip spec, installed into the KERNEL only when missing (never touches the kernel's torch).
 KERNEL_MODULES = {"yaml": "pyyaml>=6", "jsonschema": "jsonschema>=4.18", "defusedxml": "defusedxml>=0.7.1", "PIL": "pillow>=10"}
-YOLOX_KERNEL_MODULES = {"loguru": "loguru==0.7.3", "tabulate": "tabulate==0.9.0", "pycocotools": "pycocotools==2.0.10",
+# = YOLOX requirements.txt minus torch/torchvision (never reinstalled: Kaggle ships them). Resolved 2026-10-12 with
+# uv pip compile --python-platform x86_64-manylinux_2_28 for Python 3.11 + 3.12 x numpy 1.26.4 / 2.2.6 (binary wheels
+# only, torch kept). pycocotools 2.0.11: 2.0.9/2.0.10 loadRes() raise KeyError 'info' on YOLOX's GT (read from the sdists).
+YOLOX_KERNEL_MODULES = {"loguru": "loguru==0.7.3", "tabulate": "tabulate==0.9.0", "pycocotools": "pycocotools==2.0.11",
                         "thop": "thop==0.1.1.post2209072238", "ninja": "ninja==1.13.0", "psutil": "psutil",
                         "tensorboard": "tensorboard", "cv2": "opencv-python-headless==4.11.0.86", "onnx": "onnx==1.20.1",
-                        "tqdm": "tqdm"}  # = YOLOX requirements.txt minus torch/torchvision (never reinstalled: Kaggle ships them)
+                        "tqdm": "tqdm"}
+#: Kernel packages a pip install must never replace (Kaggle's CUDA builds of torch; numpy ABI of everything else).
+PROTECTED_KERNEL_PKGS = ("torch", "torchvision", "torchaudio", "numpy")
+#: Modules the export venv must import; tensorflow is only needed by the onnx2tf tf_converter backend (optional).
+EXPORT_REQUIRED_MODULES = ("onnx2tf", "onnxsim", "onnxruntime", "ai_edge_litert", "onnx", "numpy")
+EXPORT_OPTIONAL_MODULES = ("tensorflow",)
+#: YOLOX COCO-pretrained Nano (GitHub release 0.1.1rc0), sha256 measured 2026-10-12 (7,694,953 bytes).
+YOLOX_NANO_URL = "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.pth"
+YOLOX_NANO_SHA256 = "cd28f55fbbc1829f99d9ac9b38a16d259a22889739c8728ea877610201feff7b"
 
 # --------------------------------------------------------------------- Ahmed 2025 (public, CC BY 4.0)
 AHMED_RECORD = "14827784"
@@ -213,8 +224,8 @@ def pick_onnx2tf_outputs(folder: Path) -> dict[str, Path | None]:
     """onnx2tf -oiqt writes <name>_float32.tflite, _integer_quant.tflite (float I/O) and
     _full_integer_quant.tflite (int8 I/O). The float-I/O INT8 file is preferred for the app: the raw YOLOX
     tensor mixes box offsets and probabilities, so an int8 OUTPUT would share one scale for both."""
-    out: dict[str, Path | None] = {"float32": None, "int8_float_io": None, "int8_full": None}
-    for p in sorted(folder.glob("*.tflite")):
+    out: dict[str, Path | None] = {"float32": None, "float16": None, "int8_float_io": None, "int8_full": None}
+    for p in sorted(folder.glob("*.tflite")) if folder.is_dir() else []:
         name = p.name
         if "_with_int16_act" in name:
             continue
@@ -224,6 +235,8 @@ def pick_onnx2tf_outputs(folder: Path) -> dict[str, Path | None]:
             out["int8_float_io"] = out["int8_float_io"] or p
         elif name.endswith("_float32.tflite"):
             out["float32"] = out["float32"] or p
+        elif name.endswith("_float16.tflite"):
+            out["float16"] = out["float16"] or p
     return out
 
 
@@ -755,6 +768,15 @@ def mini_layout(canonical: Path, splits: Path, images_root: Path, out: Path, *, 
 
 
 FOREIGN_PY_VARS = ("PYTHONPATH", "PYTHONHOME")
+#: bin dirs of venvs whose programs must not see the GPU (see :func:`use_cpu_only`).
+CPU_ONLY_BINDIRS: set[str] = set()
+
+
+def use_cpu_only(py: Path | str) -> None:
+    """Hide the GPU from every program of this venv (python, onnx2tf, onnxsim): the export venv's TensorFlow would
+    otherwise pick up the KERNEL's CUDA/cuDNN through LD_LIBRARY_PATH (a version it was not built for). Conversion,
+    parity and prediction of a Nano model are fast on CPU, and CPU results do not depend on the GPU/driver."""
+    CPU_ONLY_BINDIRS.add(os.path.normcase(os.path.dirname(os.path.abspath(str(py)))))
 
 
 def child_env(exe: str, extra: Mapping[str, str] | None = None, environ: Mapping[str, str] | None = None,
@@ -776,6 +798,8 @@ def child_env(exe: str, extra: Mapping[str, str] | None = None, environ: Mapping
             # a venv tool (e.g. onnx2tf) calls sibling CLIs such as `onnxsim` by name -> the venv bin must be on PATH
             # (deep simulation: "No such file or directory: 'onnxsim'" -> unsimplified graph -> INT8 failed on EQUAL)
             env["PATH"] = os.pathsep.join([bindir, *filter(None, [env.get("PATH")])])
+        if os.path.normcase(bindir) in CPU_ONLY_BINDIRS:
+            env["CUDA_VISIBLE_DEVICES"] = "-1"
     env.update(extra or {})
     return env
 
@@ -964,6 +988,289 @@ def ensure_tf_gpu(py: Path, venv: Path, *, need: bool, run: Callable[..., Any] =
         raise RuntimeError("TensorFlow 2.15 in the Model Maker venv sees NO GPU although one is attached "
                            "(check Accelerator = GPU T4 x2; report the TF log above)")
     return 0
+
+
+# ------------------------------------------------------------------- kernel packages + pinned checkouts
+
+
+def venv_bin(py: Path | str, name: str) -> Path:
+    """A console script next to a venv's interpreter (``bin/onnx2tf`` on Linux, ``Scripts/onnx2tf.exe`` on Windows)."""
+    return Path(py).parent / (f"{name}.exe" if os.name == "nt" else name)
+
+
+def installed_versions(names: Iterable[str], version: Callable[[str], str] | None = None) -> dict[str, str]:
+    import importlib.metadata as md
+
+    get = version or md.version
+    out = {}
+    for n in names:
+        try:
+            out[n] = get(n)
+        except md.PackageNotFoundError:
+            continue
+    return out
+
+
+def kernel_pip_install(specs: Sequence[str], *, tmp: Path, run: Callable[..., int] | None = None,
+                       versions: Mapping[str, str] | None = None, timeout: float = 1800.0) -> int:
+    """pip-install ``specs`` into the KERNEL with the installed torch/torchvision/torchaudio/numpy as constraints:
+    a package that wants another torch makes pip FAIL instead of silently replacing Kaggle's CUDA build."""
+    if not specs:
+        return 0
+    pinned = installed_versions(PROTECTED_KERNEL_PKGS) if versions is None else dict(versions)
+    tmp.mkdir(parents=True, exist_ok=True)
+    cons = tmp / "kernel_constraints.txt"
+    cons.write_text("".join(f"{k}=={v}\n" for k, v in sorted(pinned.items())), encoding="utf-8")
+    # no -q: pip's "Collecting/Downloading/Installing" lines are the progress output in a notebook
+    cmd = [sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--progress-bar", "off", "-c", str(cons), *specs]
+    return (run or sh)(cmd, timeout=timeout)
+
+
+def ensure_kernel_modules(mapping: Mapping[str, str], *, tmp: Path, run: Callable[..., int] | None = None,
+                          failures: Callable[[Sequence[str]], dict[str, str]] | None = None) -> list[str]:
+    """Import-check ``mapping``'s modules in a fresh kernel-Python process (catches INSTALLED-BUT-BROKEN packages,
+    e.g. a pycocotools built for numpy 1 under numpy 2 -- find_spec does not), (re)install the failing ones with
+    their pins, check again. Returns the pip specs that were installed."""
+    check = failures or (lambda mods: import_failures(Path(sys.executable), mods))
+    bad = check(list(mapping))
+    if not bad:
+        print("kernel modules ok:", ", ".join(mapping))
+        return []
+    print("kernel modules missing/broken -> installing pinned versions:", json.dumps(bad, indent=1), flush=True)
+    specs = [mapping[m] for m in bad]
+    kernel_pip_install(specs, tmp=tmp, run=run)
+    still = check(list(bad))
+    if still:
+        raise RuntimeError("modules still not importable after pip install: " + "; ".join(f"{m}: {e}" for m, e in still.items()))
+    return specs
+
+
+def git_head(dest: Path, run: Callable[..., Any] = subprocess.run) -> str | None:
+    if not (dest / ".git").exists():
+        return None
+    res = run(["git", "-C", str(dest), "rev-parse", "HEAD"], capture_output=True, text=True, check=False, timeout=60)
+    if res.returncode != 0:
+        return None
+    return (res.stdout or "").strip() or None
+
+
+def ensure_git_checkout(url: str, commit: str, dest: Path, *, run: Callable[..., int] | None = None,
+                        head: Callable[[Path], str | None] = git_head, timeout: float = 900.0) -> str:
+    """``dest`` at exactly ``commit``. Re-running reuses a matching checkout ("reused"); otherwise a shallow fetch of
+    that one commit with git's progress output ("fetched"), else a full clone + checkout ("cloned")."""
+    runner = run or sh
+    if head(dest) == commit:
+        print(f"{dest.name}: already at {commit[:12]} (reused)")
+        return "reused"
+    rmtree(dest)
+    dest.mkdir(parents=True)
+    how = "fetched"
+    ok = (runner(["git", "init", "-q", dest], check=False) == 0
+          and runner(["git", "-C", dest, "remote", "add", "origin", url], check=False) == 0
+          and runner(["git", "-C", dest, "fetch", "--depth", "1", "--progress", "origin", commit], check=False, timeout=timeout) == 0
+          and runner(["git", "-C", dest, "checkout", "-q", "--detach", "FETCH_HEAD"], check=False) == 0)
+    if not ok:
+        print("shallow fetch of the pinned commit failed -> full clone", flush=True)
+        how = "cloned"
+        rmtree(dest)
+        runner(["git", "clone", "--progress", url, dest], timeout=timeout)
+        runner(["git", "-C", dest, "checkout", "-q", commit])
+    got = head(dest)
+    if got != commit:
+        raise RuntimeError(f"{dest}: HEAD is {got}, expected {commit}")
+    return how
+
+
+def fetch_verified(url: str, dest: Path, sha256: str, *, fetch: Callable[[str, Path], Path] | None = None) -> Path:
+    """:func:`fetch_url` + sha256 check; a wrong/partial file is deleted (so re-running the cell downloads again)."""
+    path = (fetch or fetch_url)(url, dest)
+    got = sha256_file(path)
+    if got != sha256:
+        path.unlink(missing_ok=True)
+        raise DataError(f"{dest.name}: sha256 {got} != expected {sha256} (deleted; run the cell again)")
+    print(f"{dest.name}: {path.stat().st_size / 2**20:.1f} MiB, sha256 OK")
+    return path
+
+
+# ------------------------------------------------------------------------- ONNX -> TFLite fallback chain
+
+#: INT8 attempts in order (onnx2tf 2.6.9 -oiqt). Local evidence 2026-10-12 (Windows, random-weight Nano, TF 2.21):
+#: tf_converter -> INT8 ok (cosine 0.99999 vs float32); flatbuffer_direct per-channel -> rc 1 ("quantized_dimension must
+#: be in range [0, 1). Was 3" on depthwise convs); flatbuffer_direct per-tensor -> rc 1 but leaves an INT8 file with
+#: cosine -0.02 (garbage) -> files of a failed run are NEVER used.
+ONNX2TF_INT8_ATTEMPTS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("tf_converter", ("-tb", "tf_converter")),
+    ("flatbuffer_direct", ("-tb", "flatbuffer_direct")),
+    ("flatbuffer_direct_per_tensor", ("-tb", "flatbuffer_direct", "-qt", "per-tensor")),
+)
+#: Float-only attempts, used only when no INT8 attempt produced a float32 model.
+ONNX2TF_FLOAT_ATTEMPTS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("tf_converter_float", ("-tb", "tf_converter")),
+    ("flatbuffer_direct_float", ("-tb", "flatbuffer_direct")),
+)
+INT8_KINDS = ("int8_float_io", "int8_full")
+#: onnx2tf -cind: our calibration .npy is already the model input (NHWC, BGR, 0..255) -> mean 0, std 1.
+CALIB_MEAN_STD = ("[[[[0.0,0.0,0.0]]]]", "[[[[1.0,1.0,1.0]]]]")
+
+
+def _rc(runner: Callable[..., int], cmd: Sequence[Any], **kw: Any) -> int | str:
+    try:
+        return runner(cmd, check=False, **kw)
+    except subprocess.TimeoutExpired:
+        return "timeout"
+    except OSError as exc:
+        return f"OSError: {exc}"
+
+
+def _parity_summary(rep: Mapping[str, Any] | None) -> dict[str, Any] | None:
+    if rep is None:
+        return None
+    return {"passed": bool(rep.get("passed")), "cosines": [t.get("cosine") for t in rep.get("tensors", [])],
+            "failures": list(rep.get("failures", []))}
+
+
+def first_cosine(rep: Mapping[str, Any] | None) -> float:
+    if not rep or not rep.get("tensors"):
+        return float("-inf")
+    c = rep["tensors"][0].get("cosine")
+    return float("-inf") if c is None else float(c)
+
+
+def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, report_dir: Path, export_py: Path | str,
+                 det: Path, onnx2tf: Path | str | None = None, run: Callable[..., int] | None = None,
+                 timeout: float = 2700.0, int8_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_INT8_ATTEMPTS,
+                 float_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_FLOAT_ATTEMPTS,
+                 log: Callable[[str], None] = print) -> dict[str, Any]:
+    """ONNX -> TFLite with fallbacks; NEVER raises because INT8 failed, only when not even a float32 TFLite exists.
+
+    0. ``onnxsim`` the graph (unsimplified graphs broke flatbuffer_direct INT8 on an EQUAL op; failure -> continue).
+    1. INT8 attempts in order (:data:`ONNX2TF_INT8_ATTEMPTS`); each INT8 file of a run with exit code 0 gets a tensor
+       parity report vs that run's float32 (``check_int8_parity.py``, on VAL samples). The first attempt with a passing
+       INT8 model ends the search.
+    2. Choice: first passing INT8 (float I/O preferred) -> ``int8_ok`` True; else the INT8 model with the best cosine
+       -> ``int8_ok`` False (kept so the owner sees its real metrics, reported prominently); else float16, else float32
+       (from a successful INT8 run, else a float-only run) -> ``precision`` float16/float32, ``int8_ok`` False.
+    The float32 TFLite is also compared with the ONNX graph itself (``conversion_parity``).
+    Writes ``report_dir/conversion.json``; returns the same dict."""
+    runner = run or sh
+    out_root.mkdir(parents=True, exist_ok=True)
+    report_dir.mkdir(parents=True, exist_ok=True)
+    for old in [*report_dir.glob("parity_tensor_*.json"), *report_dir.glob("parity_conversion_*.json"), report_dir / "conversion.json"]:
+        old.unlink(missing_ok=True)  # a re-run must not ship reports of a previous conversion (cell 14 collects parity*.json)
+    tool = Path(onnx2tf) if onnx2tf is not None else venv_bin(export_py, "onnx2tf")
+    rec: dict[str, Any] = {"onnx": str(onnx), "attempts": [], "candidates": [], "tool": "onnx2tf 2.6.9 (kaggle/requirements lock)"}
+
+    def parity(float_model: Path, other: Path, name: str) -> dict[str, Any] | None:
+        rep = report_dir / name
+        rep.unlink(missing_ok=True)  # never read a stale report from a previous run of the cell
+        _rc(runner, [export_py, "check_int8_parity.py", "--float-model", float_model, "--int8-model", other,
+                     "--samples", samples, "--report", rep], cwd=det, timeout=1800)
+        if not rep.is_file():
+            return None
+        try:
+            data: dict[str, Any] = json.loads(rep.read_text(encoding="utf-8"))
+        except ValueError:
+            return None
+        return data
+
+    simp = out_root / f"{onnx.stem}_sim.onnx"
+    simp.unlink(missing_ok=True)
+    rc = _rc(runner, [venv_bin(export_py, "onnxsim"), onnx, simp], cwd=out_root, timeout=900)
+    src = simp if rc == 0 and simp.is_file() else onnx
+    rec["onnx_simplified"] = src == simp
+    if src != simp:
+        log(f"WARNING: onnxsim failed (rc {rc}) -> converting the unsimplified graph")
+
+    def attempt(name: str, args: Sequence[str], int8: bool) -> dict[str, Path | None] | None:
+        out_dir = out_root / f"tflite_{name}"
+        rmtree(out_dir)  # stale files from an earlier run must not be picked up
+        cmd = [tool, "-i", src, "-o", out_dir, "-b", "1", *args]
+        if int8:
+            cmd += ["-oiqt", "-cind", "images", calib, *CALIB_MEAN_STD]
+        log(f"--- conversion attempt '{name}' ({'INT8' if int8 else 'float only'}) ---")
+        t0 = time.time()
+        code = _rc(runner, cmd, cwd=out_root, timeout=timeout)
+        picked = pick_onnx2tf_outputs(out_dir)
+        rec["attempts"].append({"name": name, "int8": int8, "rc": code, "seconds": round(time.time() - t0, 1),
+                                "files": {k: (v.name if v else None) for k, v in picked.items()}})
+        if code != 0:
+            log(f"attempt '{name}': onnx2tf failed (rc {code}); files it left behind are NOT used")
+            return None
+        if picked["float32"] is None:
+            log(f"attempt '{name}': exit code 0 but no *_float32.tflite -> skipped")
+            return None
+        return picked
+
+    float_runs: list[dict[str, Path | None]] = []
+    for name, args in int8_attempts:
+        picked = attempt(name, args, True)
+        if picked is None:
+            continue
+        float_runs.append(picked)
+        f32 = picked["float32"]
+        assert f32 is not None
+        for kind in INT8_KINDS:
+            q = picked[kind]
+            if q is None:
+                continue
+            rep = parity(f32, q, f"parity_tensor_{name}_{kind}.json")
+            rec["candidates"].append({"attempt": name, "kind": kind, "model": str(q), "float32": str(f32),
+                                      "size_mb": round(q.stat().st_size / 2**20, 3), "parity": _parity_summary(rep),
+                                      "_cos": first_cosine(rep)})
+            log(f"  {name}/{kind}: parity {'n/a (interpreter failed)' if rep is None else rep.get('passed')} "
+                f"cosine {first_cosine(rep):.5f}")
+        if any(c["parity"] and c["parity"]["passed"] for c in rec["candidates"]):
+            break
+    usable = [c for c in rec["candidates"] if c["parity"] is not None]
+    passing = [c for c in usable if c["parity"]["passed"]]
+    if usable:
+        # no passing model: best cosine (4 decimals), ties -> float I/O (the raw tensor mixes box offsets and
+        # probabilities; an int8 OUTPUT shares one scale for both -- see pick_onnx2tf_outputs)
+        chosen = passing[0] if passing else max(usable, key=lambda c: (round(c["_cos"], 4), c["kind"] == "int8_float_io"))
+        rec.update(precision="int8", int8_ok=bool(passing), model=chosen["model"], float32=chosen["float32"],
+                   int8_method=f"onnx2tf {chosen['attempt']} {chosen['kind']}" + ("" if passing else " (PARITY FAILED)"))
+    else:
+        if not float_runs:
+            for name, args in float_attempts:
+                picked = attempt(name, args, False)
+                if picked is not None:
+                    float_runs.append(picked)
+                    break
+        if not float_runs:
+            rec.update(precision=None, int8_ok=False, model=None, float32=None, int8_method="none")
+            (report_dir / "conversion.json").write_text(json.dumps(rec, indent=1, default=str), encoding="utf-8")
+            raise RuntimeError("Konversi ONNX -> TFLite gagal total (tidak ada float32 TFLite dari attempt mana pun) -- "
+                               "lihat log onnx2tf di atas; rencana B: litert-torch (WEIGHT_LICENSES.md §3.3).")
+        run0 = float_runs[0]
+        f32 = run0["float32"]
+        f16 = run0.get("float16")
+        assert f32 is not None
+        f16_rep = parity(f32, f16, "parity_tensor_float16.json") if f16 is not None else None
+        precision = "float16" if f16 is not None and f16_rep is not None else "float32"
+        rec["candidates"].append({"attempt": "float16", "kind": "float16", "model": str(f16), "float32": str(f32),
+                                  "parity": _parity_summary(f16_rep), "_cos": first_cosine(f16_rep)} if f16 is not None else {})
+        rec.update(precision=precision, int8_ok=False, model=str(f16 if precision == "float16" else f32), float32=str(f32),
+                   int8_method=f"none -- no usable INT8 model; fallback {precision}")
+    conv = parity(src, Path(rec["float32"]), "parity_conversion_onnx_vs_float32.json")
+    rec["conversion_parity"] = _parity_summary(conv)
+    for c in rec["candidates"]:
+        c.pop("_cos", None)
+    rec["candidates"] = [c for c in rec["candidates"] if c]
+    rec["model_size_mb"] = round(Path(rec["model"]).stat().st_size / 2**20, 3)
+    (report_dir / "conversion.json").write_text(json.dumps(rec, indent=1, default=str), encoding="utf-8")
+    return rec
+
+
+def size_gate(size_bytes: int, max_mb: float) -> dict[str, Any]:
+    mb = size_bytes / 2**20
+    return {"size_mb": round(mb, 3), "max_mb": max_mb, "ok": mb <= max_mb}
+
+
+def banner(lines: Sequence[str]) -> str:
+    bar = "!" * 78
+    text = "\n".join([bar, *lines, bar])
+    print(text, flush=True)
+    return text
 
 
 def latest_run(runs: Path, candidate: str) -> Path:

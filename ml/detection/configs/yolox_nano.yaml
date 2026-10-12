@@ -3,10 +3,12 @@
 # YOLOX#1865 unanswered). ADR 014 §5: the product owner ACCEPTS the risk (implied Apache-2.0, competition use) ->
 # license_verified: true WITH license_note: owner_accepted_risk. This is NOT a verification: run.json, labels.json
 # (licenses.weights.basis) and the MODEL_CARD banner say owner_accepted_risk; --release stays blocked until re-review.
-# NOT RUN in this repo. Install YOLOX from the pinned commit trainers/yolox_adapter.YOLOX_COMMIT
+# Not run on a GPU yet (CPU simulation only, kaggle/RUNBOOK.md §10). Install YOLOX from the pinned commit trainers/yolox_adapter.YOLOX_COMMIT
 # (after the GPL code removal, YOLOX#765/#781). Notebook: kaggle/yolox_nano_kaggle.py.
-# Export route: torch -> ONNX (decode_in_inference=False, head Sigmoid stripped, decoder runs in the app) ->
-# onnx2tf 2.6.9 -oiqt, tf_converter backend first (flatbuffer_direct INT8 broke parity on a tiny test graph), pick by parity.
+# Export route: torch -> ONNX (decode_in_inference=False, head Sigmoid stripped, decoder runs in the app) -> onnxsim ->
+# onnx2tf 2.6.9 -oiqt fallback chain (nbkit.tflite_chain): tf_converter INT8 -> flatbuffer_direct INT8 (per-channel,
+# per-tensor) -> float16 -> float32; chosen by tensor parity, int8_ok recorded (local CPU run 2026-10-12: tf_converter
+# INT8 cosine 0.962 on a 2-epoch model; flatbuffer_direct INT8 fails on depthwise convs).
 schema_version: 1
 candidate: yolox_nano
 trainer: yolox

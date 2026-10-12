@@ -51,7 +51,9 @@ Ada dua notebook di `ml/detection/kaggle/` (unduh berkas `.ipynb`-nya dari GitHu
    Pastikan kotak/ sakelar di samping `GITHUB_TOKEN` **tercentang (attached)** untuk notebook ini.
 4. **Jangan ubah apa pun** selain sel 0. Biarkan `SMOKE_TEST = True`. Klik **Run All** (▶▶).
    Uji cepat ini (±20–30 menit) membuktikan **seluruh rantai**: kode → data (hanya ±32 foto) → pemasangan → latih 1 epoch
-   → ekspor INT8 → evaluasi → zip unduhan. Sel terakhir harus mencetak **"UJI CEPAT BERHASIL"**.
+   (YOLOX: 2 epoch) → ekspor INT8 → evaluasi → zip unduhan. Sel terakhir harus mencetak **"UJI CEPAT BERHASIL"**.
+   Model uji cepat hampir tidak belajar: 0 deteksi, ambang 1.0, metrik 0 dan "INT8 tidak lolos" **wajar** di sini —
+   yang diuji adalah rantainya, bukan mutu model.
    Bila berhenti dengan kotak `====` berisi pesan: ikuti isinya, atau lihat §8.
 5. Ubah sel 0 menjadi `SMOKE_TEST = False` → **Save Version** (kanan atas) → **Save & Run All (Commit)** → *Save*.
    Browser boleh ditutup; Kaggle menjalankan di latar belakang.
@@ -83,10 +85,12 @@ MediaPipe Model Maker **tidak bisa** resume: bila waktu habis, ulangi dengan `EP
 |---|---|
 | 1 | Preflight (Python, GPU, RAM, disk, Internet ke github/pypi/zenodo[/storage.googleapis]) → ambil kode: dataset kode terlampir → atau `git clone` dengan `GITHUB_TOKEN` (token tidak pernah dicetak/ disimpan di `.git/config`) |
 | 2 | Data: dataset Ahmed terlampir → atau **unduh dari Zenodo** (MD5 diverifikasi, bisa dilanjut, 8 koneksi). Uji cepat hanya membaca ±32 foto lewat HTTP Range (beberapa MB). Lalu `canonical.jsonl` + **split pasien dari repo** (`ml/data/splits/ahmed2025`, sha256 dicek) |
-| 3 | Pemasangan dengan versi **terkunci** (`kaggle/requirements/*.txt`); torch bawaan Kaggle tidak diganti |
-| 4 | Cek alat (MediaPipe: latih 1 epoch + QAT pada 8 foto lalu ekspor — gagal dalam menit, bukan jam) |
+| 3 | Pemasangan dengan versi **terkunci** (`kaggle/requirements/*.txt`); torch & numpy bawaan Kaggle tidak diganti (pip memakai keduanya sebagai *constraint*). YOLOX: modul kernel dicek dengan impor sungguhan (yang rusak/kurang dipasang ulang), checkout YOLOX commit terkunci (dipakai ulang bila sel dijalankan lagi), bobot `yolox_nano.pth` dicek sha256 |
+| 4 | Cek alat (MediaPipe: latih 1 epoch + QAT pada 8 foto lalu ekspor; YOLOX: impor persis seperti `tools/train.py` + konvolusi CUDA nyata — gagal dalam menit, bukan jam) |
 | 5 | Konfigurasi run + gerbang lisensi (dry run) |
 | 6+ | Latih → ekspor INT8 → paritas → prediksi → ambang (val) → evaluasi (test) → bundel → zip unduhan → cek "tidak ada foto di keluaran" |
+| 6 (YOLOX) | **1 GPU saja** walau T4 x2 (DDP belum pernah teruji di sini). `tools/train.py` YOLOX keluar dengan kode 0 walau *crash*; notebook memeriksa `train_log.txt` + epoch di checkpoint, jadi crash tetap terlihat. Batas waktu menghentikan pelatihan **tepat setelah checkpoint epoch berikutnya** (bukan di tengah penulisan) |
+| 9 (YOLOX) | Rantai konversi: `onnxsim` → INT8 `tf_converter` → INT8 `flatbuffer_direct` (per-channel, lalu per-tensor) → float16 → float32. INT8 gagal **tidak** menghentikan run: tercatat di `out/conversion.json` dan `measurements_partial.json` (`precision`, `int8_method`, `int8_ok`) dan ditampilkan dalam kotak `!!!!` |
 
 Semua foto, venv, dan berkas `.npy` ada di `/tmp/dentisai` (tidak ikut tersimpan). Yang tersimpan hanya
 `/kaggle/working/outputs/<kandidat>[_smoke]/` (laporan, konfigurasi, bundel `.tflite`, checkpoint YOLOX untuk resume).
@@ -145,12 +149,28 @@ terpisah bersama tim app ke `bake_off/measurements.yaml`.
 | 3: `TensorFlow ... sees NO GPU` (MediaPipe) | TF 2.15 tidak menemukan pustaka CUDA | Pastikan GPU T4; laporkan 50 baris log sel 3. **Jangan** latih 30 epoch di CPU |
 | 4: `toolcheck produced no QAT model` / error Model Maker | Paket/ format data tidak cocok | Hentikan, laporkan log sel 4 (ini tujuan sel 4: gagal dalam menit) |
 | 4: `PyTorch tidak melihat GPU` (YOLOX) | GPU tidak aktif | Accelerator → GPU T4 x2 |
+| 3 (YOLOX): `kernel modules missing/broken -> installing pinned versions` | Kernel Kaggle tidak punya / punya versi rusak (mis. pycocotools untuk numpy lama) | Normal; dipasang otomatis dengan pin. Bila lalu `modules still not importable after pip install`: laporkan 50 baris log sel 3 |
+| 3 (YOLOX): pip `conflicting dependencies` menyebut `torch==...` / `numpy==...` | Paket meminta torch/numpy lain; notebook **sengaja menolak** mengganti torch/numpy Kaggle | Jangan memasang ulang torch. Laporkan log ke engineer (pin perlu disesuaikan) |
+| 3: `Paket di venv tidak bisa di-import (...)` | Versi terkunci di `requirements/*.txt` cocok di atas kertas tetapi rusak saat dipakai | Laporkan log; engineer memperbaiki pin (contoh lama: setuptools ≥ 81 tanpa `pkg_resources`) |
+| 3: baris `... 120s elapsed \| venv-export: 850 MB \| free disk ...` berulang | Pemasangan besar (TensorFlow) sedang berjalan; itu tanda masih hidup | Tunggu. Bila `command timed out after 3600s`: cek Internet, jalankan ulang sel 3 (unduhan dilanjutkan dari cache) |
+| 3: `shallow fetch of the pinned commit failed -> full clone` | GitHub menolak fetch per-commit | Normal; notebook mengkloning penuh lalu checkout commit yang sama |
+| 3: `yolox_nano.pth: sha256 ... != expected` | Unduhan bobot rusak/berubah | Jalankan ulang sel 3 (berkas rusak sudah dihapus); bila berulang, laporkan |
 | 5: `config says license_verified=true but the gate has unverified ...` | Patch `license_gate.yaml` (WEIGHT_LICENSES.md §4) belum diterapkan | Laporkan ke engineer data. **Jangan** mengedit gerbang dari notebook |
 | 6: `CUDA out of memory` | Batch terlalu besar | Sel 0: `BATCH_SIZE = 16` |
 | 6: `training failed: ...TimeoutExpired` (MediaPipe) | Waktu sesi habis (tidak bisa resume) | Kurangi `EPOCHS` (mis. 20) dan jalankan lagi |
 | 6: `BATAS WAKTU SESI TERCAPAI` (YOLOX) | Normal untuk run panjang | Ikuti §3 "Lanjut (resume)" |
-| 9 (YOLOX): satu backend onnx2tf gagal | Wajar; sel memilih backend yang lolos paritas | Bila keduanya gagal: laporkan log; rencana B `litert-torch` (WEIGHT_LICENSES.md §3.3) |
-| 10: `INT8 parity passed: False` | INT8 menyimpang dari float (SiLU) | Biarkan selesai (tetap dilaporkan), lalu run ulang dengan `ACT = "relu"` |
+| 6 (YOLOX): `YOLOX training crashed (tools/train.py exits with code 0 on errors ...)` | Crash di dalam YOLOX yang dulu tersembunyi (exit 0) | Laporkan pesan itu + 50 baris log. Jangan mengulang run penuh sebelum diperbaiki |
+| 6 (YOLOX): `YOLOX stopped after epoch X of Y without ...` | Proses mati tanpa pesan (RAM/ GPU penuh, dihentikan) | `BATCH_SIZE = 16`, jalankan lagi (melanjutkan dari checkpoint bila bukan uji cepat) |
+| 6 (YOLOX): `NOTE: trainer_options.devices=2 ignored -> 1 GPU` | Disengaja: DDP 2 GPU belum teruji, bisa macet (NCCL) | Tidak perlu tindakan |
+| 6 (YOLOX): `resume checkpoint ... is unreadable` | Checkpoint di input versi lama rusak | Lepas input versi itu (atau pilih versi sebelumnya) |
+| 7: `file named ... not found` / `instances_*.json` tidak ada | Tata letak data tidak cocok dengan YOLOX (seharusnya tidak terjadi; dicek lokal) | Laporkan log sel 6–7 |
+| 8–13: `ValueError: ... matplotlib_inline` atau versi numpy aneh di venv | Variabel lingkungan kernel bocor ke venv (sudah dicegah) | Laporkan log; jangan mengubah variabel lingkungan sendiri |
+| 9 (YOLOX): kotak `!!!!` "model INT8 TIDAK lolos" | Semua INT8 gagal/menyimpang; run tetap lanjut dengan INT8 terbaik atau float16/float32 (`int8_ok: false`) | Biarkan selesai. Uji cepat: wajar. Run penuh: putuskan — run ulang dengan `ACT = "relu"` (sel 0) atau terima sebagai catatan bake-off |
+| 9 (YOLOX): `Konversi ONNX -> TFLite gagal total` | Tidak ada satu pun TFLite (bahkan float32) | Laporkan `out/conversion.json` + log sel 9; rencana B `litert-torch` (WEIGHT_LICENSES.md §3.3) |
+| 9/10: `GERBANG UKURAN: model ... MiB > 15 MiB` | Model terlalu besar untuk ADR 001 | Uji cepat: hanya dilaporkan. Run penuh: ekspor ditolak → laporkan (tidak diharapkan untuk Nano, ±1–4 MB) |
+| 10: `parity (int8 vs float32) passed: False` | INT8 menyimpang dari float (SiLU) | Biarkan selesai (tetap dilaporkan), lalu run ulang dengan `ACT = "relu"` |
+| 12 (uji cepat): ambang `1.0`, sensitivitas 0, `n_pred_boxes` 0 | Model 2 epoch belum mendeteksi apa pun | Normal untuk uji cepat |
+| Sel mana pun dijalankan ulang | Aman: venv, checkout YOLOX, bobot, data dipakai ulang; laporan konversi lama dihapus dulu | Bila ragu: *Run → Restart & clear* lalu Run All |
 | `no kernel image is available` | GPU P100 | Ganti ke T4 x2 |
 | Sesi interaktif mati saat browser ditutup | Run interaktif butuh browser terbuka | Untuk run penuh pakai *Save & Run All (Commit)* |
 
@@ -179,11 +199,21 @@ terpisah bersama tim app ke `bake_off/measurements.yaml`.
   (uv mengunduh CPython) dari berkas terkunci, YOLOX dari commit terkunci, bobot `yolox_nano.pth` dimuat, 1 iterasi latih
   CPU pada tata letak nyata (pengganti `tools/train.py` yang hanya-CUDA), ekspor ONNX (3549×7, 6 sigmoid dibuang),
   kalibrasi/paritas `.npy`. Sel 9 (onnx2tf) gagal di simulasi: tanpa TensorFlow (`tf_converter` tak bisa jalan) dan
-  `onnxsim` tak ditemukan di PATH → INT8 `flatbuffer_direct` menolak op `EQUAL`. PATH sudah diperbaiki; **ekspor INT8
-  YOLOX belum terbukti** (sel 9–14 belum berjalan di mana pun).
-- Instalasi venv Model Maker (TF 2.15.1 + CUDA 12.2) dan pelatihan GPU (YOLOX `tools/train.py`, Model Maker) belum
-  berjalan di mana pun; versi terkunci diselesaikan oleh `uv pip compile` untuk Linux x86_64.
-- Backend `tf_converter` onnx2tf (butuh TensorFlow 2.21) belum dicoba di mana pun.
+  `onnxsim` tak ditemukan di PATH → INT8 `flatbuffer_direct` menolak op `EQUAL`. PATH sudah diperbaiki; sel 9–15
+  kini terbukti di simulasi Windows (butir berikut), belum di Linux/ Kaggle.
+- **YOLOX, simulasi Windows CPU (2026-10-12/13, `local_simulate.py --level deep --export-python ... --rerun ...`)**: notebook
+  `.ipynb` hasil generator berjalan **sel 0–15 sampai "UJI CEPAT BERHASIL"** (±9 menit) lalu seluruh sel dijalankan ulang
+  di kernel yang sama tanpa error. Yang nyata: checkout YOLOX commit terkunci, bobot `yolox_nano.pth` (sha256), pelatihan
+  2 epoch dengan `tools/train.py` + `Trainer` YOLOX **asli** (hanya panggilan CUDA ditukar ke CPU; mosaic di epoch 1,
+  no-aug di epoch 2, evaluasi COCO tiap epoch), ekspor ONNX, `onnxsim`, onnx2tf 2.6.9 (TF 2.21) semua attempt, paritas,
+  prediksi, ambang, evaluasi, bundel, zip. Hasil konversi: `tf_converter` INT8 jadi tetapi **paritas cosine 0,962 < 0,98**
+  (SiLU, model 2 epoch); `flatbuffer_direct` INT8 gagal (*quantized_dimension* pada depthwise conv; per-tensor: bias INT32
+  ≠ INT64) → rantai memilih INT8 terbaik dan menandai `int8_ok: false`. Juga terbukti nyata: pycocotools 2.0.10 +
+  YOLOX → `KeyError: 'info'` saat evaluasi **dengan exit code 0** (kini ditangkap; Exp memperbaikinya), dan batas waktu
+  menghentikan pelatihan setelah checkpoint epoch lalu sesi berikutnya melanjutkan sampai selesai.
+- Instalasi venv Model Maker (TF 2.15.1 + CUDA 12.2) dan pelatihan **GPU** (YOLOX `tools/train.py` di CUDA/ fp16,
+  Model Maker) belum berjalan di mana pun; versi terkunci diselesaikan oleh `uv pip compile` untuk Linux x86_64.
+- Venv ekspor Linux dari berkas terkunci belum dipasang di Linux sejak itu (di Windows dipakai pin tingkat-atas yang sama).
 - Kecepatan unduh Zenodo dari Kaggle, ketersediaan uv/ Python 3.10 di image Kaggle saat ini, dan kuota Kaggle [PERLU VERIFIKASI pada run pertama].
 
 ## 11. Colab (cadangan)
