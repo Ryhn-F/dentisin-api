@@ -678,6 +678,14 @@ def test_child_env_strips_kernel_paths_for_foreign_interpreters() -> None:
     assert "PYTHONPATH" not in venv and "PYTHONHOME" not in venv and venv["X"] == "1" and venv["PATH"] == "/bin"
 
 
+def test_dir_size_mb_counts_files_recursively(tmp_path: Path) -> None:
+    (tmp_path / "a" / "b").mkdir(parents=True)
+    (tmp_path / "a" / "b" / "x.bin").write_bytes(b"\0" * (3 << 20))
+    (tmp_path / "y.bin").write_bytes(b"\0" * (2 << 20))
+    assert nbkit.dir_size_mb(tmp_path) == 5
+    assert nbkit.dir_size_mb(tmp_path / "missing") == 0
+
+
 def test_child_env_forces_agg_matplotlib_backend_for_venv_programs() -> None:
     """Kaggle kernels set MPLBACKEND=module://matplotlib_inline.backend_inline; a venv without matplotlib_inline then
     fails `import matplotlib.pyplot` (mediapipe imports it)."""

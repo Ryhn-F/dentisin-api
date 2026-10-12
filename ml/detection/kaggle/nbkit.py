@@ -791,6 +791,47 @@ def sh(cmd: Sequence[Any] | str, *, cwd: Path | None = None, env: Mapping[str, s
     return res.returncode
 
 
+def dir_size_mb(path: Path) -> int:
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.lstat(os.path.join(root, name)).st_size
+            except OSError:
+                pass
+    return total // (1 << 20)
+
+
+def sh_heartbeat(cmd: Sequence[Any], *, watch: Path, every: float = 30.0, timeout: float | None = 3600.0,
+                 env: Mapping[str, str] | None = None) -> int:  # pragma: no cover - thin subprocess wrapper
+    """Like :func:`sh`, but prints a status line every ``every`` s (elapsed, size of ``watch``, free disk).
+    ``uv`` hides its progress bar when there is no terminal, so a 3-4 GB TensorFlow+CUDA install looks frozen in a
+    notebook; the heartbeat shows whether bytes are still arriving."""
+    args = [str(c) for c in cmd]
+    print("$", " ".join(shlex.quote(a) for a in args), flush=True)
+    t0 = time.time()
+    done = threading.Event()
+
+    def beat() -> None:
+        while not done.wait(every):
+            print(f"  ... {time.time() - t0:.0f}s elapsed | {watch.name}: {dir_size_mb(watch)} MB | "
+                  f"free disk {free_gb(watch if watch.exists() else watch.parent):.1f} GB", flush=True)
+
+    thread = threading.Thread(target=beat, daemon=True)
+    thread.start()
+    try:
+        merged = {"UV_HTTP_TIMEOUT": "180", "UV_CONCURRENT_DOWNLOADS": "8", **(env or {})}
+        res = subprocess.run(args, env=child_env(args[0], merged), check=False, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError(f"command timed out after {timeout:.0f}s: {args[0]} ... -- Internet On? run again (uv resumes from its cache)") from None
+    finally:
+        done.set()
+    print(f"[exit {res.returncode} in {time.time() - t0:.0f}s]", flush=True)
+    if res.returncode != 0:
+        raise RuntimeError(f"command failed ({res.returncode}): {args[0]} ... (see the output above)")
+    return res.returncode
+
+
 def missing_modules(mapping: Mapping[str, str], find_spec: Callable[[str], Any] = importlib.util.find_spec) -> list[str]:
     """pip specs for the import names that are NOT importable in this kernel (so preinstalled torch/cv2 stay)."""
     out = []
@@ -853,7 +894,11 @@ def ensure_venv(path: Path, python: str, lock: Path | Sequence[str], *, uv: Sequ
     uv_cmd = list(uv) if uv is not None else uv_command(run=runner)
     py = create_venv(path, python, uv=uv_cmd, run=runner, **kw)
     reqs = ["-r", str(lock)] if isinstance(lock, Path) else list(lock)
-    runner([*uv_cmd, "pip", "install", "--python", str(py), *reqs])
+    install = [*uv_cmd, "pip", "install", "--python", str(py), *reqs]
+    if run is None:  # real run: show a heartbeat (uv prints no progress without a terminal)
+        sh_heartbeat(install, watch=path)
+    else:
+        run(install)
     return py
 
 
