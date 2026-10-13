@@ -805,11 +805,25 @@ def child_env(exe: str, extra: Mapping[str, str] | None = None, environ: Mapping
 
 
 def sh(cmd: Sequence[Any] | str, *, cwd: Path | None = None, env: Mapping[str, str] | None = None, check: bool = True,
-       timeout: float | None = None) -> int:  # pragma: no cover - thin subprocess wrapper
+       timeout: float | None = None, watch: Path | None = None,
+       beat_every: float = 60.0) -> int:  # pragma: no cover - thin subprocess wrapper
+    """Run a command. With ``watch`` (a directory the command writes into) a status line is printed every
+    ``beat_every`` s, so a long silent step (onnx2tf INT8 calibration, big installs) does not look frozen."""
     args = shlex.split(cmd) if isinstance(cmd, str) else [str(c) for c in cmd]
     print("$", " ".join(shlex.quote(a) for a in args), flush=True)
     t0 = time.time()
-    res = subprocess.run(args, cwd=cwd, env=child_env(args[0], env), check=False, timeout=timeout)
+    done = threading.Event()
+    if watch is not None:
+        def beat() -> None:
+            while not done.wait(beat_every):
+                print(f"  ... {time.time() - t0:.0f}s elapsed | {watch.name}: {dir_size_mb(watch)} MB, "
+                      f"{sum(1 for _ in watch.rglob('*')) if watch.exists() else 0} files (still running)", flush=True)
+
+        threading.Thread(target=beat, daemon=True).start()
+    try:
+        res = subprocess.run(args, cwd=cwd, env=child_env(args[0], env), check=False, timeout=timeout)
+    finally:
+        done.set()
     print(f"[exit {res.returncode} in {time.time() - t0:.0f}s]", flush=True)
     if check and res.returncode != 0:
         raise RuntimeError(f"command failed ({res.returncode}): {args[0]} ... (see the output above)")
@@ -1138,7 +1152,7 @@ def first_cosine(rep: Mapping[str, Any] | None) -> float:
 
 def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, report_dir: Path, export_py: Path | str,
                  det: Path, onnx2tf: Path | str | None = None, run: Callable[..., int] | None = None,
-                 timeout: float = 2700.0, int8_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_INT8_ATTEMPTS,
+                 timeout: float = 1500.0, int8_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_INT8_ATTEMPTS,
                  float_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_FLOAT_ATTEMPTS,
                  log: Callable[[str], None] = print) -> dict[str, Any]:
     """ONNX -> TFLite with fallbacks; NEVER raises because INT8 failed, only when not even a float32 TFLite exists.
@@ -1189,7 +1203,9 @@ def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, repo
             cmd += ["-oiqt", "-cind", "images", calib, *CALIB_MEAN_STD]
         log(f"--- conversion attempt '{name}' ({'INT8' if int8 else 'float only'}) ---")
         t0 = time.time()
-        code = _rc(runner, cmd, cwd=out_root, timeout=timeout)
+        log(f"    (limit {timeout / 60:.0f} min; a status line every minute while onnx2tf calibrates/quantizes silently)")
+        kw: dict[str, Any] = {"watch": out_dir} if runner is sh else {}  # test fakes do not take `watch`
+        code = _rc(runner, cmd, cwd=out_root, timeout=timeout, **kw)
         picked = pick_onnx2tf_outputs(out_dir)
         rec["attempts"].append({"name": name, "int8": int8, "rc": code, "seconds": round(time.time() - t0, 1),
                                 "files": {k: (v.name if v else None) for k, v in picked.items()}})

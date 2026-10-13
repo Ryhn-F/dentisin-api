@@ -168,7 +168,9 @@ if DONE:
 if DONE:
     CALIB = TMP / "export" / "calib_train.npy"
     PARITY = TMP / "export" / "parity_val.npy"
-    nbkit.sh([EXPORT_PY, "preprocess.py", "calib", "--cfg", RUN_CFG, "--split", "train", "--out", CALIB], cwd=DET, timeout=3600)
+    # INT8 calibration runs the model once per sample inside onnx2tf (silent, CPU): smoke = 32, full = config (200)
+    nbkit.sh([EXPORT_PY, "preprocess.py", "calib", "--cfg", RUN_CFG, "--split", "train", "--out", CALIB,
+              *(["--n", "32"] if SMOKE_TEST else [])], cwd=DET, timeout=3600)
     nbkit.sh([EXPORT_PY, "preprocess.py", "calib", "--cfg", RUN_CFG, "--split", "val", "--n", "50", "--out", PARITY], cwd=DET, timeout=3600)
 
 # %% 9. ONNX -> LiteRT dengan rantai cadangan: onnxsim -> INT8 tf_converter -> INT8 flatbuffer_direct (per-channel, lalu
