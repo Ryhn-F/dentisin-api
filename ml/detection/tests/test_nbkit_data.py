@@ -7,6 +7,7 @@ Network and subprocesses are FAKED (in-memory Range server, fake runners); one t
 from __future__ import annotations
 
 import hashlib
+import http.client
 import io
 import json
 import os
@@ -296,6 +297,9 @@ def test_fetch_range_and_pick_url() -> None:
     op = FakeOpener(blob, fail=[urllib.error.URLError("dns"), TimeoutError()])
     assert nbkit.fetch_range(U, 0, 3, opener=op, sleep=NOSLEEP) == blob[:4] and op.calls == 3
     assert nbkit.fetch_range(U, 0, 3, opener=FakeOpener(blob, short=1), sleep=NOSLEEP) == blob[:4]
+    # Kaggle 2026-10-14: Zenodo cut a Range response short -> http.client.IncompleteRead (an HTTPException, not OSError)
+    op = FakeOpener(blob, fail=[http.client.IncompleteRead(b"abc", 5), http.client.RemoteDisconnected("closed")])
+    assert nbkit.fetch_range(U, 4, 7, opener=op, sleep=NOSLEEP) == blob[4:8] and op.calls == 3
     with pytest.raises(nbkit.RangeNotSupportedError):
         nbkit.fetch_range(U, 0, 3, opener=FakeOpener(blob, ignore_range=True))
     with pytest.raises(nbkit.DataError, match="after 1 attempts"):

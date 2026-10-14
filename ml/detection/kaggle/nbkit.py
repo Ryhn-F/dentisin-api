@@ -13,6 +13,7 @@ import contextlib
 import copy
 import csv
 import hashlib
+import http.client
 import importlib.util
 import json
 import os
@@ -264,7 +265,9 @@ class RangeNotSupportedError(DataError):
 def _retryable(exc: BaseException) -> bool:
     if isinstance(exc, urllib.error.HTTPError):
         return exc.code in (408, 425, 429) or exc.code >= 500
-    return isinstance(exc, urllib.error.URLError | OSError | TimeoutError | ConnectionError | EOFError)
+    # http.client.IncompleteRead / RemoteDisconnected are HTTPException (NOT OSError): Zenodo cut a Range response short
+    # on Kaggle (2026-10-14) and the smoke download died on the first attempt instead of retrying.
+    return isinstance(exc, urllib.error.URLError | OSError | TimeoutError | ConnectionError | EOFError | http.client.HTTPException)
 
 
 def fetch_range(url: str, start: int, end: int, *, opener: Opener = urllib.request.urlopen, retries: int = 8,
@@ -508,7 +511,7 @@ class Archive:
     def read(self, name: str) -> bytes:
         return self._read(name)
 
-    def extract(self, names: Iterable[str], dest: Path, *, workers: int = 16, log: Callable[[str], None] = print) -> int:
+    def extract(self, names: Iterable[str], dest: Path, *, workers: int = 8, log: Callable[[str], None] = print) -> int:
         """Write ``names`` under ``dest`` (paths validated; existing files of the same size are kept)."""
         todo = [n for n in names if not (dest / n).is_file()]
         for n in todo:
