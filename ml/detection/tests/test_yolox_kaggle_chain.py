@@ -283,6 +283,51 @@ def test_run_with_budget_prints_yolox_progress_and_tolerates_a_growing_log(
     assert "[yolox" in capsys.readouterr().out
 
 
+def test_is_retriable_only_for_hangs() -> None:
+    assert ya.is_retriable(ya.TrainerStalled("x"))
+    assert ya.is_retriable(RuntimeError("YOLOX training crashed: RuntimeError: DataLoader timed out after 300 seconds"))
+    assert ya.is_retriable(RuntimeError("DataLoader worker (pid 12) is killed by signal: Killed."))
+    assert not ya.is_retriable(RuntimeError("CUDA out of memory"))
+    assert not ya.is_retriable(ValueError("bad config"))
+
+
+def test_supervise_restarts_after_a_hang_then_succeeds() -> None:
+    calls: list[int] = []
+    msgs: list[str] = []
+
+    def run_once(attempt: int) -> str:
+        calls.append(attempt)
+        if attempt < 2:
+            raise ya.TrainerStalled(f"hang {attempt}")
+        return "completed"
+
+    result, restarts = ya.supervise(run_once, max_restarts=2, log=msgs.append)
+    assert result == "completed" and calls == [0, 1, 2]
+    assert [r["attempt"] for r in restarts] == [0, 1] and "hang 0" in restarts[0]["reason"] and len(msgs) == 2
+
+
+def test_supervise_gives_up_after_max_restarts_and_never_retries_real_errors() -> None:
+    attempts: list[int] = []
+
+    def always_hangs(attempt: int) -> str:
+        attempts.append(attempt)
+        raise ya.TrainerStalled("still hanging")
+
+    with pytest.raises(ya.TrainerStalled):
+        ya.supervise(always_hangs, max_restarts=1, log=lambda _m: None)
+    assert attempts == [0, 1]
+
+    seen: list[int] = []
+
+    def crashes(attempt: int) -> str:
+        seen.append(attempt)
+        raise RuntimeError("CUDA out of memory")
+
+    with pytest.raises(RuntimeError, match="CUDA"):
+        ya.supervise(crashes, max_restarts=2, log=lambda _m: None)
+    assert seen == [0]  # a genuine failure is not retried
+
+
 def test_last_log_line(tmp_path: Path) -> None:
     assert ya.last_log_line(tmp_path / "missing.txt") == ""
     log = tmp_path / "l.txt"

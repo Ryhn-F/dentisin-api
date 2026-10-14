@@ -267,6 +267,16 @@ def test_mediapipe_worker_env_is_headless_and_clean() -> None:
     assert env == {"MPLBACKEND": "Agg", "PATH": "/bin"}
 
 
+def test_exp_template_has_faulthandler_and_dataloader_timeout(tmp_path: Path) -> None:
+    import ast
+
+    cfg = yaml.safe_load((DET / "configs" / "yolox_nano.yaml").read_text(encoding="utf-8"))
+    text = yolox_adapter.render_exp(ctx_for(cfg, tmp_path), tmp_path / "data")
+    ast.parse(text)
+    assert "faulthandler.register(signal.SIGUSR1" in text and "loader.timeout = self.dataloader_timeout_s" in text
+    assert "self.dataloader_timeout_s = 300" in text
+
+
 def test_mm_anchor_extraction_matches_model_maker_formula() -> None:
     class T:
         def __init__(self, a: list[list[float]]) -> None:
