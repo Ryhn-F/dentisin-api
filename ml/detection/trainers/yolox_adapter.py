@@ -169,6 +169,8 @@ def train_environment(environ: Mapping[str, str], repo: Path, devices: int) -> d
     env["MPLBACKEND"] = "Agg"
     env["TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD"] = "1"
     env["PYTHONUNBUFFERED"] = "1"
+    # yolo_head.py warns about torch.cuda.amp.autocast on every iteration and floods the kernel log (Kaggle 2026-10-14)
+    env["PYTHONWARNINGS"] = ",".join(filter(None, [env.get("PYTHONWARNINGS"), "ignore::FutureWarning"]))
     env.setdefault("CUDA_VISIBLE_DEVICES", ",".join(str(i) for i in range(devices)))
     return env
 
@@ -297,6 +299,30 @@ def _mtime(p: Path) -> float | None:
         return None
 
 
+class TrainerStalled(RuntimeError):
+    """YOLOX wrote nothing to train_log.txt for ``stall_s`` seconds (a hang, e.g. in a DataLoader worker or an eval)."""
+
+
+def _log_size(log: Path) -> int:
+    try:
+        return log.stat().st_size
+    except OSError:
+        return -1
+
+
+def last_log_line(log: Path, tail_bytes: int = 4096) -> str:
+    """Last non-empty line of YOLOX's train_log.txt (progress line: 'epoch: 3/150, iter: 40/137 ...'), '' if none."""
+    try:
+        with log.open("rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(0, fh.tell() - tail_bytes))
+            text = fh.read().decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+    return lines[-1][:220] if lines else ""
+
+
 def _stop(proc: Any, grace_s: float = 60.0) -> None:
     """Terminate the trainer and its dataloader workers (own process group on POSIX)."""
     import signal
@@ -320,6 +346,7 @@ def _stop(proc: Any, grace_s: float = 60.0) -> None:
 
 def run_with_budget(cmd: Sequence[str], *, cwd: Path, env: Mapping[str, str], budget_s: float | None, watch: Path,
                     grace_s: float = 1800.0, settle_s: float = 15.0, poll_s: float = 5.0,
+                    log: Path | None = None, stall_s: float | None = 1800.0, tail_every_s: float = 60.0,
                     popen: Callable[..., Any] = subprocess.Popen, clock: Callable[[], float] = time.time,
                     sleep: Callable[[float], None] = time.sleep) -> tuple[int | None, bool]:
     """Run the trainer; when ``budget_s`` is used up, stop it RIGHT AFTER its next ``latest_ckpt.pth`` write (epoch
@@ -330,12 +357,27 @@ def run_with_budget(cmd: Sequence[str], *, cwd: Path, env: Mapping[str, str], bu
     started = clock()
     mark: float | None = None
     stop_at: float | None = None
+    last_size, last_change, last_tail = _log_size(log) if log is not None else -1, started, started
     try:
         while True:
             rc = proc.poll()
             if rc is not None:
                 return int(rc), False
             now = clock()
+            if log is not None:
+                size = _log_size(log)
+                if size != last_size:
+                    last_size, last_change = size, now
+                if now - last_tail >= tail_every_s:  # YOLOX's own progress lines never reach the notebook output
+                    last_tail = now
+                    print(f"  [yolox {now - started:.0f}s] {last_log_line(log) or '(train_log.txt still empty)'}", flush=True)
+                if stall_s is not None and stop_at is None and now - last_change >= stall_s:
+                    line = last_log_line(log)
+                    _stop(proc)
+                    raise TrainerStalled(
+                        f"YOLOX wrote nothing to train_log.txt for {stall_s / 60:.0f} min (after {now - started:.0f}s) -- "
+                        f"a hang, not slow training. Last line: {line!r}. Stopped it instead of burning the session. "
+                        "Try workers: 0 (config trainer_options) and look at the lines above; report them.")
             if budget_s is not None and stop_at is None and now - started >= budget_s:
                 mark, stop_at = _mtime(watch), now + grace_s
                 print(f"time budget reached ({budget_s / 3600:.2f} h): stopping after the next epoch checkpoint "
@@ -413,7 +455,8 @@ def train(ctx: TrainContext) -> dict[str, Any]:  # pragma: no cover - needs torc
     started = time.time()
     print("$", " ".join(cmd), f"(cwd {repo})", flush=True)
     rc, stopped = run_with_budget(cmd, cwd=repo, env=env, budget_s=None if budget is None else float(budget) * 3600,
-                                  watch=exp_dir / "latest_ckpt.pth", grace_s=float(opts.get("stop_grace_s", 1800)))
+                                  watch=exp_dir / "latest_ckpt.pth", grace_s=float(opts.get("stop_grace_s", 1800)),
+                                  log=log, stall_s=float(opts.get("stall_s", 1800)))
     errors = caught_errors(log, offset)
     epoch = checkpoint_epoch(exp_dir / "latest_ckpt.pth")
     max_epoch = int(ctx.cfg["train"]["epochs"])

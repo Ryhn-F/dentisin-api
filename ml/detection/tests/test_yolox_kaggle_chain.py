@@ -243,6 +243,55 @@ def test_run_with_budget_grace_expires(tmp_path: Path, monkeypatch: pytest.Monke
     assert (rc, stopped) == (None, True) and proc.terminated and sum(sleeps) >= 40.0
 
 
+def _clocked(t: list[float], on_sleep: Callable[[float], None] | None = None) -> Callable[[float], None]:
+    def sleep(s: float) -> None:
+        t[0] += s
+        if on_sleep is not None:
+            on_sleep(t[0])
+
+    return sleep
+
+
+def test_run_with_budget_kills_a_stalled_trainer(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Kaggle 2026-10-14: ~10 h of silence after the first iterations -> detect the hang in minutes, not at the budget."""
+    monkeypatch.setattr(sys, "platform", "win32")
+    log = tmp_path / "train_log.txt"
+    log.write_text("epoch: 1/150, iter: 10/137\n", encoding="utf-8")
+    proc = FakeProc(finish_after=None)
+    t = [0.0]
+    with pytest.raises(ya.TrainerStalled, match="epoch: 1/150"):
+        ya.run_with_budget(["x"], cwd=tmp_path, env={}, budget_s=None, watch=tmp_path / "w", log=log, stall_s=60.0,
+                           popen=lambda *a, **k: proc, clock=lambda: t[0], sleep=_clocked(t))
+    assert proc.terminated and t[0] <= 70.0
+
+
+def test_run_with_budget_prints_yolox_progress_and_tolerates_a_growing_log(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(sys, "platform", "win32")
+    log = tmp_path / "train_log.txt"
+    log.write_text("start\n", encoding="utf-8")
+    proc = FakeProc(finish_after=40)
+    t = [0.0]
+
+    def grow(now: float) -> None:
+        with log.open("a", encoding="utf-8") as fh:
+            fh.write(f"epoch: 1/150, iter: {int(now)}/137\n")
+
+    rc, stopped = ya.run_with_budget(["x"], cwd=tmp_path, env={}, budget_s=None, watch=tmp_path / "w", log=log, stall_s=30.0,
+                                     tail_every_s=20.0, popen=lambda *a, **k: proc, clock=lambda: t[0], sleep=_clocked(t, grow))
+    assert (rc, stopped) == (0, False)
+    assert "[yolox" in capsys.readouterr().out
+
+
+def test_last_log_line(tmp_path: Path) -> None:
+    assert ya.last_log_line(tmp_path / "missing.txt") == ""
+    log = tmp_path / "l.txt"
+    log.write_text("a\n\nlast progress line  \n\n", encoding="utf-8")
+    assert ya.last_log_line(log) == "last progress line"
+    log.write_text("", encoding="utf-8")
+    assert ya.last_log_line(log) == ""
+
+
 def test_run_with_budget_interrupt_kills_child(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     proc = FakeProc(finish_after=None)
     monkeypatch.setattr(sys, "platform", "win32")
