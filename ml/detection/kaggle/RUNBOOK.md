@@ -90,7 +90,7 @@ MediaPipe Model Maker **tidak bisa** resume: bila waktu habis, ulangi dengan `EP
 | 5 | Konfigurasi run + gerbang lisensi (dry run) |
 | 6+ | Latih → ekspor INT8 → paritas → prediksi → ambang (val) → evaluasi (test) → bundel → zip unduhan → cek "tidak ada foto di keluaran" |
 | 6 (YOLOX) | **1 GPU saja** walau T4 x2 (DDP belum pernah teruji di sini). `tools/train.py` YOLOX keluar dengan kode 0 walau *crash*; notebook memeriksa `train_log.txt` + epoch di checkpoint, jadi crash tetap terlihat. Batas waktu menghentikan pelatihan **tepat setelah checkpoint epoch berikutnya** (bukan di tengah penulisan) |
-| 9 (YOLOX) | Rantai konversi: `onnxsim` → INT8 `tf_converter` → INT8 `flatbuffer_direct` (per-channel, lalu per-tensor) → float16 → float32. INT8 gagal **tidak** menghentikan run: tercatat di `out/conversion.json` dan `measurements_partial.json` (`precision`, `int8_method`, `int8_ok`) dan ditampilkan dalam kotak `!!!!` |
+| 9 (YOLOX) | Rantai konversi: `onnxsim` → INT8 `tf_converter` (±90 dtk) → **hanya bila itu tidak menghasilkan model INT8 yang bisa dijalankan**: INT8 `flatbuffer_direct` (per-channel, lalu per-tensor; batas 7 mnt per percobaan, karena di Kaggle keduanya pernah macet 25 mnt di kalibrasi) → float16 → float32. INT8 gagal **tidak** menghentikan run: tercatat di `out/conversion.json` dan `measurements_partial.json` (`precision`, `int8_method`, `int8_ok`) dan ditampilkan dalam kotak `!!!!` |
 
 Semua foto, venv, dan berkas `.npy` ada di `/tmp/dentisai` (tidak ikut tersimpan). Yang tersimpan hanya
 `/kaggle/working/outputs/<kandidat>[_smoke]/` (laporan, konfigurasi, bundel `.tflite`, checkpoint YOLOX untuk resume).

@@ -1115,8 +1115,13 @@ def fetch_verified(url: str, dest: Path, sha256: str, *, fetch: Callable[[str, P
 #: tf_converter -> INT8 ok (cosine 0.99999 vs float32); flatbuffer_direct per-channel -> rc 1 ("quantized_dimension must
 #: be in range [0, 1). Was 3" on depthwise convs); flatbuffer_direct per-tensor -> rc 1 but leaves an INT8 file with
 #: cosine -0.02 (garbage) -> files of a failed run are NEVER used.
+#: Kaggle smoke run 2026-10-14: tf_converter INT8 finished in ~90 s; BOTH flatbuffer_direct attempts sat in calibration
+#: for the whole 25 min limit (heartbeat: output dir frozen at 6 MB / 5 files) -> 50 min lost, no model. So the
+#: flatbuffer_direct attempts are only a FALLBACK (no usable tf_converter INT8 model) with a short limit.
 ONNX2TF_INT8_ATTEMPTS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("tf_converter", ("-tb", "tf_converter")),
+)
+ONNX2TF_INT8_FALLBACK_ATTEMPTS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("flatbuffer_direct", ("-tb", "flatbuffer_direct")),
     ("flatbuffer_direct_per_tensor", ("-tb", "flatbuffer_direct", "-qt", "per-tensor")),
 )
@@ -1157,6 +1162,8 @@ def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, repo
                  det: Path, onnx2tf: Path | str | None = None, run: Callable[..., int] | None = None,
                  timeout: float = 1500.0, int8_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_INT8_ATTEMPTS,
                  float_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_FLOAT_ATTEMPTS,
+                 fallback_int8_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_INT8_FALLBACK_ATTEMPTS,
+                 fallback_timeout: float = 420.0,
                  log: Callable[[str], None] = print) -> dict[str, Any]:
     """ONNX -> TFLite with fallbacks; NEVER raises because INT8 failed, only when not even a float32 TFLite exists.
 
@@ -1198,7 +1205,8 @@ def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, repo
     if src != simp:
         log(f"WARNING: onnxsim failed (rc {rc}) -> converting the unsimplified graph")
 
-    def attempt(name: str, args: Sequence[str], int8: bool) -> dict[str, Path | None] | None:
+    def attempt(name: str, args: Sequence[str], int8: bool, limit: float | None = None) -> dict[str, Path | None] | None:
+        limit = timeout if limit is None else limit
         out_dir = out_root / f"tflite_{name}"
         rmtree(out_dir)  # stale files from an earlier run must not be picked up
         cmd = [tool, "-i", src, "-o", out_dir, "-b", "1", *args]
@@ -1206,9 +1214,9 @@ def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, repo
             cmd += ["-oiqt", "-cind", "images", calib, *CALIB_MEAN_STD]
         log(f"--- conversion attempt '{name}' ({'INT8' if int8 else 'float only'}) ---")
         t0 = time.time()
-        log(f"    (limit {timeout / 60:.0f} min; a status line every minute while onnx2tf calibrates/quantizes silently)")
+        log(f"    (limit {limit / 60:.0f} min; a status line every minute while onnx2tf calibrates/quantizes silently)")
         kw: dict[str, Any] = {"watch": out_dir} if runner is sh else {}  # test fakes do not take `watch`
-        code = _rc(runner, cmd, cwd=out_root, timeout=timeout, **kw)
+        code = _rc(runner, cmd, cwd=out_root, timeout=limit, **kw)
         picked = pick_onnx2tf_outputs(out_dir)
         rec["attempts"].append({"name": name, "int8": int8, "rc": code, "seconds": round(time.time() - t0, 1),
                                 "files": {k: (v.name if v else None) for k, v in picked.items()}})
@@ -1221,25 +1229,34 @@ def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, repo
         return picked
 
     float_runs: list[dict[str, Path | None]] = []
-    for name, args in int8_attempts:
-        picked = attempt(name, args, True)
-        if picked is None:
-            continue
-        float_runs.append(picked)
-        f32 = picked["float32"]
-        assert f32 is not None
-        for kind in INT8_KINDS:
-            q = picked[kind]
-            if q is None:
+
+    def int8_attempts_loop(attempts: Sequence[tuple[str, Sequence[str]]], limit: float | None) -> None:
+        for name, args in attempts:
+            picked = attempt(name, args, True, limit)
+            if picked is None:
                 continue
-            rep = parity(f32, q, f"parity_tensor_{name}_{kind}.json")
-            rec["candidates"].append({"attempt": name, "kind": kind, "model": str(q), "float32": str(f32),
-                                      "size_mb": round(q.stat().st_size / 2**20, 3), "parity": _parity_summary(rep),
-                                      "_cos": first_cosine(rep)})
-            log(f"  {name}/{kind}: parity {'n/a (interpreter failed)' if rep is None else rep.get('passed')} "
-                f"cosine {first_cosine(rep):.5f}")
-        if any(c["parity"] and c["parity"]["passed"] for c in rec["candidates"]):
-            break
+            float_runs.append(picked)
+            f32 = picked["float32"]
+            assert f32 is not None
+            for kind in INT8_KINDS:
+                q = picked[kind]
+                if q is None:
+                    continue
+                rep = parity(f32, q, f"parity_tensor_{name}_{kind}.json")
+                rec["candidates"].append({"attempt": name, "kind": kind, "model": str(q), "float32": str(f32),
+                                          "size_mb": round(q.stat().st_size / 2**20, 3), "parity": _parity_summary(rep),
+                                          "_cos": first_cosine(rep)})
+                log(f"  {name}/{kind}: parity {'n/a (interpreter failed)' if rep is None else rep.get('passed')} "
+                    f"cosine {first_cosine(rep):.5f}")
+            if any(c["parity"] and c["parity"]["passed"] for c in rec["candidates"]):
+                break
+
+    int8_attempts_loop(int8_attempts, None)
+    if not any(c["parity"] is not None for c in rec["candidates"]):
+        # tf_converter gave no INT8 model that the interpreter could even run: only now try the flatbuffer_direct
+        # variants, with a short limit (they hung for 25 min each on Kaggle 2026-10-14)
+        log(f"no usable INT8 model from the primary attempts -> fallback attempts (limit {fallback_timeout / 60:.0f} min each)")
+        int8_attempts_loop(fallback_int8_attempts, fallback_timeout)
     usable = [c for c in rec["candidates"] if c["parity"] is not None]
     passing = [c for c in usable if c["parity"]["passed"]]
     if usable:

@@ -549,6 +549,36 @@ def test_chain_tf_converter_int8_ok(tmp_path: Path) -> None:
     assert saved["int8_ok"] is True and all("_cos" not in c for c in saved["candidates"])
 
 
+def test_chain_does_not_try_flatbuffer_direct_when_tf_converter_gave_an_int8_model(tmp_path: Path) -> None:
+    """Kaggle 2026-10-14: both flatbuffer_direct attempts hung for 25 min each although tf_converter had already
+    produced an INT8 model (only its parity was below the threshold). FakeTools raises KeyError for unknown attempts."""
+    tools = FakeTools({"tf_converter": (0, ALL, {"integer_quant": 0.957, "full_integer_quant": 0.957})})
+    rec = _chain(tmp_path, tools)
+    assert [a["name"] for a in rec["attempts"]] == ["tf_converter"]
+    assert rec["precision"] == "int8" and rec["int8_ok"] is False and "PARITY FAILED" in rec["int8_method"]
+
+
+def test_chain_flatbuffer_direct_is_a_short_fallback_only_when_tf_converter_fails(tmp_path: Path) -> None:
+    limits: dict[str, float] = {}
+    tools = FakeTools({"tf_converter": (1, (), {}), "flatbuffer_direct": ("timeout", (), {}),
+                       "flatbuffer_direct_per_tensor": (0, ALL, {"integer_quant": 0.99, "full_integer_quant": 0.99})})
+
+    def run(cmd: Sequence[Any], **kw: Any) -> int:
+        if Path(str(cmd[0])).stem == "onnx2tf":
+            limits[Path(str(cmd[cmd.index("-o") + 1])).name.removeprefix("tflite_")] = float(kw["timeout"])
+        return tools(cmd, **kw)
+
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    onnx = tmp_path / "m.onnx"
+    onnx.write_bytes(b"onnx")
+    rec = nbkit.tflite_chain(onnx=onnx, calib=tmp_path / "c.npy", samples=tmp_path / "s.npy", out_root=tmp_path / "export",
+                             report_dir=tmp_path / "out", export_py=tmp_path / "venv" / "bin" / "python", det=DET, run=run,
+                             log=lambda s: None)
+    assert [a["name"] for a in rec["attempts"]] == ["tf_converter", "flatbuffer_direct", "flatbuffer_direct_per_tensor"]
+    assert limits == {"tf_converter": 1500.0, "flatbuffer_direct": 420.0, "flatbuffer_direct_per_tensor": 420.0}
+    assert rec["int8_ok"] is True and "flatbuffer_direct_per_tensor" in rec["int8_method"]
+
+
 def test_chain_failed_run_files_ignored_and_failing_parity_kept(tmp_path: Path) -> None:
     """tf_converter crashes but leaves files (never used); flatbuffer_direct works with BAD parity -> kept, int8_ok False."""
     tools = FakeTools({"tf_converter": (1, ALL, {"integer_quant": 0.999}),
