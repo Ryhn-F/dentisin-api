@@ -58,7 +58,12 @@ from yolox.exp import Exp as MyExp
 # The notebook's stall watchdog sends SIGUSR1 to a trainer that stopped logging: print every thread's stack to the log
 # so a hang (DataLoader worker? pin-memory thread? CUDA?) can be diagnosed instead of guessed (Kaggle 2026-10-14).
 if hasattr(signal, "SIGUSR1"):
-    faulthandler.register(signal.SIGUSR1, file=sys.stderr, all_threads=True)
+    try:
+        faulthandler.register(signal.SIGUSR1, file=sys.stderr, all_threads=True)
+    except (OSError, ValueError, AttributeError):
+        # A notebook kernel's stderr has no fileno (Colab: UnsupportedOperation) -- and the notebook imports this Exp
+        # in the kernel itself (ONNX export). Only the trainer process, whose stderr is a real pipe, needs the dump.
+        pass
 
 
 def _plain_cocoeval():

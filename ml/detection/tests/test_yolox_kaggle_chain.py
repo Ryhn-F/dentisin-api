@@ -89,6 +89,35 @@ def test_exp_disables_jit_cocoeval_and_restores_info(tmp_path: Path, config_dict
     assert train.kw["name"] == "train" and train.kw["img_size"] == (416, 416)
 
 
+def test_exp_imports_in_a_kernel_whose_stderr_has_no_fileno(tmp_path: Path, config_dict: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    """Colab 2026-10-16: the notebook imports the Exp in the KERNEL (ONNX export); ``faulthandler.register(file=sys.stderr)``
+    raised UnsupportedOperation: fileno there, which YOLOX reports as "doesn't contains class named 'Exp'"."""
+    import faulthandler
+    import io
+    import signal
+    import types
+
+    class KernelStderr(io.StringIO):
+        def fileno(self) -> int:
+            raise io.UnsupportedOperation("fileno")
+
+    def register(signum: int, file: Any = None, all_threads: bool = True) -> None:
+        file.fileno()  # what the C implementation does with `file`
+
+    exp_mod = types.ModuleType("yolox.exp")
+    exp_mod.Exp = type("Exp", (), {})  # type: ignore[attr-defined]
+    pkg = types.ModuleType("yolox")
+    pkg.exp = exp_mod  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "yolox", pkg)
+    monkeypatch.setitem(sys.modules, "yolox.exp", exp_mod)
+    monkeypatch.setattr(signal, "SIGUSR1", 10, raising=False)  # absent on Windows
+    monkeypatch.setattr(faulthandler, "register", register, raising=False)
+    monkeypatch.setattr(sys, "stderr", KernelStderr())
+    ns: dict[str, Any] = {"__file__": str(tmp_path / "dentis_yolox_nano_exp.py")}
+    exec(compile(ya.render_exp(_ctx(tmp_path, config_dict), tmp_path / "d"), "exp.py", "exec"), ns)
+    assert ns["Exp"]().exp_name == "dentis_yolox_nano_exp"
+
+
 def test_devices_and_environment(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert ya.effective_devices({}) == 1
     assert ya.effective_devices({"devices": 2}) == 1 and "ignored" in capsys.readouterr().out
