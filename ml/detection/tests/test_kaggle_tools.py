@@ -108,7 +108,7 @@ def test_env_and_dirs(tmp_path: Path) -> None:
     assert nbkit.compute_env({}, ["google.colab"]) == "colab"
     assert nbkit.compute_env({}, []) == "local"
     assert nbkit.default_dirs("kaggle")["tmp"] == Path("/tmp/dentisai")
-    assert nbkit.default_dirs("colab")["work"].as_posix().startswith("/content/drive")
+    assert nbkit.default_dirs("colab")["work"].as_posix() == "/content/dentisai_outputs"  # local disk; Drive is the mirror
     assert nbkit.default_dirs("local", tmp_path)["work"] == tmp_path / "working"
     rec = nbkit.env_record({"k": 1})
     assert rec["k"] == 1 and "python" in rec

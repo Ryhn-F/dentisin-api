@@ -339,7 +339,10 @@ def to_coco_dict(records: Iterable[ImageAnnotation]) -> dict[str, Any]:
                 }
             )
             ann_id += 1
-    return {"images": images, "annotations": annotations, "categories": categories}
+    # "info"/"licenses": pycocotools 2.0.9/2.0.10 loadRes() raise KeyError 'info' without them, and a kernel that already
+    # has an importable pycocotools (Colab ships its own) is not reinstalled by nbkit.ensure_kernel_modules
+    return {"info": {"description": "DentisAI detection training copy"}, "licenses": [], "images": images,
+            "annotations": annotations, "categories": categories}
 
 
 def _layout_paths(out_dir: Path, layout: Layout, split: str) -> tuple[Path, Path]:

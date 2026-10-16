@@ -32,7 +32,7 @@ from typing import Any
 
 BOOTSTRAP_VERSION = 1
 #: nbkit.NBKIT_API must be >= this, otherwise the fetched code is older than the notebook.
-REQUIRED_NBKIT_API = 4
+REQUIRED_NBKIT_API = 5
 REQUIRED_PY = (3, 11)
 REPO_URL = "https://github.com/Ryhn-F/dentisin-api.git"
 REPO_SLUG = "Ryhn-F/dentisin-api"
@@ -48,29 +48,71 @@ RunFn = Callable[..., "subprocess.CompletedProcess[str]"]
 def compute_env(environ: Mapping[str, str] | None = None, modules: Sequence[str] | None = None) -> str:
     env = os.environ if environ is None else environ
     mods = list(sys.modules) if modules is None else modules
-    if any(k.startswith("KAGGLE_") for k in env):
+    if "KAGGLE_KERNEL_RUN_TYPE" in env:
         return "kaggle"
     if "google.colab" in mods or "COLAB_RELEASE_TAG" in env or "COLAB_GPU" in env:
         return "colab"
+    if any(k.startswith("KAGGLE_") for k in env):  # a stray KAGGLE_USERNAME/KAGGLE_KEY on a Colab VM must not win
+        return "kaggle"
     return "local"
 
 
 def default_dirs(env: str, base: Path | None = None, environ: Mapping[str, str] | None = None) -> dict[str, Path]:
-    """``work`` = persisted outputs (Kaggle: /kaggle/working/outputs, saved with a committed version -- NO images
+    """``work`` = outputs of this run (Kaggle: /kaggle/working/outputs, saved with a committed version -- NO images
     there); ``tmp`` = scratch (code, venvs, photos, resized copies), never exported; ``inputs`` = read-only attached
-    data. ``DENTISAI_WORK`` / ``DENTISAI_TMP`` / ``DENTISAI_INPUTS`` override (local simulation)."""
+    data; ``persist`` (Colab only) = a Google Drive folder that mirrors ``work`` so a dropped session can resume.
+    ``work`` stays on the VM's local disk even on Colab: the trainer's stall watchdog reads log mtimes, and Drive's FUSE
+    mount buffers writes. ``DENTISAI_WORK`` / ``_TMP`` / ``_INPUTS`` / ``_PERSIST`` override (local simulation)."""
     if env == "kaggle":
         dirs = {"work": Path("/kaggle/working/outputs"), "tmp": Path("/tmp/dentisai"), "inputs": Path("/kaggle/input")}
     elif env == "colab":
-        dirs = {"work": Path("/content/drive/MyDrive/dentisai_runs"), "tmp": Path("/content/tmp"),
-                "inputs": Path("/content/drive/MyDrive/dentisai_inputs")}
+        dirs = {"work": Path("/content/dentisai_outputs"), "tmp": Path("/content/tmp"),
+                "inputs": Path("/content/drive/MyDrive/dentisai_inputs"), "persist": Path("/content/drive/MyDrive/dentisai_runs")}
     else:
         root = base or Path.cwd() / "nb_local"
         dirs = {"work": root / "working", "tmp": root / "tmp", "inputs": root / "input"}
     e = os.environ if environ is None else environ
-    for key in dirs:
+    for key in ("work", "tmp", "inputs", "persist"):
         if e.get(f"DENTISAI_{key.upper()}"):
             dirs[key] = Path(e[f"DENTISAI_{key.upper()}"])
+    return dirs
+
+
+DRIVE_ROOT = Path("/content/drive")
+
+
+def mount_drive(mount: Callable[[str], Any] | None = None, root: Path = DRIVE_ROOT,
+                is_mount: Callable[[str], bool] = os.path.ismount) -> bool:
+    """Colab: mount Google Drive at ``root`` (Google shows its own consent pop-up). True when MyDrive is usable."""
+    if is_mount(str(root)) and (root / "MyDrive").is_dir():
+        return True
+    try:
+        if mount is None:
+            from google.colab import drive
+
+            mount = drive.mount
+        mount(str(root))
+    except Exception as exc:  # popup refused, not a Colab kernel, or a stale non-empty mount point
+        print(f"Google Drive tidak terpasang: {type(exc).__name__}: {exc}", flush=True)
+        return False
+    return (root / "MyDrive").is_dir()
+
+
+def resolve_dirs(env: str, *, require_persist: bool, base: Path | None = None, environ: Mapping[str, str] | None = None,
+                 mount: Callable[[], bool] = mount_drive) -> dict[str, Path]:
+    """:func:`default_dirs`, plus mounting Google Drive on Colab (``persist`` / Drive ``inputs``). Without Drive the
+    ``persist`` key is dropped: a smoke test still runs, a real run (``require_persist``) stops with instructions --
+    a dropped Colab session would otherwise lose every checkpoint."""
+    dirs = default_dirs(env, base, environ)
+    persist = dirs.get("persist")
+    if persist is None or not persist.is_relative_to(DRIVE_ROOT) or mount():
+        return dirs
+    lines = ["Google Drive TIDAK terpasang, jadi checkpoint tidak bisa disimpan di luar sesi Colab ini.",
+             "Jalankan ulang sel ini dan pada pop-up 'Permit this notebook to access your Google Drive files' pilih Connect to Google Drive."]
+    if require_persist:
+        raise fail(["BERHENTI: pelatihan sungguhan di Colab butuh Google Drive.", *lines])
+    print("\n  ".join(["PERINGATAN (uji cepat):", *lines]), flush=True)
+    dirs.pop("persist")
     return dirs
 
 
@@ -114,11 +156,17 @@ def fail(lines: Sequence[str]) -> SystemExit:
 # ------------------------------------------------------------------------------------- preflight
 
 
-def python_problem(version: Sequence[int] = tuple(sys.version_info[:3])) -> str | None:
+def where(env: str, kaggle: str, colab: str, other: str = "") -> str:
+    """The instruction for the platform the notebook runs on (the product owner uses both Kaggle and Colab)."""
+    return {"kaggle": kaggle, "colab": colab}.get(env, other)
+
+
+def python_problem(version: Sequence[int] = tuple(sys.version_info[:3]), env: str = "kaggle") -> str | None:
     if tuple(version[:2]) < REQUIRED_PY:
         have = ".".join(str(v) for v in version[:3])
-        return (f"Python kernel {have} terlalu lama (butuh >= {REQUIRED_PY[0]}.{REQUIRED_PY[1]}). Di Kaggle: panel kanan -> "
-                "Settings -> Environment -> pilih 'Always use latest environment', lalu Run All lagi.")
+        fix = where(env, "Di Kaggle: panel kanan -> Settings -> Environment -> pilih 'Always use latest environment', lalu Run All lagi.",
+                    "Di Colab: Runtime -> Disconnect and delete runtime, lalu buka notebook lagi (Colab memakai Python terbaru).")
+        return f"Python kernel {have} terlalu lama (butuh >= {REQUIRED_PY[0]}.{REQUIRED_PY[1]}). {fix}".strip()
     return None
 
 
@@ -158,11 +206,12 @@ def can_reach(host: str, port: int = 443, timeout: float = 6.0, connect: Callabl
     return True
 
 
-def preflight(*, need_gpu: bool, hosts: Sequence[tuple[str, int]], disk_paths: Mapping[str, Path], min_free_gb: float,
-              env: str, run: RunFn = subprocess.run, reach: Callable[[str, int], bool] = can_reach,
-              version: Sequence[int] = tuple(sys.version_info[:3])) -> dict[str, Any]:
+def preflight(*, need_gpu: bool, hosts: Sequence[tuple[str, int]], disk_paths: Mapping[str, Path],
+              min_free_gb: float | Mapping[str, float], env: str, run: RunFn = subprocess.run,
+              reach: Callable[[str, int], bool] = can_reach, version: Sequence[int] = tuple(sys.version_info[:3])) -> dict[str, Any]:
     """Print an environment report and stop with Indonesian instructions if something blocks the run.
 
+    ``min_free_gb`` is one number for every path or a ``{name: GB}`` mapping (Google Drive is small, the VM disk big).
     On a ``local`` machine (simulation) a missing GPU is only a warning."""
     gpus = gpu_names(run)
     reachable = {f"{h}:{p}": reach(h, p) for h, p in hosts}
@@ -173,28 +222,36 @@ def preflight(*, need_gpu: bool, hosts: Sequence[tuple[str, int]], disk_paths: M
     for k, v in report.items():
         print(f"{k:>13}: {v}")
     problems: list[str] = []
-    if (pp := python_problem(version)) is not None:
+    if (pp := python_problem(version, env)) is not None:
         problems.append(pp)
     if not any(reachable.values()) and reachable:
-        problems.append("Internet MATI. Di Kaggle: panel kanan -> Settings -> Internet -> On (perlu akun dengan nomor HP "
-                        "terverifikasi: kaggle.com -> Settings -> Phone verification). Lalu Run All lagi.")
+        problems.append("Internet MATI. " + where(
+            env, "Di Kaggle: panel kanan -> Settings -> Internet -> On (perlu akun dengan nomor HP terverifikasi: "
+                 "kaggle.com -> Settings -> Phone verification). Lalu Run All lagi.",
+            "Colab biasanya selalu online: coba Runtime -> Disconnect and delete runtime, lalu jalankan ulang."))
     elif not all(reachable.values()):
         down = ", ".join(k for k, ok in reachable.items() if not ok)
         problems.append(f"Tidak bisa menghubungi: {down}. Internet menyala tetapi situs itu tidak terjangkau -- coba lagi "
                         "beberapa menit lagi; bila tetap gagal, laporkan pesan ini.")
     if need_gpu and not gpus:
-        msg = ("GPU MATI. Di Kaggle: panel kanan -> Settings -> Accelerator -> 'GPU T4 x2' (jangan P100), lalu Run All lagi. "
-               "Bila pilihan GPU tidak ada: verifikasi nomor HP dan cek sisa kuota GPU mingguan.")
+        msg = "GPU MATI. " + where(
+            env, "Di Kaggle: panel kanan -> Settings -> Accelerator -> 'GPU T4 x2' (jangan P100), lalu Run All lagi. "
+                 "Bila pilihan GPU tidak ada: verifikasi nomor HP dan cek sisa kuota GPU mingguan.",
+            "Di Colab: Runtime -> Change runtime type -> Hardware accelerator: T4 GPU -> Save (sesi dimulai ulang), lalu Run all. "
+            "Bila T4 tidak tersedia, kuota GPU gratis hari ini habis: coba lagi nanti atau pakai Kaggle.",
+            "Pasang GPU NVIDIA atau jalankan di Kaggle/Colab.")
         if env == "local":
             print("PERINGATAN (lokal):", msg)
         else:
             problems.append(msg)
     if gpus and any("P100" in g for g in gpus):
         problems.append("GPU P100 tidak didukung PyTorch/TensorFlow terbaru. Ganti ke 'GPU T4 x2' (Settings -> Accelerator).")
-    low = [f"{n} ({gb} GB)" for n, gb in disks.items() if gb < min_free_gb]
+    need = {n: (min_free_gb.get(n, 0.0) if isinstance(min_free_gb, Mapping) else min_free_gb) for n in disks}
+    low = [f"{n} ({gb} GB, butuh >= {need[n]} GB)" for n, gb in disks.items() if gb < need[n]]
     if low:
-        problems.append(f"Ruang disk kurang (butuh >= {min_free_gb} GB): {', '.join(low)}. Mulai sesi baru (Run -> Restart) "
-                        "atau hapus berkas lama di /kaggle/working.")
+        problems.append(f"Ruang disk kurang: {', '.join(low)}. "
+                        + where(env, "Mulai sesi baru (Run -> Restart) atau hapus berkas lama di /kaggle/working.",
+                                "Kosongkan Google Drive (drive.google.com -> Penyimpanan) atau mulai runtime baru."))
     if problems:
         raise fail(["PERSIAPAN GAGAL -- perbaiki lalu jalankan ulang dari atas:", *[f"- {p}" for p in problems]])
     print("preflight: OK")
@@ -291,21 +348,28 @@ def git_clone(url: str, ref: str, dest: Path, token: str | None, *, run: RunFn =
     return out.strip().splitlines()[-1] if out.strip() else ""
 
 
-def token_help() -> list[str]:
+def token_help(env: str = "kaggle") -> list[str]:
+    add_secret = where(
+        env, f"  3. Kaggle (notebook ini): menu Add-ons -> Secrets -> Add Secret: Label = {SECRET_NAME}, Value = token tadi -> Save,",
+        f"  3. Colab (notebook ini): ikon kunci 'Secrets' di sidebar kiri -> Add new secret: Name = {SECRET_NAME}, Value = token tadi,",
+        f"  3. Simpan token di variabel lingkungan {SECRET_NAME},")
+    activate = where(env, "     lalu pastikan sakelar secret itu AKTIF untuk notebook ini. Jalankan ulang sel ini.",
+                     "     lalu nyalakan sakelar 'Notebook access' pada baris secret itu. Jalankan ulang sel ini.",
+                     "     lalu jalankan ulang sel ini.")
     return [
         f"Cara membuat token (sekali saja, ±3 menit) -- akun GitHub yang punya akses ke repo {REPO_SLUG}:",
         "  1. github.com -> foto profil -> Settings -> Developer settings -> Personal access tokens -> Fine-grained tokens",
         "     -> Generate new token.",
-        "  2. Token name: kaggle-dentisai; Expiration: 30-90 hari; Resource owner: pemilik repo; Repository access:",
+        "  2. Token name: dentisai-notebook; Expiration: 30-90 hari; Resource owner: pemilik repo; Repository access:",
         f"     'Only select repositories' -> {REPO_SLUG}; Permissions -> Repository permissions -> Contents: Read-only.",
         "     (Metadata: Read-only terisi otomatis.) Generate token -> salin (diawali 'github_pat_').",
-        f"  3. Kaggle (notebook ini): menu Add-ons -> Secrets -> Add Secret: Label = {SECRET_NAME}, Value = token tadi -> Save,",
-        "     lalu pastikan sakelar secret itu AKTIF untuk notebook ini. Jalankan ulang sel ini.",
+        add_secret,
+        activate,
         "  Jangan menempel token di sel kode, jangan membagikan notebook dengan secret di dalamnya.",
     ]
 
 
-def acquire_code(*, roots: Sequence[Path], tmp: Path, ref: str, url: str = REPO_URL,
+def acquire_code(*, roots: Sequence[Path], tmp: Path, ref: str, url: str = REPO_URL, env: str = "kaggle",
                  secret: Callable[[], str | None] = get_secret, run: RunFn = subprocess.run) -> tuple[Path, dict[str, Any]]:
     """Returns (writable folder containing ``ml/``, info). See the module docstring for the order."""
     url = os.environ.get("DENTISAI_GIT_URL", url)  # mirror / local simulation override
@@ -319,8 +383,11 @@ def acquire_code(*, roots: Sequence[Path], tmp: Path, ref: str, url: str = REPO_
     token = secret()
     if not token:
         raise fail(["KODE TIDAK DITEMUKAN. Notebook butuh kode pipeline DentisAI. Pilih SATU:",
-                    f"A) (disarankan) Tambahkan Kaggle Secret bernama {SECRET_NAME} berisi token GitHub read-only.", *token_help(),
-                    "B) Atau lampirkan dataset kode privat 'dentisai-ml-code' (panel kanan -> Add Input), dibuat dengan",
+                    f"A) (disarankan) Tambahkan {where(env, 'Kaggle Secret', 'secret Colab', 'secret')} bernama {SECRET_NAME} "
+                    "berisi token GitHub read-only.", *token_help(env),
+                    where(env, "B) Atau lampirkan dataset kode privat 'dentisai-ml-code' (panel kanan -> Add Input), dibuat dengan",
+                          "B) Atau salin folder kode ke Google Drive: MyDrive/dentisai_inputs/ (folder berisi ml/), dibuat dengan",
+                          "B) Atau sediakan folder kode privat, dibuat dengan"),
                     "   `uv run python artifacts.py pack-code --with-processed --out dentisai-ml-code.zip` (RUNBOOK §2)."])
     print(f"kode: git clone {url} @ {ref} (token dari secret {SECRET_NAME}; tidak dicetak)")
     for attempt in range(3):
@@ -336,7 +403,7 @@ def acquire_code(*, roots: Sequence[Path], tmp: Path, ref: str, url: str = REPO_
                    "not_found": f"Repo {REPO_SLUG} tidak terlihat dengan token ini (token fine-grained harus memilih repo itu, Contents: Read).",
                    "bad_ref": f"CODE_REF = {ref!r} tidak ada di repo (cek nama cabang/tag/commit di sel 0).",
                    "network": "Jaringan ke github.com gagal berulang kali (Internet harus On)."}.get(str(kind), "git clone gagal.")
-            raise fail(["GAGAL MENGAMBIL KODE DARI GITHUB.", why, *(token_help() if kind in ("auth", "not_found") else []),
+            raise fail(["GAGAL MENGAMBIL KODE DARI GITHUB.", why, *(token_help(env) if kind in ("auth", "not_found") else []),
                         "Keluaran git (token disensor):", str(detail)[-1500:]]) from None
     if not (src / CODE_MARKER).is_file():
         raise fail([f"Repo terambil (commit {sha[:12]}) tetapi {CODE_MARKER} tidak ada. CODE_REF salah? Laporkan pesan ini."])

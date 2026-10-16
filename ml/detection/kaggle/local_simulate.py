@@ -444,13 +444,16 @@ def main(argv: list[str] | None = None) -> int:
             if num == 0:
                 src = patch_settings(src, smoke=not args.full)
             if num == 1 and args.min_free_gb is not None:
-                src, n = re.subn(r"min_free_gb=[^,]+,", f"min_free_gb={args.min_free_gb},", src, count=1)
+                src, n = re.subn(r"^MIN_GB = .+$", f"MIN_GB = {args.min_free_gb}", src, count=1, flags=re.MULTILINE)  # YOLOX notebook
+                if not n:  # MediaPipe notebook: the number is inline in the preflight call
+                    src, n = re.subn(r"min_free_gb=[^,]+,", f"min_free_gb={args.min_free_gb},", src, count=1)
                 results.append((1, "PATCHED" if n else "FAILED", f"preflight min_free_gb -> {args.min_free_gb}"))
             if not deep and num in (install_cell, check_cell):
                 results.append((num, "SKIPPED", "needs Linux venvs / GPU toolchain (run --level deep in a container)"))
                 if num == install_cell:
                     stubs_after_install = {"EXPORT_PY": sys.executable, "UV": ["uv"], "PRETRAINED_PTH": None, "GPUS": 0,
-                                           "YOLOX_REPO": tmp / "YOLOX(not-cloned)", "MM_PY": "python3.10(not-installed)"}
+                                           "YOLOX_REPO": tmp / "YOLOX(not-cloned)", "MM_PY": "python3.10(not-installed)",
+                                           "DONE": False}  # cells 6-14 are skipped: the final cell must take its "not done" branch
                     ns.update(stubs_after_install)
                 continue
             if not deep and num > config_cell and not src.lstrip().startswith(f"# {cells[-1][0]}."):

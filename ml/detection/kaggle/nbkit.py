@@ -40,7 +40,7 @@ from bootstrap import compute_env, default_dirs, free_gb, rmtree
 __all__ = ["compute_env", "default_dirs", "free_gb", "rmtree"]  # re-exported (bootstrap is inlined into notebook cell 1)
 
 #: Bumped when notebooks need new nbkit functions (bootstrap.REQUIRED_NBKIT_API checks it).
-NBKIT_API = 4
+NBKIT_API = 5
 HERE = Path(__file__).resolve().parent
 LOCKS = HERE / "requirements"
 
@@ -1347,6 +1347,158 @@ def describe_outputs(root: Path, highlight: str = "download_") -> list[str]:
             mark = "  <-- UNDUH INI" if p.name.startswith(highlight) and p.suffix == ".zip" else ""
             lines.append(f"{p.stat().st_size / 2**20:9.2f} MiB  {p.relative_to(root).as_posix()}{mark}")
     return lines
+
+
+# ------------------------------------------------- Colab: mirror the run's outputs to Google Drive (resume after a drop)
+
+PERSIST_SIGNATURE = "run_signature.json"
+#: Never copied to Drive: photos / image-derived arrays (same rule as ``forbidden_outputs``) and half-copied temp files.
+MIRROR_SKIP_SUFFIXES = (*IMAGE_EXT, ".npy", ".npz", ".gif", ".tif", ".tiff", ".heic", ".part")
+
+
+def run_signature(**fields: Any) -> dict[str, Any]:
+    """What makes two runs the same experiment for resuming: a changed activation / epoch count / initial weights must
+    not continue an older run's checkpoints. JSON-native values only (it is compared after a JSON round trip)."""
+    out: dict[str, Any] = json.loads(json.dumps(fields, sort_keys=True))
+    return out
+
+
+def sync_tree(src: Path, dst: Path, *, settle_s: float = 20.0, seen: dict[str, tuple[int, int]] | None = None,
+              skip_names: Sequence[str] = (), keep_existing: bool = False,
+              clock: Callable[[], float] = time.time) -> dict[str, list[str]]:
+    """Copy new/changed regular files from ``src`` to ``dst``. Each copy goes to ``<name>.part`` and is renamed over the
+    real name, so an interrupted copy never replaces a good file. A file modified less than ``settle_s`` seconds ago is
+    left for the next pass (a checkpoint being written), and so is one that changed while it was copied. ``seen`` keeps
+    (size, mtime_ns) of what was copied so unchanged files are not copied again; ``keep_existing`` never overwrites a
+    file already in ``dst`` (restoring a session must not clobber what this session just wrote). Links are not followed."""
+    seen = {} if seen is None else seen
+    out: dict[str, list[str]] = {"copied": [], "unsettled": [], "errors": []}
+    if not src.is_dir():
+        return out
+    for p in sorted(src.rglob("*")):
+        if p.is_symlink() or not p.is_file() or p.name in skip_names or p.suffix.lower() in MIRROR_SKIP_SUFFIXES:
+            continue
+        rel = p.relative_to(src).as_posix()
+        target = dst / rel
+        part = target.with_name(target.name + ".part")
+        try:
+            st = p.stat()
+            key = (st.st_size, st.st_mtime_ns)
+            if (seen.get(rel) == key or keep_existing) and target.is_file():
+                continue
+            if clock() - st.st_mtime < settle_s:
+                out["unsettled"].append(rel)
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(p, part)
+            after = p.stat()
+            if (after.st_size, after.st_mtime_ns) != key:  # written to while copying: the next pass takes it
+                part.unlink(missing_ok=True)
+                out["unsettled"].append(rel)
+                continue
+            os.replace(part, target)
+            seen[rel] = key
+            out["copied"].append(rel)
+        except OSError as exc:
+            with contextlib.suppress(OSError):
+                part.unlink(missing_ok=True)
+            out["errors"].append(f"{rel}: {type(exc).__name__}: {exc}")
+    return out
+
+
+def prepare_persist(persist: Path, work: Path, signature: Mapping[str, Any], *, resume: bool,
+                    clock: Callable[[], float] = time.time, log: Callable[[str], None] = print) -> str:
+    """What to do with the Drive folder of this experiment BEFORE training. Returns
+    ``"fresh"`` (nothing there), ``"resumed"`` (same experiment and ``resume``: everything is copied back into ``work``,
+    which Colab wiped when the session dropped) or ``"archived"`` (another experiment, or ``resume`` off: the folder is
+    renamed ``<name>.prev-<UTC time>`` -- never deleted). The signature of this run is written to the folder."""
+    sig_file = persist / PERSIST_SIGNATURE
+    wanted = json.loads(json.dumps(dict(signature), sort_keys=True))
+    state = "fresh"
+    if persist.is_dir() and any(persist.iterdir()):
+        try:
+            old: Any = json.loads(sig_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            old = None
+        if resume and old == wanted:
+            res = sync_tree(persist, work, settle_s=0.0, skip_names=(PERSIST_SIGNATURE,), keep_existing=True)
+            if res["errors"]:
+                raise RuntimeError("could not restore the previous session from Google Drive: " + "; ".join(res["errors"][:3]))
+            log(f"Drive: sesi sebelumnya dipulihkan ({len(res['copied'])} berkas) dari {persist} -> pelatihan dilanjutkan dari checkpoint terakhir.")
+            state = "resumed"
+        else:
+            stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime(clock()))
+            moved = persist.with_name(f"{persist.name}.prev-{stamp}")
+            persist.rename(moved)
+            why = "RESUME = False" if old == wanted else "pengaturan berbeda dari run di Drive (act/epoch/batch/bobot awal)"
+            log(f"Drive: {why} -> folder lama dipindah ke {moved} (tidak dihapus); mulai dari awal.")
+            state = "archived"
+    persist.mkdir(parents=True, exist_ok=True)
+    sig_file.write_text(json.dumps(wanted, indent=1, sort_keys=True), encoding="utf-8")
+    return state
+
+
+class Mirror:
+    """Copies ``src`` (the run's outputs on the VM disk) to ``dst`` (Google Drive) every ``every_s`` seconds in a daemon
+    thread, so a Colab session that drops loses at most the last few minutes. Training itself reads and writes only
+    the local disk (Drive's FUSE mount buffers writes, which would fool the trainer's stall watchdog)."""
+
+    def __init__(self, src: Path, dst: Path, *, every_s: float = 300.0, settle_s: float = 20.0,
+                 skip_names: Sequence[str] = (PERSIST_SIGNATURE,), log: Callable[[str], None] = print,
+                 clock: Callable[[], float] = time.time) -> None:
+        self.src, self.dst, self.every_s, self.settle_s = src, dst, every_s, settle_s
+        self.skip_names, self.log, self.clock = tuple(skip_names), log, clock
+        self.seen: dict[str, tuple[int, int]] = {}
+        self.warned: set[str] = set()
+        self._lock = threading.Lock()
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def sync(self, *, force: bool = False) -> dict[str, list[str]]:
+        """One pass. ``force``: copy files even if they were just written (use only when nothing is writing)."""
+        with self._lock:
+            res = sync_tree(self.src, self.dst, settle_s=0.0 if force else self.settle_s, seen=self.seen,
+                            skip_names=self.skip_names, clock=self.clock)
+        for err in res["errors"]:
+            if err not in self.warned:  # a full Drive would otherwise repeat this every pass
+                self.warned.add(err)
+                self.log(f"PERINGATAN Drive: {err} (checkpoint BELUM tersimpan di Drive; cek ruang Drive)")
+        return res
+
+    def _loop(self) -> None:
+        while not self._stop.wait(self.every_s):
+            try:
+                self.sync()
+            except Exception as exc:  # the mirror must never take the kernel down
+                self.log(f"PERINGATAN Drive: pencerminan gagal sekali: {type(exc).__name__}: {exc}")
+
+    def start(self) -> Mirror:
+        self._thread = threading.Thread(target=self._loop, name="drive-mirror", daemon=True)
+        self._thread.start()
+        return self
+
+    def stop(self, *, final: bool = True) -> dict[str, list[str]]:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=60)
+        return self.sync(force=True) if final else {"copied": [], "unsettled": [], "errors": []}
+
+
+_ACTIVE_MIRRORS: list[Mirror] = []
+
+
+def start_persistence(work: Path, persist: Path, signature: Mapping[str, Any], *, resume: bool, every_s: float = 300.0,
+                      log: Callable[[str], None] = print) -> tuple[str, Mirror]:
+    """Colab: :func:`prepare_persist`, then mirror ``work`` -> ``persist`` in the background. Re-running the cell
+    replaces the earlier mirror. Returns (state, mirror)."""
+    while _ACTIVE_MIRRORS:
+        _ACTIVE_MIRRORS.pop().stop(final=False)
+    work.mkdir(parents=True, exist_ok=True)
+    state = prepare_persist(persist, work, signature, resume=resume, log=log)
+    mirror = Mirror(work, persist, every_s=every_s, log=log).start()
+    _ACTIVE_MIRRORS.append(mirror)
+    log(f"Drive: {work} dicerminkan ke {persist} tiap {every_s / 60:.0f} menit (status: {state}).")
+    return state, mirror
 
 
 def gpu_summary() -> str:  # pragma: no cover - needs nvidia-smi

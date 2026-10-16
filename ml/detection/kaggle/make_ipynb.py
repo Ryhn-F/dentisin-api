@@ -85,8 +85,11 @@ def to_notebook(text: str, base: Path = HERE) -> dict[str, Any]:
         "cells": split_cells(text, base),
         # "kaggle" = the block Kaggle itself writes into exported notebooks (T4 + Internet); Kaggle MAY apply it on
         # import [PERLU VERIFIKASI] -- RUNBOOK §3 still has the owner check Accelerator/Internet by hand.
+        # "accelerator" + "colab.gpuType" = what Colab writes for a T4 notebook (it preselects the GPU on open) [PERLU
+        # VERIFIKASI]; RUNBOOK §3b has the manual step (Runtime -> Change runtime type) either way.
         "metadata": {"kernelspec": {"display_name": "Python 3", "language": "python", "name": "python3"},
                      "language_info": {"name": "python"}, "accelerator": "GPU",
+                     "colab": {"gpuType": "T4", "provenance": []},
                      "kaggle": {"accelerator": "nvidiaTeslaT4", "isGpuEnabled": True, "isInternetEnabled": True,
                                 "language": "python", "sourceType": "notebook", "dataSources": []}},
         "nbformat": 4,

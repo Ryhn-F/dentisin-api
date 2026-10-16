@@ -1,5 +1,7 @@
-# RUNBOOK — Melatih kandidat detektor di Kaggle (untuk pemilik produk)
+# RUNBOOK — Melatih kandidat detektor di Kaggle atau Google Colab (untuk pemilik produk)
 
+> **Colab (baru, 2026-10-16):** notebook **YOLOX** juga jalan di Google Colab — lihat **§3b**. MediaPipe belum diuji di Colab.
+>
 > Untuk orang yang **bukan** ahli ML. Ikuti berurutan. Hasilnya **eksperimen teknis** (bake-off, item 2.3/2.5) —
 > **bukan** validasi klinis, **bukan** klaim akurasi. Kelas model (ADR 014): **indikasi karies pada gigi tetap**
 > (`caries_permanent`) dan **gigi sulung** (`caries_primary`); kotak = seluruh gigi, hanya penanda di layar.
@@ -24,7 +26,7 @@
 Notebook mengambil kode dari repo privat **`Ryhn-F/dentisin-api`**. Buat token yang **hanya bisa membaca** repo itu:
 1. github.com (akun yang punya akses ke repo) → foto profil → **Settings** → **Developer settings** →
    **Personal access tokens** → **Fine-grained tokens** → **Generate new token**.
-2. Isi: *Token name* `kaggle-dentisai` · *Expiration* 30–90 hari · *Resource owner* pemilik repo (`Ryhn-F`) ·
+2. Isi: *Token name* `dentisai-notebook` · *Expiration* 30–90 hari · *Resource owner* pemilik repo (`Ryhn-F`) ·
    *Repository access* → **Only select repositories** → `Ryhn-F/dentisin-api` ·
    *Permissions* → *Repository permissions* → **Contents: Read-only** (Metadata: Read-only terisi otomatis). Tidak ada izin lain.
 3. **Generate token** → salin (diawali `github_pat_`). Simpan di pengelola kata sandi; GitHub tidak menampilkannya lagi.
@@ -68,6 +70,7 @@ Sel 0 (yang boleh diubah):
 | `EPOCHS`, `BATCH_SIZE` (+ `QAT_EPOCHS` MediaPipe) | `None` | `None` = nilai konfigurasi repo (YOLOX 150/32; MediaPipe 30/8 + 10 QAT) |
 | `PRETRAINED` (YOLOX) | `True` | `False` = tanpa bobot COCO (bebas isu lisensi bobot; butuh ±300 epoch) |
 | `ACT` (YOLOX) | `"silu"` | `"relu"` hanya bila paritas INT8 gagal (§8) |
+| `RESUME` (YOLOX) | `True` | Colab: `True` = lanjut dari checkpoint run yang sama di Google Drive; `False` = mulai dari awal (§3b) |
 | `TIME_BUDGET_H` | `11.0` | jam per sesi; pelatihan berhenti lebih awal agar ekspor sempat jalan |
 | `TARGET_SENSITIVITY` | `0.85` | titik operasi teknis pada data val |
 
@@ -79,6 +82,32 @@ SESI TERCAPAI", dan sel 7–14 dilewati (versi tetap tersimpan). Lalu:
 2. *Save Version* → *Save & Run All* lagi. Pelatihan melanjutkan dari epoch terakhir (dicari otomatis di input
    `.../yolox_outputs`; keluaran uji cepat `*_smoke` diabaikan).
 MediaPipe Model Maker **tidak bisa** resume: bila waktu habis, ulangi dengan `EPOCHS` lebih kecil.
+
+## 3b. Jalur Google Colab (hanya YOLOX)
+Dipakai bila kuota Kaggle habis. Berkas yang sama: `yolox_nano_kaggle.ipynb` (satu notebook untuk dua platform).
+
+1. colab.research.google.com → **File** → **Upload notebook** → pilih `yolox_nano_kaggle.ipynb`.
+2. **Runtime** → **Change runtime type** → *Hardware accelerator* **T4 GPU** → *Save* (sesi dimulai ulang).
+   Kuota GPU gratis Colab tidak dijamin (bisa "tidak tersedia" bila sudah banyak dipakai) [PERLU VERIFIKASI: aturan Colab berubah-ubah].
+3. Ikon **kunci (Secrets)** di sidebar kiri → **Add new secret**: *Name* `GITHUB_TOKEN`, *Value* = token dari §2 →
+   nyalakan sakelar **Notebook access** pada baris itu.
+4. Biarkan `SMOKE_TEST = True` → **Runtime** → **Run all**. Saat sel 1 jalan muncul pop-up Google
+   *"Permit this notebook to access your Google Drive files"* → **Connect to Google Drive** → pilih akun → *Allow*
+   (sel 1 menunggu klik itu). Sel terakhir harus mencetak **"UJI CEPAT BERHASIL"**.
+5. Ubah sel 0 menjadi `SMOKE_TEST = False` → **Run all**. **Biarkan tab tetap terbuka** selama pelatihan.
+
+Bedanya dengan Kaggle:
+| | Kaggle | Colab |
+|---|---|---|
+| Tempat kerja | `/kaggle/working/outputs` (disimpan saat *Commit*) | disk VM `/content/dentisai_outputs` (**hilang** saat sesi putus) **+ cermin otomatis ke Google Drive** `MyDrive/dentisai_runs/yolox_nano/` tiap 5 menit |
+| Isi cermin | — | checkpoint (`latest_ckpt.pth`, `best_ckpt.pth`), log, konfigurasi, laporan, bundel model, zip unduhan. **Tidak pernah** foto atau larik `.npy` |
+| Sesi putus | Ikuti §3 "Lanjut (resume)" | Buka notebook lagi → **Run all**. Sel 5 mencetak *"sesi sebelumnya dipulihkan"* dan pelatihan lanjut dari epoch terakhir. Yang hilang paling banyak ±5 menit + epoch yang sedang berjalan |
+| Hasil akhir | tab *Output* | `MyDrive/dentisai_runs/yolox_nano/download_yolox_nano.zip` (unduh dari drive.google.com atau panel *Files*), lalu §6 |
+| CPU/RAM | 4 vCPU / ±29 GB | Colab gratis: 2 vCPU / ±12 GB → pelatihan **lebih lambat** (augmentasi di CPU). Waktu nyata belum diukur [PERLU VERIFIKASI] |
+
+Aturan pemulihan: checkpoint di Drive dipakai lagi **hanya bila pengaturan run sama** (`ACT`, `EPOCHS`, `BATCH_SIZE`, `PRETRAINED`,
+`SMOKE_TEST`). Bila berbeda, atau `RESUME = False`, folder lama dipindah ke `yolox_nano.prev-<waktu>` (tidak dihapus) dan
+pelatihan mulai dari awal. Hapus folder `.prev-*` sendiri bila sudah yakin tidak dibutuhkan (Drive gratis hanya 15 GB, dipakai bersama Gmail/Foto).
 
 ## 4. Apa yang terjadi otomatis
 | Sel | Isi |
@@ -141,6 +170,13 @@ terpisah bersama tim app ke `bake_off/measurements.yaml`.
 | 1: `Internet MATI` | Settings → Internet Off, atau HP belum diverifikasi | Internet → On; verifikasi HP (§1) |
 | 1: `GPU MATI` / `P100` | Accelerator None/ P100, atau kuota GPU habis | Accelerator → GPU T4 x2; cek kuota |
 | 1: `Ruang disk kurang` | Sisa run lama di `/kaggle/working` | *Run → Restart & clear*; hapus `outputs/` lama (setelah diunduh) |
+| 1 (Colab): `Ruang disk kurang: drive (...)` | Google Drive penuh (15 GB gratis dipakai bersama Gmail/Foto) | Kosongkan Drive (hapus folder `yolox_nano.prev-*` lama, Sampah), jalankan ulang sel 1 |
+| 1 (Colab): `Google Drive TIDAK terpasang` / `BERHENTI: pelatihan sungguhan di Colab butuh Google Drive` | Pop-up Drive ditolak/ ditutup | Jalankan ulang sel 1, pilih *Connect to Google Drive* → *Allow* |
+| 1 (Colab): `KODE TIDAK DITEMUKAN` | Secret Colab belum dibuat atau *Notebook access* mati | §3b langkah 3 |
+| 1 (Colab): `GPU MATI` | Runtime masih CPU, atau kuota GPU gratis hari ini habis | §3b langkah 2; bila T4 tidak tersedia coba lagi nanti atau pakai Kaggle |
+| 5 (Colab): `PERINGATAN Drive: ... BELUM tersimpan di Drive` | Menulis ke Drive gagal (penuh/ terputus) | Kosongkan Drive; checkpoint tetap aman di VM selama sesi hidup, dan disalin lagi pada putaran berikutnya |
+| 5 (Colab): `folder lama dipindah ke ...prev-...` | Pengaturan berbeda dari run yang ada di Drive (atau `RESUME = False`) | Normal. Pelatihan mulai dari awal; hapus folder `.prev-*` bila tak dibutuhkan |
+| 3 (Colab): tombol **RESTART SESSION** muncul setelah pemasangan | Colab minta kernel dimuat ulang setelah pip mengganti paket | Klik *Restart session* (bukan *Delete runtime*), lalu **Run all** lagi dari sel 1; pemasangan yang sudah ada dipakai ulang |
 | 2: `download failed after ... attempts` / `no download URL works` | Zenodo sedang lambat/ gangguan (502/504) | Tunggu 10–30 mnt, jalankan ulang sel 2 (unduhan melanjutkan bagian yang sudah ada dalam sesi yang sama). Alternatif: §9 |
 | 2: `MD5 mismatch` | Unduhan rusak | Jalankan ulang sel 2 (berkas rusak sudah dihapus) |
 | 2: `canonical.jsonl and splits.json disagree` | Dataset terlampir bukan `Dataset.zip` v1 yang utuh | Lepas dataset itu (biarkan notebook mengunduh sendiri) |

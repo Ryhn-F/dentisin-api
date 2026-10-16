@@ -6,9 +6,13 @@
 # Kelas: indikasi karies gigi tetap/ sulung (ADR 014). Hanya dataset publik Ahmed 2025 (CC BY 4.0) — **jangan pernah**
 # mengunggah foto anak/ data lokal. Keluaran yang diunduh tidak berisi gambar (`artifacts.py` menolaknya).
 #
-# **Cara pakai (detail: `RUNBOOK.md`):** Settings → Accelerator **GPU T4 x2**, Internet **On**; Add-ons → Secrets →
+# **Cara pakai di Kaggle (detail: `RUNBOOK.md`):** Settings → Accelerator **GPU T4 x2**, Internet **On**; Add-ons → Secrets →
 # `GITHUB_TOKEN` (token GitHub read-only). Lalu **Run All** dengan `SMOKE_TEST = True` (±20–30 menit). Bila selesai tanpa
 # error, ubah ke `False` dan *Save Version → Save & Run All (Commit)*. Data & kode diambil otomatis (tidak perlu dataset Kaggle).
+#
+# **Cara pakai di Google Colab (RUNBOOK §3b):** Runtime → Change runtime type → **T4 GPU**; ikon kunci (Secrets) →
+# `GITHUB_TOKEN` + sakelar *Notebook access*. **Run all**; izinkan akses Google Drive saat diminta (checkpoint dicerminkan
+# ke `MyDrive/dentisai_runs/`). Sesi putus? Buka lagi, **Run all** lagi: pelatihan lanjut dari checkpoint terakhir di Drive.
 
 # %% 0. Settings -- SATU-SATUNYA sel yang biasanya diubah
 SMOKE_TEST = True           # True = uji cepat (32 foto, 2 epoch, seluruh rantai sampai zip unduhan). Jalankan ini DULU.
@@ -19,8 +23,11 @@ PRETRAINED = True           # True = mulai dari bobot COCO YOLOX (risiko lisensi
 EPOCHS = None               # None = nilai konfigurasi (150). Angka = jumlah epoch.
 BATCH_SIZE = None           # None = nilai konfigurasi (32). Turunkan ke 16 bila muncul "CUDA out of memory".
 ACT = "silu"                # Ganti ke "relu" HANYA bila sel 9/15 melaporkan "int8_ok = False" (INT8 tidak lolos) -> latih ulang.
+RESUME = True               # Colab: True = lanjut dari checkpoint run yang sama di Google Drive (bila ada). False = mulai dari
+                            # awal (folder lama di Drive dipindah, tidak dihapus). Pengaturan berbeda (ACT/EPOCHS/...) = otomatis baru.
 TIME_BUDGET_H = 11.0        # Batas jam per sesi (Kaggle memutus di 12 jam). Pelatihan berhenti sendiri lebih awal,
-                            # menyimpan checkpoint, dan dilanjutkan di sesi berikutnya (RUNBOOK §5).
+                            # menyimpan checkpoint, dan dilanjutkan di sesi berikutnya (RUNBOOK §5). Colab gratis bisa memutus
+                            # lebih awal tanpa peringatan: tidak apa-apa, checkpoint terakhir sudah ada di Drive.
 TARGET_SENSITIVITY = 0.85   # Titik operasi pada data val (teknis, bukan klinis). Biarkan.
 
 # %% 1. Preflight + ambil kode (jangan diubah). Gagal di sini = pesan berisi langkah perbaikan.
@@ -30,8 +37,8 @@ from bootstrap import (
     acquire_code,
     check_nbkit_api,
     compute_env,
-    default_dirs,
     preflight,
+    resolve_dirs,
 )
 
 # <<< inline
@@ -44,14 +51,15 @@ from pathlib import Path
 
 T0 = time.time()
 ENV = compute_env()
-DIRS = default_dirs(ENV)
+DIRS = resolve_dirs(ENV, require_persist=not SMOKE_TEST)  # Colab: mounts Google Drive (pop-up); other platforms: no-op
 TMP = DIRS["tmp"]
-WORK = DIRS["work"] / (CANDIDATE + ("_smoke" if SMOKE_TEST else ""))  # persisted outputs: NO photos, NO image arrays
+WORK = DIRS["work"] / (CANDIDATE + ("_smoke" if SMOKE_TEST else ""))  # outputs of this run: NO photos, NO image arrays
 for d in (TMP, WORK):
     d.mkdir(parents=True, exist_ok=True)
-REPORT = preflight(need_gpu=True, hosts=HOSTS_COMMON, disk_paths={"tmp": TMP, "working": DIRS["work"]},
-                   min_free_gb=6.0 if SMOKE_TEST else 12.0, env=ENV)
-CODE, CODE_INFO = acquire_code(roots=[DIRS["inputs"]], tmp=TMP, ref=CODE_REF)
+MIN_GB = 6.0 if SMOKE_TEST else 12.0
+REPORT = preflight(need_gpu=True, hosts=HOSTS_COMMON, env=ENV, min_free_gb={"tmp": MIN_GB, "working": MIN_GB, "drive": 1.0},
+                   disk_paths={"tmp": TMP, "working": DIRS["work"], **({"drive": DIRS["persist"]} if "persist" in DIRS else {})})
+CODE, CODE_INFO = acquire_code(roots=[DIRS["inputs"]], tmp=TMP, ref=CODE_REF, env=ENV)
 DET = CODE / "ml" / "detection"
 sys.path[:0] = [str(DET), str(DET / "kaggle")]
 # Re-running this cell in a kernel that already imported an OLDER nbkit would silently keep the stale module
@@ -109,7 +117,7 @@ nbkit.sh([sys.executable, "-c", "import torch, torchvision, cv2, pycocotools.coc
 nbkit.sh([EXPORT_PY, "-c", "import onnx2tf, onnxsim, ai_edge_litert, numpy; print('onnx2tf', onnx2tf.__version__, 'numpy', numpy.__version__)"],
          timeout=900)
 if ENV != "local":
-    nbkit.sh([sys.executable, "-c", "import torch; assert torch.cuda.is_available(), 'PyTorch tidak melihat GPU: pilih GPU T4 x2'; "
+    nbkit.sh([sys.executable, "-c", "import torch; assert torch.cuda.is_available(), 'PyTorch tidak melihat GPU: pilih GPU T4'; "
               "x = torch.nn.Conv2d(3, 8, 3).cuda()(torch.ones(1, 3, 32, 32, device='cuda')); print('CUDA conv ok', float(x.sum()))"],
              timeout=600)
 
@@ -121,15 +129,23 @@ cfg_over: dict = {
     "data": {"canonical": str(P["canonical"]), "splits": str(P["splits"]), "images_root": str(DATA_ROOT)},
     "model": {"pretrained": str(PRETRAINED_PTH) if PRETRAINED_PTH else None},
     "trainer_options": {"yolox_repo": str(YOLOX_REPO), "act": ACT, "work_dir": str(TMP / ("work_smoke" if SMOKE_TEST else "work")),
-                        "output_dir": str(WORK / "yolox_outputs"), "resume_from": RESUME_FROM, "devices": 1},
+                        "output_dir": str(WORK / "yolox_outputs"), "resume_from": RESUME_FROM, "devices": 1,
+                        "workers": min(4, os.cpu_count() or 4)},  # Colab free has 2 vCPUs: 4 loader workers would only fight over them
 }
 train_over = {k: v for k, v in (("epochs", EPOCHS), ("batch_size", BATCH_SIZE)) if v}
 if SMOKE_TEST:  # 2 epochs: epoch 1 with mosaic, epoch 2 = YOLOX "no aug" phase (+ L1 loss), evaluation after each
     train_over = {"epochs": 2, "batch_size": 8}
     cfg_over["trainer_options"].update({"eval_interval": 1, "workers": 2, "resume": "off"})
+if not RESUME:
+    cfg_over["trainer_options"]["resume"] = "off"  # ignore checkpoints already in yolox_outputs (re-run in the same session)
 if train_over:
     cfg_over["train"] = train_over
 CFG = nbkit.write_run_config(DET / "configs" / f"{CANDIDATE}.yaml", RUN_CFG, cfg_over)
+MIRROR = None
+if "persist" in DIRS:  # Colab + Drive: restore a dropped session, then mirror WORK to Drive every 5 min (nbkit.Mirror)
+    SIGNATURE = nbkit.run_signature(candidate=CANDIDATE, smoke=SMOKE_TEST, act=ACT, pretrained=bool(PRETRAINED),
+                                    epochs=CFG["train"]["epochs"], batch_size=CFG["train"]["batch_size"])
+    PERSIST_STATE, MIRROR = nbkit.start_persistence(WORK, DIRS["persist"] / WORK.name, SIGNATURE, resume=RESUME)
 RUNS = WORK / "runs"
 nbkit.sh([sys.executable, "train.py", "--cfg", RUN_CFG, "--dry-run", "--allow-unverified-license", "--runs-dir", RUNS], cwd=DET)
 
@@ -139,13 +155,19 @@ print(f"training budget this session: {TRAIN_H} h")
 CFG = nbkit.write_run_config(DET / "configs" / f"{CANDIDATE}.yaml", RUN_CFG,
                              nbkit.deep_merge(cfg_over, {"trainer_options": {"time_budget_h": TRAIN_H}}))
 rc = nbkit.sh([sys.executable, "train.py", "--cfg", RUN_CFG, "--allow-unverified-license", "--runs-dir", RUNS], cwd=DET, check=False)
+if MIRROR is not None:  # the last checkpoint reaches Drive now, not within 5 minutes
+    print("Drive:", {k: len(v) for k, v in MIRROR.sync(force=True).items()})
 RUN_JSON = nbkit.latest_run(RUNS, CANDIDATE)
 run = json.loads(RUN_JSON.read_text(encoding="utf-8"))
 print(run["status"], json.dumps(run.get("results"), indent=1))
 # YOLOX tools/train.py exits 0 even when it crashed: the adapter checks train_log.txt + the checkpoint epoch instead.
 assert rc == 0, f"training failed: {run.get('error')} -- lihat log di atas (RUNBOOK §8)"
 DONE = (run.get("results") or {}).get("status") != "time_budget_reached_resume_next_session"
-if not DONE:
+if not DONE and MIRROR is not None:
+    print("=" * 78, "\nBATAS WAKTU SESI TERCAPAI -- checkpoint sudah di Google Drive:", DIRS["persist"] / WORK.name,
+          "\nSel berikutnya dilewati. Langkah: Runtime -> Disconnect and delete runtime, buka notebook lagi, Run all ->",
+          "\npelatihan lanjut dari epoch terakhir (RUNBOOK §3b).\n" + "=" * 78)
+elif not DONE:
     print("=" * 78, "\nBATAS WAKTU SESI TERCAPAI -- checkpoint tersimpan di", WORK / "yolox_outputs",
           "\nSel berikutnya dilewati. Langkah: (1) tunggu versi ini selesai; (2) Edit notebook -> Add Input -> Notebook Output",
           "\n-> pilih versi ini; (3) Save & Run All lagi -> pelatihan lanjut dari epoch terakhir (RUNBOOK §5).\n" + "=" * 78)
@@ -260,10 +282,16 @@ if DONE:
 bad = nbkit.forbidden_outputs(DIRS["work"])
 assert not bad, f"photos/arrays found in the persisted outputs (must never happen): {bad[:5]}"
 print("\n".join(nbkit.describe_outputs(WORK)))
+FINAL_DIR = WORK
+if MIRROR is not None:  # last copy to Google Drive (outputs, exports, the download zip); photos were ruled out just above
+    print("Drive (salinan terakhir):", {k: len(v) for k, v in MIRROR.stop().items()})
+    FINAL_DIR = DIRS["persist"] / WORK.name
 print(f"\nSelesai dalam {(time.time() - T0) / 3600:.2f} jam. SMOKE_TEST = {SMOKE_TEST}.")
 if DONE and not (INT8_OK and SIZE["ok"]):
     nbkit.banner([f"RINGKASAN: presisi {PRECISION}, int8_ok = {INT8_OK}, gerbang ukuran ok = {SIZE['ok']} -- lihat out/conversion.json."])
 if SMOKE_TEST:
-    print("UJI CEPAT BERHASIL. Ubah SMOKE_TEST = False di sel 0, lalu Save Version -> Save & Run All (Commit).")
+    print("UJI CEPAT BERHASIL. Ubah SMOKE_TEST = False di sel 0, lalu "
+          + ("Save Version -> Save & Run All (Commit)." if ENV == "kaggle" else "Run all lagi."))
 elif DONE:
-    print(f"Unduh {WORK / f'download_{CANDIDATE}.zip'} (tab Output) -> backend/ml/runs/kaggle/ (RUNBOOK §6).")
+    print(f"Unduh {FINAL_DIR / f'download_{CANDIDATE}.zip'} "
+          + ("(tab Output)" if ENV == "kaggle" else "(panel Files kiri, atau drive.google.com)") + " -> backend/ml/runs/kaggle/ (RUNBOOK §6).")
