@@ -29,7 +29,6 @@ const TOKENS: Record<string, Me | null> = {
   [TOKEN_G1]: { user_id: G1, account_type: "guardian" },
   "Bearer token-guardian-two": { user_id: G2, account_type: "guardian" },
   "Bearer token-teen": { user_id: TEEN, account_type: "teen" },
-  "Bearer token-kader": { user_id: G1, account_type: "guardian", roles: ["guardian", "kader"] },
   "Bearer token-child": { user_id: KID_USER, account_type: "child" },
   "Bearer token-anon": null,
 };
@@ -245,8 +244,8 @@ Deno.test("401 unauthorized: missing, malformed or non-user token", async () => 
   }
 });
 
-Deno.test("403 forbidden for teen, child and kader accounts (before the body is read)", async () => {
-  for (const auth of ["Bearer token-teen", "Bearer token-child", "Bearer token-kader"]) {
+Deno.test("403 forbidden for teen and child accounts (before the body is read)", async () => {
+  for (const auth of ["Bearer token-teen", "Bearer token-child"]) {
     const w = world();
     const r = await call(w, post("not even json", auth));
     assertEquals([r.status, r.body], [403, { error: "forbidden" }]);

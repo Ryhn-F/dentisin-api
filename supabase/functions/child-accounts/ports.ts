@@ -22,10 +22,7 @@ export function callerPort(client: SupabaseClient): Caller {
       }
       const d = data as Record<string, unknown> | null;
       if (!d || typeof d.user_id !== "string" || typeof d.account_type !== "string") return null;
-      const roles = Array.isArray(d.roles)
-        ? d.roles.filter((r): r is string => typeof r === "string")
-        : [];
-      return { user_id: d.user_id, account_type: d.account_type, roles };
+      return { user_id: d.user_id, account_type: d.account_type };
     },
     async ownsChild(childId: string, ownerId: string): Promise<boolean> {
       const { data, error } = await client

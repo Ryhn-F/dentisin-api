@@ -24,8 +24,6 @@ export function syntheticEmail(childId: string): string {
 export interface Me {
   user_id: string;
   account_type: string;
-  /** user_role names (my_account().roles); a kader never manages child accounts. */
-  roles?: string[];
 }
 
 /** Ports bound to the CALLER's JWT (RLS applies). */
@@ -160,9 +158,7 @@ async function run(req: Request, deps: Deps, log: { action: string }): Promise<R
   const caller = deps.caller(authorization);
   const me = await caller.myAccount();
   if (!me || !isUuid(me.user_id)) throw new Fail("unauthorized", 401);
-  if (me.account_type !== "guardian" || me.roles?.includes("kader")) {
-    throw new Fail("forbidden", 403);
-  }
+  if (me.account_type !== "guardian") throw new Fail("forbidden", 403);
   const guardianId = me.user_id.toLowerCase();
 
   // 2. Body.

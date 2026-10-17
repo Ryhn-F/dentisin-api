@@ -7,14 +7,8 @@ const C = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const U = "44444444-4444-4444-8444-444444444444";
 
 Deno.test("callerPort.myAccount: parses my_account(); not-authenticated codes -> null; else throws", async () => {
-  const ok = fakeSupabase(() => ({
-    data: { user_id: G, account_type: "guardian", roles: ["guardian", "kader", 7], extra: 1 },
-  }));
-  assertEquals(await callerPort(ok.client).myAccount(), {
-    user_id: G,
-    account_type: "guardian",
-    roles: ["guardian", "kader"],
-  });
+  const ok = fakeSupabase(() => ({ data: { user_id: G, account_type: "guardian", extra: 1 } }));
+  assertEquals(await callerPort(ok.client).myAccount(), { user_id: G, account_type: "guardian" });
   assertEquals(ok.log, ["rpc:my_account null"]);
   for (const code of ["28000", "42501", "PGRST301"]) {
     const denied = fakeSupabase(() => ({ error: { code, message: "permission denied" } }));
