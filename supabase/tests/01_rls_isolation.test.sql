@@ -18,7 +18,7 @@ begin
   -- Teen T with its self profile
   perform tests.new_teen('00000000-0000-4000-8000-0000000001f1');
   insert into public.child_profile (id, owner_id, birth_year, birth_month, is_self)
-  values ('00000000-0000-4000-8000-00000000cf01', '00000000-0000-4000-8000-0000000001f1', 2012, 1, true);
+  values ('00000000-0000-4000-8000-00000000cf01', '00000000-0000-4000-8000-0000000001f1', extract(year from now())::int - 16, 1, true);
 end
 $$;
 

@@ -2,7 +2,7 @@
 -- teen self-profile rules, my_account(), role and deletion guards.
 begin;
 \ir _helpers.psql
-select plan(37);
+select plan(39);
 
 -- Fixtures (owner): A owns three children (no accounts yet)
 do $$ begin
@@ -84,12 +84,12 @@ select ok((select last_login_at is not null from public.child_account where user
 -- ------------------------------------------------------------ teen self profile
 select tests.as_user('00000000-0000-4000-8000-000000007e01');
 select is(public.ensure_self_profile('00000000-0000-4000-8000-0000000c7e01',
-                                     (extract(year from now())::int - 14)::smallint, 3::smallint),
+                                     (extract(year from now())::int - 16)::smallint, 3::smallint),
           '00000000-0000-4000-8000-0000000c7e01'::uuid, 'teen creates the self profile');
 select ok((select is_self and owner_id = '00000000-0000-4000-8000-000000007e01' from public.child_profile
            where id = '00000000-0000-4000-8000-0000000c7e01'), 'self profile is_self = true, owned by the teen');
 select is(public.ensure_self_profile('00000000-0000-4000-8000-0000000c7e99',
-                                     (extract(year from now())::int - 14)::smallint, 3::smallint),
+                                     (extract(year from now())::int - 16)::smallint, 3::smallint),
           '00000000-0000-4000-8000-0000000c7e01'::uuid, 'ensure_self_profile is idempotent (returns the existing id)');
 select throws_ok($$ select public.ensure_self_profile('00000000-0000-4000-8000-0000000c7e99',
                     (extract(year from now())::int - 6)::smallint, 1::smallint) $$,
@@ -98,8 +98,8 @@ select throws_ok($$ select public.ensure_self_profile('00000000-0000-4000-8000-0
                     (extract(year from now())::int - 22)::smallint, 1::smallint) $$,
                  '22023', null, 'older than teen_max_age is refused');
 select throws_ok($$ select public.ensure_self_profile('00000000-0000-4000-8000-0000000c7e99',
-                    (extract(year from now())::int - 10)::smallint, null) $$,
-                 '22023', null, 'unknown birth month is judged strictly (could still be 9)');
+                    (extract(year from now())::int - 15)::smallint, null) $$,
+                 '22023', null, 'unknown birth month is judged strictly (could still be 14)');
 select is((public.sync_events(jsonb_build_array(tests.ev('e1100000-0000-4000-8000-000000000001', 'consent_changed',
           jsonb_build_object('child_id', '00000000-0000-4000-8000-0000000c7e02', 'consent_type', 'a', 'action', 'grant',
                              'text_version', 'v1'))))) -> 0 ->> 'code',
@@ -131,10 +131,19 @@ select throws_ok($$ insert into public.child_profile (id, owner_id, birth_year, 
                     values ('00000000-0000-4000-8000-0000000c11a9', '00000000-0000-4000-8000-0000000000a1', 2012, true) $$,
                  '42501', null, 'only teen accounts can own a self profile');
 
+select tests.new_teen('00000000-0000-4000-8000-000000007e03');
+select tests.as_user('00000000-0000-4000-8000-000000007e03');
+select throws_ok($$ select public.ensure_self_profile('00000000-0000-4000-8000-0000000c7e30',
+                    (extract(year from now())::int - 14)::smallint, 1::smallint) $$,
+                 '22023', null, 'age 14 is refused: under 15 needs a guardian account');
+select is(public.ensure_self_profile('00000000-0000-4000-8000-0000000c7e30',
+                                     (extract(year from now())::int - 15)::smallint, 1::smallint),
+          '00000000-0000-4000-8000-0000000c7e30'::uuid, 'exactly 15 is accepted');
+select tests.as_owner();
 select tests.new_teen('00000000-0000-4000-8000-000000007e02');
 select tests.as_user('00000000-0000-4000-8000-000000007e02');
 select throws_ok($$ select public.ensure_self_profile('00000000-0000-4000-8000-0000000c1101',
-                    (extract(year from now())::int - 14)::smallint, 3::smallint) $$,
+                    (extract(year from now())::int - 16)::smallint, 3::smallint) $$,
                  '42501', null, 'an id used by someone else''s child gives the uniform forbidden');
 
 select tests.as_user('00000000-0000-4000-8000-0000000000a1');

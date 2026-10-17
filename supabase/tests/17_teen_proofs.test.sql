@@ -13,7 +13,8 @@ do $$ begin
   perform tests.new_teen('00000000-0000-4000-8000-000000007f01');
   perform tests.new_teen('00000000-0000-4000-8000-000000007f02');
   insert into public.child_profile (id, owner_id, birth_year, birth_month, is_self)
-  values ('00000000-0000-4000-8000-0000000c7f02', '00000000-0000-4000-8000-000000007f02', 2012, 2, true);
+  values ('00000000-0000-4000-8000-0000000c7f02', '00000000-0000-4000-8000-000000007f02',
+          extract(year from now())::int - 16, 2, true);
   insert into public.consent (child_id, granted_by, consent_type, text_version, granted_at)
   select '00000000-0000-4000-8000-0000000c7f02', '00000000-0000-4000-8000-000000007f02', t::public.consent_type,
          'test-v1', now() - interval '1 day'
@@ -26,7 +27,8 @@ end $$;
 
 -- ------------------------------------------------------------ teen T: self profile + consents
 select tests.as_user('00000000-0000-4000-8000-000000007f01');
-select is(public.ensure_self_profile('00000000-0000-4000-8000-0000000c7f01', 2012::smallint, 3::smallint),
+select is(public.ensure_self_profile('00000000-0000-4000-8000-0000000c7f01',
+                                     (extract(year from now())::int - 16)::smallint, 3::smallint),
           '00000000-0000-4000-8000-0000000c7f01'::uuid, 'teen creates its self profile');
 select public.sync_events(jsonb_build_array(
   tests.ev('e1700000-0000-4000-8000-000000000001', 'consent_changed', jsonb_build_object(

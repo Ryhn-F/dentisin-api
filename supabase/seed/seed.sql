@@ -31,7 +31,7 @@ on conflict (id) do nothing;
 
 -- The teen's self profile (is_self; birth year inside the teen age window)
 insert into public.child_profile (id, owner_id, birth_year, birth_month, is_self) values
-  ('5eed0000-0000-4000-8000-0000000c00e1', '5eed0000-0000-4000-8000-00000000e001', 2011, 6, true)
+  ('5eed0000-0000-4000-8000-0000000c00e1', '5eed0000-0000-4000-8000-00000000e001', extract(year from now())::int - 16, 6, true)
 on conflict (id) do nothing;
 
 -- Consent (a) + (b) for every child; nobody has (c) and the flag stays OFF
