@@ -134,7 +134,7 @@ Implikasi desain: untuk gigi sulung, sekitar 7 dari 10 tanda adalah alarm palsu 
 |---|---|
 | Berkas | 3,48 MiB (gerbang ADR 001: ≤ 15 MB, lolos) |
 | Parameter / komputasi | 0,90 juta / ≈ 1,08 GFLOP pada 416×416 (dari ringkasan model YOLOX) |
-| Latensi di HP RAM 3 GB dan 4 GB | **belum diukur** (spike S1). Gerbang: ≤ 1,5 s termasuk praproses, dekode, NMS |
+| Latensi di HP RAM 3 GB dan 4 GB | **belum diukur** (spike S1; protokol dan format hasil: [`../runbooks/spike-s1-latency.md`](../runbooks/spike-s1-latency.md)). Gerbang: ≤ 1,5 s termasuk praproses, dekode, NMS |
 
 Rencana bila S1 gagal (tanpa mengubah kontrak app bila memungkinkan): (a) float16 — bobot separuh ukuran, masukan/keluaran tetap float32 `[PERLU VERIFIKASI pada model nyata]`; (b) memperbaiki INT8; (c) kandidat cadangan MediaPipe. Lihat ADR 013, "Syarat yang belum terpenuhi".
 

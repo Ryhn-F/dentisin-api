@@ -93,7 +93,7 @@ node --test "docs/api/examples/detector/*.test.ts"      # 10 uji: vektor paritas
 
 | Item | Pemilik | Dampak |
 |---|---|---|
-| Latensi/memori di HP (S1) | tim app + pemilik produk | Menentukan model final dan presisi (float32/float16) |
+| Latensi/memori di HP (S1) — protokol: [`../runbooks/spike-s1-latency.md`](../runbooks/spike-s1-latency.md) | tim app + pemilik produk | Menentukan model final dan presisi (float32/float16) |
 | Nilai klinis dari pustaka (Fase 3) | backend | Triase/rekomendasi tetap DRAFT sampai `release_check` hijau |
 | Kunci penandatangan + manifes pertama (4.1/4.2) | pemilik produk + backend | Pembaruan artefak lewat manifes belum bisa dipakai |
 | Rilis bundel kontrak `contracts-v0.1.0` | pemilik produk (tag) | App belum dapat mengunduh kontrak berversi; sementara minta salinan ke backend |
