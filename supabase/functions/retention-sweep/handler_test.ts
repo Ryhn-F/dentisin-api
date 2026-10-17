@@ -6,6 +6,9 @@ const UP_1 = "aaaaaaaa-1111-4111-8111-111111111111";
 const UP_2 = "bbbbbbbb-2222-4222-8222-222222222222";
 const P_1 = "user-1/child-1/one.jpg";
 const P_2 = "user-1/child-1/two.jpg";
+const PF_1 = "aaaaaaaa-3333-4333-8333-333333333333";
+const PV_1 = "user-1/child-1/proof-1.mp4";
+const PV_ORPHAN = "user-9/child-9/orphan.mp4";
 
 const post = () => new Request("http://localhost/retention-sweep", { method: "POST" });
 
@@ -21,7 +24,23 @@ function happyRpc(): NonNullable<MockOptions["rpc"]> {
   return {
     service_retention_candidates: candidates,
     service_mark_images_deleted: () => ({ data: 2, error: null }),
-    service_retention_sweep_db: () => ({ data: { sync_event_deleted: 7 }, error: null }),
+    service_expired_proofs: () => ({
+      data: [
+        { proof_id: PF_1, object_path: PV_1 },
+        { proof_id: null, object_path: PV_ORPHAN },
+      ],
+      error: null,
+    }),
+    service_mark_proof_object_removed: () => ({ data: null, error: null }),
+    service_retention_sweep_db: () => ({
+      data: {
+        sync_event_deleted: 7,
+        screening_request_expired: 3,
+        brushing_proof_rows_deleted: 1,
+        child_login_attempt_deleted: 4,
+      },
+      error: null,
+    }),
   };
 }
 
@@ -77,16 +96,28 @@ Deno.test("happy path: objects removed, rows marked, ledger purged; counts only"
       candidates: 2,
       objects_removed: 2,
       images_marked_deleted: 2,
+      proof_objects_removed: 2,
+      proofs_marked_removed: 1,
+      proof_purge_failed: false,
       sync_event_deleted: 7,
+      requests_expired: 3,
+      proof_rows_deleted: 1,
+      login_attempts_deleted: 4,
     });
     const raw = JSON.stringify(body);
-    for (const s of [UP_1, UP_2, P_1, P_2]) assertFalse(raw.includes(s));
+    for (const s of [UP_1, UP_2, P_1, P_2, PF_1, PV_1, PV_ORPHAN]) assertFalse(raw.includes(s));
   });
-  assertEquals(m.removeCalls, [{ bucket: "dataset_photos", paths: [P_1, P_2] }]);
+  assertEquals(m.removeCalls, [
+    { bucket: "dataset_photos", paths: [P_1, P_2] },
+    { bucket: "brushing_proofs", paths: [PV_1, PV_ORPHAN] },
+  ]);
+  // only rows with an id are marked (the orphan object has none)
+  const marks = m.rpcCalls.filter((c) => c.name === "service_mark_proof_object_removed");
+  assertEquals(marks.map((c) => c.args), [{ p_proof: PF_1 }]);
   const mark = m.rpcCalls.find((c) => c.name === "service_mark_images_deleted");
   assertEquals(mark?.args, { p_upload_ids: [UP_1, UP_2] });
   const joined = logs.join("\n");
-  for (const s of [UP_1, UP_2, P_1, P_2]) assertFalse(joined.includes(s));
+  for (const s of [UP_1, UP_2, P_1, P_2, PF_1, PV_1, PV_ORPHAN]) assertFalse(joined.includes(s));
 });
 
 Deno.test("no candidates still sweeps the ledger and returns 200", async () => {
@@ -95,6 +126,7 @@ Deno.test("no candidates still sweeps the ledger and returns 200", async () => {
       ...happyRpc(),
       service_retention_candidates: () => ({ data: [], error: null }),
       service_mark_images_deleted: () => ({ data: 0, error: null }),
+      service_expired_proofs: () => ({ data: [], error: null }),
     },
   });
   await captureConsole(async () => {
@@ -144,6 +176,53 @@ Deno.test("ledger sweep error -> 207 with sync_event_deleted null", async () => 
     assertEquals(r.status, 207);
     const b = await r.json();
     assertEquals(b.sync_event_deleted, null);
+    assertEquals(b.requests_expired, null);
     assertEquals(b.images_marked_deleted, 2);
+  });
+});
+
+Deno.test("proof list error -> 207 proof_purge_failed, the DB sweep still runs", async () => {
+  const m = mockClient({
+    rpc: { ...happyRpc(), service_expired_proofs: () => ({ data: null, error: { m: 1 } }) },
+  });
+  await captureConsole(async () => {
+    const r = await handle(post(), () => m.client);
+    assertEquals(r.status, 207);
+    const b = await r.json();
+    assertEquals(b.proof_purge_failed, true);
+    assertEquals(b.proof_objects_removed, 0);
+    assertEquals(b.sync_event_deleted, 7);
+  });
+  assert(m.rpcCalls.some((c) => c.name === "service_retention_sweep_db"));
+});
+
+Deno.test("proof storage failure -> 207, rows NOT marked removed, path not logged", async () => {
+  const m = mockClient({
+    rpc: happyRpc(),
+    remove: (bucket, paths) =>
+      bucket === "brushing_proofs"
+        ? { data: null, error: { message: `nope ${PV_1}` } }
+        : { data: paths.map((p) => ({ name: p })), error: null },
+  });
+  const logs = await captureConsole(async () => {
+    const r = await handle(post(), () => m.client);
+    assertEquals(r.status, 207);
+    assertEquals((await r.json()).proof_purge_failed, true);
+  });
+  assertFalse(m.rpcCalls.some((c) => c.name === "service_mark_proof_object_removed"));
+  assertFalse(logs.join("\n").includes(PV_1));
+});
+
+Deno.test("proof mark RPC error -> 207 proof_purge_failed", async () => {
+  const m = mockClient({
+    rpc: {
+      ...happyRpc(),
+      service_mark_proof_object_removed: () => ({ data: null, error: { m: 1 } }),
+    },
+  });
+  await captureConsole(async () => {
+    const r = await handle(post(), () => m.client);
+    assertEquals(r.status, 207);
+    assertEquals((await r.json()).proof_purge_failed, true);
   });
 });

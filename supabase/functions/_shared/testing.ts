@@ -65,20 +65,23 @@ export async function withEnv(
   }
 }
 
-/** Captures console.log/error output while fn runs (to assert that no identifiers are logged). */
+/**
+ * Captures console.log/error/warn/info/debug output while fn runs (to assert that no
+ * identifiers are logged).
+ */
 export async function captureConsole(
   fn: () => Promise<void>,
 ): Promise<string[]> {
   const lines: string[] = [];
-  const log = console.log;
-  const err = console.error;
-  console.log = (...a: unknown[]) => void lines.push(a.map(String).join(" "));
-  console.error = (...a: unknown[]) => void lines.push(a.map(String).join(" "));
+  const methods = ["log", "error", "warn", "info", "debug"] as const;
+  const saved = methods.map((m) => console[m]);
+  for (const m of methods) {
+    console[m] = (...a: unknown[]) => void lines.push(a.map(String).join(" "));
+  }
   try {
     await fn();
   } finally {
-    console.log = log;
-    console.error = err;
+    methods.forEach((m, i) => (console[m] = saved[i]));
   }
   return lines;
 }

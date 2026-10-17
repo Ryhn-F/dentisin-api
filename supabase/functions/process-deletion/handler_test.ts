@@ -6,7 +6,11 @@ const REQ_A = "11111111-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const REQ_B = "22222222-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const PATH_A = "user-1/child-1/photo-a.jpg";
 
+const PROOF = "user-1/child-1/proof-a.mp4";
+
 const post = () => new Request("http://localhost/process-deletion", { method: "POST" });
+
+const noTargets = () => ({ data: [{ proof_paths: [], child_user_ids: [] }], error: null });
 
 Deno.test("default resolver is fail-closed: no secret configured -> 503", async () => {
   await withEnv(
@@ -63,6 +67,7 @@ Deno.test("no pending requests -> 200 with zero counts", async () => {
       waiting: 0,
       failed: 0,
       objects_removed: 0,
+      proof_objects_removed: 0,
     });
   });
   assertEquals(m.removeCalls.length, 0);
@@ -80,13 +85,17 @@ Deno.test("photos removed first, then the executor RPC runs with the removed cou
         ],
         error: null,
       }),
+      service_deletion_targets: (a) =>
+        a?.p_request_id === REQ_A
+          ? { data: [{ proof_paths: [PROOF], child_user_ids: [] }], error: null }
+          : noTargets(),
       service_execute_deletion: (a) => {
         order.push(`execute:${a?.p_request_id}:${a?.p_storage_objects_deleted}`);
         return { data: { status: "completed" }, error: null };
       },
     },
-    remove: (_b, paths) => {
-      order.push(`remove:${paths.length}`);
+    remove: (b, paths) => {
+      order.push(`remove:${b}:${paths.length}`);
       return { data: paths.map((p) => ({ name: p })), error: null };
     },
   });
@@ -100,15 +109,20 @@ Deno.test("photos removed first, then the executor RPC runs with the removed cou
       waiting: 0,
       failed: 0,
       objects_removed: 2,
+      proof_objects_removed: 1,
     });
     // counts only: no ids or paths in the response
     const raw = JSON.stringify(body);
-    for (const secret of [REQ_A, REQ_B, PATH_A]) assertFalse(raw.includes(secret));
+    for (const secret of [REQ_A, REQ_B, PATH_A, PROOF]) assertFalse(raw.includes(secret));
   });
-  assertEquals(order, [`remove:2`, `execute:${REQ_A}:2`, `execute:${REQ_B}:0`]);
-  assertEquals(m.removeCalls.every((c) => c.bucket === "dataset_photos"), true);
+  assertEquals(order, [
+    `remove:dataset_photos:2`,
+    `remove:brushing_proofs:1`,
+    `execute:${REQ_A}:3`,
+    `execute:${REQ_B}:0`,
+  ]);
   const joined = logs.join("\n");
-  for (const secret of [REQ_A, REQ_B, PATH_A]) assertFalse(joined.includes(secret));
+  for (const secret of [REQ_A, REQ_B, PATH_A, PROOF]) assertFalse(joined.includes(secret));
 });
 
 Deno.test("executor returning a non-completed status counts as waiting", async () => {
@@ -118,6 +132,7 @@ Deno.test("executor returning a non-completed status counts as waiting", async (
         data: [{ request_id: REQ_A, storage_paths: [] }],
         error: null,
       }),
+      service_deletion_targets: noTargets,
       service_execute_deletion: () => ({
         data: { status: "awaiting_storage_purge" },
         error: null,
@@ -142,6 +157,7 @@ Deno.test("storage failure -> request counted failed, 207, executor NOT called f
         ],
         error: null,
       }),
+      service_deletion_targets: noTargets,
       service_execute_deletion: () => ({ data: { status: "completed" }, error: null }),
     },
     remove: (_b, paths) =>
@@ -168,6 +184,7 @@ Deno.test("executor RPC error -> counted failed (207)", async () => {
         data: [{ request_id: REQ_A, storage_paths: [] }],
         error: null,
       }),
+      service_deletion_targets: noTargets,
       service_execute_deletion: () => ({ data: null, error: { message: "db" } }),
     },
   });
@@ -176,4 +193,47 @@ Deno.test("executor RPC error -> counted failed (207)", async () => {
     assertEquals(r.status, 207);
     assertEquals((await r.json()).failed, 1);
   });
+});
+
+Deno.test("proof targets lookup error -> counted failed, executor NOT called", async () => {
+  const m = mockClient({
+    rpc: {
+      service_pending_deletions: () => ({
+        data: [{ request_id: REQ_A, storage_paths: [] }],
+        error: null,
+      }),
+      service_deletion_targets: () => ({ data: null, error: { message: "db" } }),
+      service_execute_deletion: () => ({ data: { status: "completed" }, error: null }),
+    },
+  });
+  await captureConsole(async () => {
+    const r = await handle(post(), () => m.client);
+    assertEquals(r.status, 207);
+    assertEquals((await r.json()).failed, 1);
+  });
+  assertFalse(m.rpcCalls.some((c) => c.name === "service_execute_deletion"));
+});
+
+Deno.test("proof storage failure -> counted failed, executor NOT called, path not logged", async () => {
+  const m = mockClient({
+    rpc: {
+      service_pending_deletions: () => ({
+        data: [{ request_id: REQ_A, storage_paths: [] }],
+        error: null,
+      }),
+      service_deletion_targets: () => ({
+        data: [{ proof_paths: [PROOF], child_user_ids: [] }],
+        error: null,
+      }),
+      service_execute_deletion: () => ({ data: { status: "completed" }, error: null }),
+    },
+    remove: () => ({ data: null, error: { message: `cannot delete ${PROOF}` } }),
+  });
+  const logs = await captureConsole(async () => {
+    const r = await handle(post(), () => m.client);
+    assertEquals(r.status, 207);
+    assertEquals((await r.json()).failed, 1);
+  });
+  assertFalse(m.rpcCalls.some((c) => c.name === "service_execute_deletion"));
+  assertFalse(logs.join("\n").includes(PROOF));
 });

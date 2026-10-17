@@ -1,10 +1,10 @@
 # Edge Functions, job terjadwal, dan hook email
 
-> **Ringkasan (ID).** Tiga Edge Function milik Supabase (`process-deletion`, `retention-sweep`, `quota-check`) hanya untuk scheduler, bukan untuk app: diautentikasi dengan `Bearer <CRON_SECRET>`, gagal-tutup, dan responsnya hanya hitungan. Email Auth (konfirmasi, reset) dikirim oleh layanan mailer terpisah (`smtp-handler`) yang menerima **Send Email hook** Supabase bertanda tangan Standard Webhooks. Dokumen ini adalah kontrak untuk ops dan backend; app tidak memanggil satu pun dari ini secara langsung.
+> **Ringkasan (ID).** Tiga Edge Function milik Supabase (`process-deletion`, `retention-sweep`, `quota-check`) hanya untuk scheduler, bukan untuk app: diautentikasi dengan `Bearer <CRON_SECRET>`, gagal-tutup, dan responsnya hanya hitungan. Email Auth (konfirmasi, reset) dikirim oleh layanan mailer terpisah (`smtp-handler`) yang menerima **Send Email hook** Supabase bertanda tangan Standard Webhooks. Dua Edge Function lain (`child-accounts`, `child-login`, ADR 017) **dipanggil app** dengan JWT orang tua / anon key (§1.5–1.7). Dokumen ini adalah kontrak untuk ops dan backend; selain dua fungsi itu, app tidak memanggil satu pun dari ini secara langsung.
 
 ## 1. Edge Functions (Deno)
 
-Sumber: `supabase/functions/{process-deletion,retention-sweep,quota-check,_shared}`. Konfigurasi: `[functions.*] enabled = true`, `verify_jwt = false` (gerbang JWT platform dimatikan karena pemanggilnya scheduler eksternal; fungsi memverifikasi sendiri).
+Sumber: `supabase/functions/{process-deletion,retention-sweep,quota-check,_shared}`. Konfigurasi: `[functions.*] enabled = true`, `verify_jwt = false` (gerbang JWT platform dimatikan karena pemanggilnya scheduler eksternal; fungsi memverifikasi sendiri). Pengecualian: `child-accounts` dan `child-login` memakai `verify_jwt = true` (§1.5–1.7).
 
 Pemanggilan (hanya scheduler / PC tim):
 
@@ -30,11 +30,11 @@ Log dan respons hanya berisi **hitungan** (tanpa id, path, atau email).
 
 ### 1.2 `process-deletion` (hak hapus, FR-102)
 
-Alur: `service_pending_deletions(p_limit=20)` mengembalikan maksimal 20 permintaan `pending`/`processing` beserta path objek `dataset_photos` milik subjek -> untuk tiap permintaan fungsi menghapus objek lewat Storage API (potongan 100 path) -> memanggil `service_execute_deletion(p_request_id, p_storage_objects_deleted)`. RPC itu menghapus baris anak (cascade) atau seluruh akun (anak, roster, ledger, `guardian`, `user_role`, baris `auth.users`, dan entri `auth.audit_log_entries` yang memuat id/email akun), lalu menulis bukti dan `audit_log` ber-hash. Satu kegagalan tidak menghentikan permintaan lain.
+Alur: `service_pending_deletions(p_limit=20)` mengembalikan maksimal 20 permintaan `pending`/`processing` beserta path objek `dataset_photos` milik subjek -> untuk tiap permintaan fungsi menghapus objek lewat Storage API (potongan 100 path) -> **video bukti sikat gigi** (ADR 017): `service_deletion_targets(p_request_id)` memberi path bucket `brushing_proofs` milik subjek, yang juga dihapus -> memanggil `service_execute_deletion(p_request_id, p_storage_objects_deleted)` (jumlah foto + video). RPC itu menolak selesai (`awaiting_storage_purge`) selama masih ada objek subjek di salah satu bucket, lalu menghapus baris anak (cascade, termasuk permintaan skrining, bukti, dan `child_account`) atau seluruh akun (anak, **akun anak beserta pengguna Auth-nya**, roster, ledger, `guardian`, `user_role`, baris `auth.users`, dan entri `auth.audit_log_entries` yang memuat id/email akun), lalu menulis bukti dan `audit_log` ber-hash. Satu kegagalan (termasuk gagal membaca target video atau menghapus berkasnya) tidak menghentikan permintaan lain; permintaan itu dihitung `failed` dan eksekutor tidak dipanggil.
 
 | Status | Body | Arti |
 |---|---|---|
-| 200 | `{"requests":3,"completed":2,"waiting":1,"failed":0,"objects_removed":5}` | semua diproses tanpa galat (`waiting` = RPC tidak `completed`, mis. masih ada objek) |
+| 200 | `{"requests":3,"completed":2,"waiting":1,"failed":0,"objects_removed":5,"proof_objects_removed":2}` | semua diproses tanpa galat (`waiting` = RPC tidak `completed`, mis. masih ada objek) |
 | 207 | sama, `failed` > 0 | sebagian permintaan gagal (diulang pada jalan berikutnya; setelah `deletion_max_attempts` (5) pg_cron menandai `failed`) |
 | 500 | `{"error":"list_failed"}` | gagal membaca daftar |
 | 503/405/403 | lihat 1.1 | |
@@ -43,12 +43,13 @@ Idempoten: permintaan yang sudah `completed` dilewati (`skipped`).
 
 ### 1.3 `retention-sweep` (TTL foto, foto yang ditarik, ledger)
 
-Alur: `service_retention_candidates(p_limit=500)` -> baris `image_upload` dengan `status='uploaded' AND expires_at <= now()` atau `status='withdrawn'` -> hapus objek di `dataset_photos` -> `service_mark_images_deleted(ids)` (hanya menandai `deleted` bila objek benar-benar sudah hilang) -> `service_retention_sweep_db()` (hapus `sync_event` lebih tua dari `sync_event_retention_days`, bawaan 180).
+Alur: `service_retention_candidates(p_limit=500)` -> baris `image_upload` dengan `status='uploaded' AND expires_at <= now()` atau `status='withdrawn'` -> hapus objek di `dataset_photos` -> `service_mark_images_deleted(ids)` (hanya menandai `deleted` bila objek benar-benar sudah hilang) -> **video bukti** (ADR 017): `service_expired_proofs(p_limit=200)` memberi klip kedaluwarsa (`proof_retention_days`, bawaan 7), berstatus `deleted`/`expired`, atau yang consent `d`-nya ditarik, ditambah objek yatim di bucket `brushing_proofs` (> 1 jam, tanpa baris) -> hapus objek -> `service_mark_proof_object_removed(proof_id)` (hanya bila objek benar-benar hilang; yang gagal dicoba lagi pada jalan berikut) -> `service_retention_sweep_db()` (hapus `sync_event` lebih tua dari `sync_event_retention_days`, bawaan 180; menandai permintaan skrining kedaluwarsa; menghapus baris bukti yang berkasnya sudah hilang; membuang catatan percobaan login anak > 1 hari).
 
 | Status | Body | Arti |
 |---|---|---|
-| 200 | `{"candidates":4,"objects_removed":4,"images_marked_deleted":4,"sync_event_deleted":120}` | selesai |
-| 207 | sama, `sync_event_deleted: null` | foto selesai tetapi sapu ledger gagal |
+| 200 | `{"candidates":4,"objects_removed":4,"images_marked_deleted":4,"proof_objects_removed":2,"proofs_marked_removed":2,"proof_purge_failed":false,"sync_event_deleted":120,"requests_expired":3,"proof_rows_deleted":2,"login_attempts_deleted":9}` | selesai |
+| 207 | `sync_event_deleted` dkk. `null` | foto selesai tetapi sapu DB gagal |
+| 207 | `proof_purge_failed: true` | pembersihan video gagal; sapu DB tetap berjalan, video dicoba lagi pada jalan berikut |
 | 500 | `{"error":"list_failed"}` atau `{"error":"image_purge_failed","candidates":n,"removed":n}` | gagal; coba lagi pada jadwal berikut |
 | 503/405/403 | lihat 1.1 | |
 
@@ -68,10 +69,48 @@ Metrik: `db_size` (mb), `storage_size` (mb), `mau` (users), `auth_email_24h` (em
 
 | Job | Jadwal | Isi |
 |---|---|---|
-| `dentisai-process-deletions` | `*/15 * * * *` | menyelesaikan permintaan hapus **tanpa** foto langsung di SQL; yang punya foto menunggu `process-deletion` (`failure_code='awaiting_storage_purge'`) |
-| `dentisai-retention-db` | `17 3 * * *` | sapu ledger `sync_event` |
+| `dentisai-process-deletions` | `*/15 * * * *` | menyelesaikan permintaan hapus **tanpa** foto/video langsung di SQL; yang punya objek di `dataset_photos` atau `brushing_proofs` menunggu `process-deletion` (`failure_code='awaiting_storage_purge'`) |
+| `dentisai-retention-db` | `17 3 * * *` | sapu ledger `sync_event`, kedaluwarsakan permintaan skrining dan bukti, buang baris bukti yang berkasnya sudah hilang, buang catatan percobaan login anak lama |
 
 pg_cron tidak dapat membangunkan proyek Free yang sudah dijeda; apakah aktivitas internal mencegah penjedaan `[PERLU VERIFIKASI]`, karena itu ada ping eksternal.
+
+### 1.5 `child-accounts` (app, orang tua mengelola akun anak — ADR 017 §2.2)
+
+Berbeda dari fungsi di atas: **dipanggil app**, `verify_jwt = true`, `Authorization: Bearer <access token orang tua>`. Sumber: `supabase/functions/child-accounts/` (`handler.ts` logika, `ports.ts` supabase-js, `index.ts`).
+
+Urutan pemeriksaan: `OPTIONS` → 204 (CORS) · metode bukan `POST` → 405 `method_not_allowed` · env kurang → 500 `internal` · header `Authorization` bukan `Bearer <token>` atau `my_account()` gagal/anon → 401 `unauthorized` · `account_type` bukan `guardian` (remaja, anak) → 403 `forbidden` · body (JSON objek ≤ 4 KiB) tidak valid → 400 `invalid_body` · anak tidak terbaca lewat RLS dengan `owner_id` = pemanggil → 404 `child_not_found` (anak orang lain dan anak tak dikenal identik).
+
+| `action` | Body | Sukses | Galat khusus |
+|---|---|---|---|
+| `create` | `{child_id, username, password}` | **201** `{"child_id":"<uuid>","username":"siti.kecil","created":true}` | 422 `invalid_username` (pola `^[a-z0-9][a-z0-9._-]{2,19}$` setelah trim+huruf kecil, ASCII saja, kata cadangan mis. admin/root/system/null) · 422 `weak_password` (≥ 8, kecil+besar+angka, ≤ 72 byte, tanpa karakter kontrol = `config.toml`) · 409 `child_already_has_account` · 409 `child_account_limit` (`max_child_accounts_per_guardian`, bawaan 6) · 409 `username_taken` (unik per orang tua). Bila trigger `auth.users` menolak (GoTrue hanya melapor "Database error"), fungsi memeriksa ulang: akun anak sudah ada → `child_already_has_account`, batas tercapai → `child_account_limit`, selain itu → `username_taken` (termasuk penolakan lain trigger, mis. permintaan hapus tertunda) |
+| `reset_password` | `{child_id, password}` | 200 `{"ok":true}` | 422 `weak_password` · 404 `child_not_found` (belum punya akun) |
+| `set_disabled` | `{child_id, disabled: bool}` | 200 `{"ok":true,"disabled":true}` | 404 `child_not_found`. Nonaktif: `child_account.disabled_at = now()` dulu, lalu ban Auth `876000h`; aktif: unban (`none`) dulu, lalu `disabled_at = null` (gagal di tengah = tetap terblokir) |
+| `delete` | `{child_id}` | 200 `{"ok":true}` | 404 `child_not_found`. Menghapus pengguna Auth anak; `child_account` ikut terhapus (cascade); profil anak dan datanya tetap |
+
+Lainnya: 500 `internal`. Bentuk galat selalu `{"error":"<kode>"}`. `create` memanggil `auth.admin.createUser({ email: "child-<child_id>@child.dentisai.invalid", password, email_confirm: true, app_metadata: { account_type: "child", guardian_id, child_id, username } })`; trigger `auth.users` membuat baris `child_account`. Respons dan log **tidak pernah** memuat kata sandi, email sintetis, atau id pengguna Auth anak.
+
+### 1.6 `child-login` (app, login anak — ADR 017 §2.2)
+
+Dipanggil app dengan **anon key** (`verify_jwt = true` menerimanya). Body: `{"parent_email": str, "username": str, "password": str, "captcha_token"?: str}`.
+
+Alur: normalisasi (trim, huruf kecil) dan validasi bentuk → kunci `HMAC-SHA256(CHILD_LOGIN_HASH_PEPPER, lower(parent_email) + "|" + ip)` (hex; ip dari `cf-connecting-ip`, lalu hop pertama `x-forwarded-for`, lalu `"unknown"`) → `service_child_login_check(p_key_hash, p_max, p_window_s)` → `service_resolve_child_login(p_parent_email, p_username)` → **selalu** `POST {SUPABASE_URL}/auth/v1/token?grant_type=password` (header `apikey`; body `{email, password, gotrue_meta_security: {captcha_token}}`, field CAPTCHA dihapus bila tidak ada; email dummy `child-00000000-…@child.dentisai.invalid` bila tidak ada yang cocok) → `service_child_login_record(p_key_hash, p_ok, p_window_s)`; sukses juga mengisi `child_account.last_login_at`.
+
+| Status | Body | Kapan |
+|---|---|---|
+| 200 | `{"access_token","refresh_token","token_type":"bearer","expires_in":3600,"expires_at":<unix>,"user":{"id":"<uuid>"},"child":{"username":"siti.kecil"}}` | sukses; app memanggil `supabase.auth.setSession({access_token, refresh_token})`. Tanpa email, tanpa data orang tua |
+| 401 | `{"error":"invalid_credentials"}` | **seragam** untuk email orang tua tak dikenal, username tak dikenal, kata sandi salah, akun nonaktif/diban, CAPTCHA ditolak GoTrue, sesi milik pengguna lain. Dihitung sebagai gagal; dipadatkan ke ≥ 600 ms. Bila GoTrue tetap memberi sesi untuk akun nonaktif, sesi itu dicabut (`/auth/v1/logout`) |
+| 400 | `{"error":"invalid_body"}` | body bukan JSON objek ≤ 8 KiB, email/username salah bentuk, kata sandi kosong/> 256 karakter, `captcha_token` bukan string (tidak dihitung) |
+| 429 | `{"error":"too_many_attempts"}` + `Retry-After: <child_login_window_s>` | `child_login_max_attempts` (8) gagal dalam `child_login_window_s` (900 dtk) per kunci |
+| 502 | `{"error":"upstream_unavailable"}` | GoTrue 5xx, 429 (batas laju Auth bersama per IP fungsi) atau tak terjangkau/timeout 8 dtk (tidak dihitung) |
+| 500 | `{"error":"internal"}` | env/pepper kurang (pepper < 32 karakter), RPC throttle/resolve gagal (gagal-tutup) |
+| 405 | `{"error":"method_not_allowed"}` | metode selain `POST`/`OPTIONS` |
+
+### 1.7 Bersama (`child-accounts`, `child-login`)
+
+- **CORS:** `OPTIONS` → 204; `Access-Control-Allow-Origin` hanya untuk origin di `ALLOWED_ORIGINS` (dipisah koma; bawaan `https://app.ryhnfir.dev`; `*` diabaikan, tidak pernah wildcard). App React Native tidak mengirim `Origin` dan tidak butuh CORS. Semua respons `Cache-Control: no-store`.
+- **Env/secret (nama saja):** `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (disuntikkan platform); `CHILD_LOGIN_HASH_PEPPER` (secret fungsi, ≥ 32 karakter, hanya `child-login`); `ALLOWED_ORIGINS` (opsional).
+- **Log:** satu baris JSON per permintaan berisi status, kode galat, dan tag alasan internal (mis. `throttle_failed`); **tidak pernah** email, username, kata sandi, token, id anak/pengguna, IP, atau kunci throttle (diuji).
+- **Pengaturan (`app_setting`, dibaca service role):** `max_child_accounts_per_guardian` 6, `child_login_max_attempts` 8, `child_login_window_s` 900; nilai hilang/tidak valid → bawaan.
 
 ## 2. Workflow terjadwal (GitHub Actions)
 

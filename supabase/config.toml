@@ -171,6 +171,21 @@ verify_jwt = false
 enabled = true
 verify_jwt = false
 
+# App-facing functions (ADR 017 "account model v2"): the platform JWT gate stays ON.
+# child-accounts: caller = a logged-in guardian (user JWT); the function additionally checks
+#   my_account().account_type = 'guardian' and ownership through RLS.
+# child-login: called with the anon key (a valid JWT for the gate); uniform 401, per
+#   HMAC(parent e-mail | IP) throttle, CAPTCHA token forwarded to GoTrue.
+# Secrets: CHILD_LOGIN_HASH_PEPPER (child-login, >= 32 chars, fail closed); optional
+# ALLOWED_ORIGINS (CORS allowlist, default https://app.ryhnfir.dev). Never values here.
+[functions.child-accounts]
+enabled = true
+verify_jwt = true
+
+[functions.child-login]
+enabled = true
+verify_jwt = true
+
 [analytics]
 enabled = false
 
