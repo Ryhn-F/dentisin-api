@@ -68,8 +68,16 @@ def check_same_data(reports: Mapping[str, Mapping[str, Any]]) -> tuple[str | Non
     return split_sha, gt_sha, split
 
 
+def model_size_mb(meta: Mapping[str, Any]) -> float | None:
+    """Size of the model that ships: ``int8_size_mb`` (legacy key) or ``model_size_mb`` (float16/float32 bundles)."""
+    value = meta.get("int8_size_mb")
+    if value is None:
+        value = meta.get("model_size_mb")
+    return None if value is None else float(value)
+
+
 def gate_cell(meta: Mapping[str, Any]) -> str:
-    size = meta.get("int8_size_mb")
+    size = model_size_mb(meta)
     lat = meta.get("latency_ms") or {}
     if size is None or any(lat.get(d) is None for d in DEVICES):
         return "belum diukur"
@@ -86,7 +94,7 @@ def build_rows(reports: Mapping[str, Mapping[str, Any]], meta: Mapping[str, Mapp
         m = meta.get(cand, {})
         lat = m.get("latency_ms") or {}
         rows.append([
-            f"`{cand}`",
+            f"`{cand}`" + (f" · {m['precision']}" if m.get("precision") else ""),
             metric_cell(anyc["image_level"], "sensitivity"),
             metric_cell(anyc["image_level"], "specificity"),
             metric_cell(perm["image_level"], "sensitivity"),
@@ -96,7 +104,7 @@ def build_rows(reports: Mapping[str, Mapping[str, Any]], meta: Mapping[str, Mapp
             fmt_ratio(perm.get("ap50")),
             fmt_ratio(prim.get("ap50")),
             fmt_ratio(ov.get("map50")) + fmt_ci(ov.get("map50_ci95")),
-            "belum diukur" if m.get("int8_size_mb") is None else f"{float(m['int8_size_mb']):.1f}",
+            "belum diukur" if model_size_mb(m) is None else f"{float(model_size_mb(m) or 0):.1f}",
             *("belum diukur" if lat.get(d) is None else f"{float(lat[d]):.0f}" for d in DEVICES),
             str(m.get("export_difficulty", "belum dinilai")),
             parity_cell(m),
@@ -109,7 +117,7 @@ def build_rows(reports: Mapping[str, Mapping[str, Any]], meta: Mapping[str, Mapp
 HEADER = [
     "Kandidat", "Sens karies apa pun (gambar, CI95)", "Spes karies apa pun (gambar, CI95)",
     "Sens gigi tetap (gambar, CI95)", "Spes gigi tetap (gambar, CI95)", "Sens gigi sulung (gambar, CI95)", "Spes gigi sulung (gambar, CI95)",
-    "AP50 tetap", "AP50 sulung", "mAP50 (CI95)", "INT8 MB (≤15)", "Latensi HP 3 GB (ms)", "Latensi HP 4 GB (ms, ≤1500)",
+    "AP50 tetap", "AP50 sulung", "mAP50 (CI95)", "Ukuran model MB (≤15)", "Latensi HP 3 GB (ms)", "Latensi HP 4 GB (ms, ≤1500)",
     "Kemudahan ekspor", "Paritas INT8", "Kejelasan lisensi bobot", "Gerbang ukuran+latensi",
 ]
 
@@ -129,6 +137,8 @@ LICENSES: dict[str, dict[str, str]] = {
 
 def parity_cell(meta: Mapping[str, Any]) -> str:
     v = meta.get("parity_passed")
+    if v is None and meta.get("precision") in ("float16", "float32"):
+        return "n/a (float)"
     return "belum diukur" if v is None else ("lulus" if v else "gagal")
 
 
@@ -264,6 +274,8 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--adr", action="store_true", help="fill the ADR template (bake_off/ADR-013-template.md) instead of the bare table")
     p.add_argument("--adr-template", type=Path, default=ADR_TEMPLATE)
     args = p.parse_args(argv)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")  # the report has "≤" and em dashes; a Windows console is cp1252
     if args.template:
         text = render_template()
         if args.out:

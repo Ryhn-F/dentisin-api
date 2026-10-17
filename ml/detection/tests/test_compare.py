@@ -49,6 +49,23 @@ def test_render_table() -> None:
     assert "decoder outside graph" in md and "patient_id missing" in md
 
 
+def test_float_bundle_meta_uses_model_size_and_labels_the_precision() -> None:
+    """A float16/float32 bundle has no int8_size_mb: the size gate uses model_size_mb, parity is n/a, the row names the precision."""
+    meta = {"yolox_nano": {"int8_size_mb": None, "model_size_mb": 3.7, "precision": "float32", "parity_passed": None,
+                           "latency_ms": {"ram_3gb": 900, "ram_4gb": 700}}}
+    md = cmp.render_markdown({"yolox_nano": fake_report()}, meta)
+    row = next(ln for ln in md.splitlines() if ln.startswith("| `yolox_nano`"))
+    assert "`yolox_nano` · float32" in row and "| 3.7 |" in row and "n/a (float)" in row and "lolos" in row
+    assert cmp.model_size_mb({}) is None and cmp.model_size_mb({"int8_size_mb": 2, "model_size_mb": 9}) == 2.0
+
+
+def test_main_prints_utf8_even_on_a_cp1252_console(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    rep = tmp_path / "r.json"
+    rep.write_text(json.dumps(fake_report()), encoding="utf-8")
+    assert cmp.main(["--report", f"a={rep}"]) == 0
+    assert "≤" in capsys.readouterr().out
+
+
 def test_refuses_mixed_splits() -> None:
     with pytest.raises(cmp.CompareError, match="different data"):
         cmp.render_markdown({"a": fake_report(), "b": fake_report(split_sha="t" * 64)}, {})

@@ -23,6 +23,9 @@ PRETRAINED = True           # True = mulai dari bobot COCO YOLOX (risiko lisensi
 EPOCHS = None               # None = nilai konfigurasi (150). Angka = jumlah epoch.
 BATCH_SIZE = None           # None = nilai konfigurasi (32). Turunkan ke 16 bila muncul "CUDA out of memory".
 ACT = "silu"                # Ganti ke "relu" HANYA bila sel 9/15 melaporkan "int8_ok = False" (INT8 tidak lolos) -> latih ulang.
+SHIP = "auto"               # Presisi model yang dikirim. "auto" = INT8 (bila gagal tetap dipakai & ditandai). "float32" / "float16" =
+                            # lewati INT8 sama sekali (di run 2026-10-17 INT8 menjatuhkan mAP50 0,83 -> 0,27); ukuran 4 / 2 MB, jauh di
+                            # bawah gerbang 15 MB. Ambang & evaluasi dihitung pada model yang dikirim.
 RESUME = True               # Colab: True = lanjut dari checkpoint run yang sama di Google Drive (bila ada). False = mulai dari
                             # awal (folder lama di Drive dipindah, tidak dihapus). Pengaturan berbeda (ACT/EPOCHS/...) = otomatis baru.
 TIME_BUDGET_H = 11.0        # Batas jam per sesi (Kaggle memutus di 12 jam). Pelatihan berhenti sendiri lebih awal,
@@ -199,13 +202,15 @@ if DONE:
 #      per-tensor) -> float16 -> float32. INT8 gagal TIDAK menghentikan run: dicatat (int8_ok) dan ditampilkan mencolok.
 if DONE:
     CHAIN = nbkit.tflite_chain(onnx=ONNX, calib=CALIB, samples=PARITY, out_root=TMP / "export", report_dir=WORK / "out",
-                               export_py=EXPORT_PY, det=DET)
+                               export_py=EXPORT_PY, det=DET, ship=SHIP)
     MODEL, TFL32, PRECISION, INT8_OK = Path(CHAIN["model"]), Path(CHAIN["float32"]), CHAIN["precision"], CHAIN["int8_ok"]
     SIZE = nbkit.size_gate(MODEL.stat().st_size, float(CFG["export"]["max_size_mb"]))
     SIZE_GATE = "report" if SMOKE_TEST else "enforce"  # smoke: the size gate is reported, never fatal
     print(json.dumps({k: CHAIN.get(k) for k in ("precision", "int8_method", "int8_ok", "onnx_simplified", "conversion_parity",
                                                  "model_size_mb")}, indent=1), "\nsize gate:", SIZE)
-    if not INT8_OK:
+    if SHIP != "auto":
+        print(f"SHIP = {SHIP!r}: konversi INT8 dilewati; model yang dikirim = {PRECISION} ({CHAIN['model_size_mb']} MiB).")
+    elif not INT8_OK:
         nbkit.banner([f"PERHATIAN: model INT8 TIDAK lolos (presisi dipakai: {PRECISION}; metode: {CHAIN['int8_method']}).",
                       "Run tetap dilanjutkan sampai zip unduhan; measurements_partial.json mencatat int8_ok = false.",
                       "Pemilik produk memutuskan: run ulang dengan ACT = 'relu' (sel 0) atau terima. Detail: out/conversion.json"])
@@ -231,21 +236,25 @@ if DONE:
     print(f"parity ({PRECISION} vs float32) passed:", parity["passed"], parity["failures"])
 
 # %% 11. Prediksi dengan bundel (preprocess + decode persis app) pada val dan test; float32 sebagai pembanding pada test
+#       (nama berkas memakai presisi bundel: preds_<presisi>_<split>.jsonl, report_<presisi>_<split>.json)
 if DONE:
     OUT = WORK / "out"
     common = ["--gt", P["canonical"], "--splits", P["splits"], "--images-root", DATA_ROOT]
     for split in ("val", "test"):
         nbkit.sh([EXPORT_PY, "predict.py", "--model", BUNDLE / "model.tflite", "--labels", BUNDLE / "labels.json", "--split", split,
-                  *common, "--out", OUT / f"preds_int8_{split}.jsonl"], cwd=DET, timeout=7200)
-    nbkit.sh([EXPORT_PY, "predict.py", "--model", TFL32, "--labels", BUNDLE / "labels.json", "--split", "test",
-              *common, "--out", OUT / "preds_float_test.jsonl"], cwd=DET, timeout=7200)
+                  *common, "--out", OUT / f"preds_{PRECISION}_{split}.jsonl"], cwd=DET, timeout=7200)
+    if PRECISION != "float32":  # the shipped model IS the float32 reference otherwise
+        nbkit.sh([EXPORT_PY, "predict.py", "--model", TFL32, "--labels", BUNDLE / "labels.json", "--split", "test",
+                  *common, "--out", OUT / "preds_float_test.jsonl"], cwd=DET, timeout=7200)
 
 # %% 12. Ambang pada VAL, lalu evaluasi (val + test, CI bootstrap per kelompok pasien). Model uji cepat boleh 0 deteksi.
 if DONE:
     THR = OUT / "thresholds.json"
-    nbkit.sh([EXPORT_PY, "thresholds.py", "--pred", OUT / "preds_int8_val.jsonl", "--gt", P["canonical"], "--splits", P["splits"],
+    nbkit.sh([EXPORT_PY, "thresholds.py", "--pred", OUT / f"preds_{PRECISION}_val.jsonl", "--gt", P["canonical"], "--splits", P["splits"],
               "--target-sensitivity", str(TARGET_SENSITIVITY), "--out", THR], cwd=DET)
-    for split, preds in (("val", "preds_int8_val.jsonl"), ("test", "preds_int8_test.jsonl"), ("test", "preds_float_test.jsonl")):
+    for split, preds in (("val", f"preds_{PRECISION}_val.jsonl"), ("test", f"preds_{PRECISION}_test.jsonl"), ("test", "preds_float_test.jsonl")):
+        if not (OUT / preds).is_file():  # no float32 comparator when the bundle itself is float32
+            continue
         tag = preds.replace("preds_", "").replace(".jsonl", "")
         nbkit.sh([EXPORT_PY, "eval.py", "--gt", P["canonical"], "--splits", P["splits"], "--split", split, "--pred", OUT / preds,
                   "--metadata", META_CSV, "--thresholds", THR, "--candidate", CANDIDATE, "--model-version", VERSION,
@@ -256,7 +265,7 @@ if DONE:
     FINAL = EXPORTS / nbkit.next_dev_version(EXPORTS, VERSION_BASE)  # bundles are immutable -> next dev number
     nbkit.sh([EXPORT_PY, "export.py", "--cfg", RUN_CFG, "--format", "tflite", "--precision", PRECISION, "--size-gate", SIZE_GATE,
               "--tflite-in", MODEL, "--out", FINAL, "--run-id", run["run_id"], "--thresholds", THR,
-              "--eval-report", OUT / "report_int8_test.json", "--parity-report", PARITY_JSON, "--allow-unverified-license"], cwd=DET)
+              "--eval-report", OUT / f"report_{PRECISION}_test.json", "--parity-report", PARITY_JSON, "--allow-unverified-license"], cwd=DET)
     nbkit.sh([EXPORT_PY, "export.py", "verify-bundle", FINAL, "--size-gate", SIZE_GATE], cwd=DET)
 
 # %% 14. Catatan run + zip unduhan (TANPA gambar, TANPA .npy, TANPA checkpoint)
@@ -287,7 +296,7 @@ if MIRROR is not None:  # last copy to Google Drive (outputs, exports, the downl
     print("Drive (salinan terakhir):", {k: len(v) for k, v in MIRROR.stop().items()})
     FINAL_DIR = DIRS["persist"] / WORK.name
 print(f"\nSelesai dalam {(time.time() - T0) / 3600:.2f} jam. SMOKE_TEST = {SMOKE_TEST}.")
-if DONE and not (INT8_OK and SIZE["ok"]):
+if DONE and not ((INT8_OK or SHIP != "auto") and SIZE["ok"]):
     nbkit.banner([f"RINGKASAN: presisi {PRECISION}, int8_ok = {INT8_OK}, gerbang ukuran ok = {SIZE['ok']} -- lihat out/conversion.json."])
 if SMOKE_TEST:
     print("UJI CEPAT BERHASIL. Ubah SMOKE_TEST = False di sel 0, lalu "

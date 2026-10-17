@@ -70,6 +70,7 @@ Sel 0 (yang boleh diubah):
 | `EPOCHS`, `BATCH_SIZE` (+ `QAT_EPOCHS` MediaPipe) | `None` | `None` = nilai konfigurasi repo (YOLOX 150/32; MediaPipe 30/8 + 10 QAT) |
 | `PRETRAINED` (YOLOX) | `True` | `False` = tanpa bobot COCO (bebas isu lisensi bobot; butuh ±300 epoch) |
 | `ACT` (YOLOX) | `"silu"` | `"relu"` hanya bila paritas INT8 gagal (§8) |
+| `SHIP` (YOLOX) | `"auto"` | `"auto"` = INT8 (gagal paritas tetap dipakai & ditandai). `"float32"`/`"float16"` = lewati INT8 sama sekali; model 4/2 MB masih jauh di bawah gerbang 15 MB. Dipakai sejak INT8 YOLOX menjatuhkan mAP50 0,83 → 0,27 (Kaggle 2026-10-17) |
 | `RESUME` (YOLOX) | `True` | Colab: `True` = lanjut dari checkpoint run yang sama di Google Drive; `False` = mulai dari awal (§3b) |
 | `TIME_BUDGET_H` | `11.0` | jam per sesi; pelatihan berhenti lebih awal agar ekspor sempat jalan |
 | `TARGET_SENSITIVITY` | `0.85` | titik operasi teknis pada data val |
@@ -82,6 +83,12 @@ SESI TERCAPAI", dan sel 7–14 dilewati (versi tetap tersimpan). Lalu:
 2. *Save Version* → *Save & Run All* lagi. Pelatihan melanjutkan dari epoch terakhir (dicari otomatis di input
    `.../yolox_outputs`; keluaran uji cepat `*_smoke` diabaikan).
 MediaPipe Model Maker **tidak bisa** resume: bila waktu habis, ulangi dengan `EPOCHS` lebih kecil.
+
+### Ekspor/ evaluasi ulang tanpa melatih lagi — hanya YOLOX
+Mis. untuk mengganti presisi (`SHIP = "float32"`) setelah pelatihan 150 epoch selesai: *Add Input* → *Notebook Output Files* →
+versi yang sudah selesai latih; `SMOKE_TEST = False`; ubah `SHIP`; *Save & Run All*. Checkpoint epoch 150 ditemukan otomatis, jadi sel 6
+selesai dalam beberapa menit tanpa epoch baru; sisanya (ekspor, prediksi val+test, ambang, evaluasi) ±20–30 menit.
+Ambang skor ikut dihitung ulang pada model yang dikirim — itu yang membuat sens/spes tingkat gambar adil antar-presisi.
 
 ## 3b. Jalur Google Colab (hanya YOLOX)
 Dipakai bila kuota Kaggle habis. Berkas yang sama: `yolox_nano_kaggle.ipynb` (satu notebook untuk dua platform).
@@ -139,8 +146,9 @@ Dua uji cepat + dua run penuh ≈ 7–12,5 jam dari kuota ±30 jam/minggu.
 1. Versi selesai → tab **Output** → unduh **`outputs/<kandidat>/download_<kandidat>.zip`** saja (sel terakhir menandainya
    "UNDUH INI"). Zip ini tanpa gambar, tanpa `.npy`, tanpa checkpoint.
 2. Ekstrak ke `backend/ml/runs/kaggle/<kandidat>/<YYYYMMDD>/` (folder `ml/runs/` di-*gitignore* — **jangan commit**).
-3. Isi: `RUN_SUMMARY.json` (sha256 tiap berkas), `run.json`, `report_int8_val.json`, `report_int8_test.json`,
-   `report_float_test.json`, `thresholds.json`, `parity.json`, `measurements_partial.json`, `env.json` (sumber kode +
+3. Isi: `RUN_SUMMARY.json` (sha256 tiap berkas), `run.json`, `report_<presisi>_val.json`, `report_<presisi>_test.json`
+   (`<presisi>` = presisi bundel: `int8`, `float16` atau `float32`), `report_float_test.json` (pembanding float32; tidak ada bila
+   bundelnya float32), `thresholds.json`, `parity.json`, `measurements_partial.json`, `env.json` (sumber kode +
    commit, sumber data), konfigurasi run, dan bundel `0.1.0-dev.N/` (`model.tflite`, `labels.json`, `MODEL_CARD.md`, `SHA256`).
 4. **Jangan** salin bundel dev ke `ml/exports/` — bundel resmi hanya lewat item 4.6 setelah ADR bake-off.
 5. Hasil uji cepat (`*_smoke`) **tidak** dipakai untuk bake-off (metriknya tidak bermakna).
@@ -149,8 +157,8 @@ Dua uji cepat + dua run penuh ≈ 7–12,5 jam dari kuota ±30 jam/minggu.
 ```bash
 cd backend/ml/detection
 uv run python bake_off/compare.py --adr \
-  --report yolox_nano=../runs/kaggle/yolox_nano/<tgl>/download_yolox_nano/report_int8_test.json \
-  --report mediapipe_modelmaker_mobilenetv2_ssd=../runs/kaggle/mediapipe_modelmaker_mobilenetv2_ssd/<tgl>/download_mediapipe_modelmaker_mobilenetv2_ssd/report_int8_test.json \
+  --report yolox_nano=../runs/kaggle/yolox_nano/<tgl>/download_yolox_nano/report_<presisi>_test.json \
+  --report mediapipe_modelmaker_mobilenetv2_ssd=../runs/kaggle/mediapipe_modelmaker_mobilenetv2_ssd/<tgl>/download_mediapipe_modelmaker_mobilenetv2_ssd/report_<presisi>_test.json \
   --meta ../runs/kaggle/yolox_nano/<tgl>/download_yolox_nano/measurements_partial.json \
   --meta ../runs/kaggle/mediapipe_modelmaker_mobilenetv2_ssd/<tgl>/download_mediapipe_modelmaker_mobilenetv2_ssd/measurements_partial.json \
   --out bake_off/ADR-draft.md

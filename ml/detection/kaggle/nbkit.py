@@ -1163,9 +1163,12 @@ def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, repo
                  timeout: float = 1500.0, int8_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_INT8_ATTEMPTS,
                  float_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_FLOAT_ATTEMPTS,
                  fallback_int8_attempts: Sequence[tuple[str, Sequence[str]]] = ONNX2TF_INT8_FALLBACK_ATTEMPTS,
-                 fallback_timeout: float = 420.0,
+                 fallback_timeout: float = 420.0, ship: str = "auto",
                  log: Callable[[str], None] = print) -> dict[str, Any]:
     """ONNX -> TFLite with fallbacks; NEVER raises because INT8 failed, only when not even a float32 TFLite exists.
+
+    ``ship``: "auto" (below) or "float32" / "float16" -- skip INT8 entirely (its collapse is already known: YOLOX-Nano
+    INT8 mAP50 0.27 vs 0.83 float, Kaggle 2026-10-17) and convert float only; the model is 4 / 2 MB, far inside the 15 MB gate.
 
     0. ``onnxsim`` the graph (unsimplified graphs broke flatbuffer_direct INT8 on an EQUAL op; failure -> continue).
     1. INT8 attempts in order (:data:`ONNX2TF_INT8_ATTEMPTS`); each INT8 file of a run with exit code 0 gets a tensor
@@ -1176,6 +1179,8 @@ def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, repo
        (from a successful INT8 run, else a float-only run) -> ``precision`` float16/float32, ``int8_ok`` False.
     The float32 TFLite is also compared with the ONNX graph itself (``conversion_parity``).
     Writes ``report_dir/conversion.json``; returns the same dict."""
+    if ship not in ("auto", "float32", "float16"):
+        raise ValueError(f"ship must be 'auto', 'float32' or 'float16', got {ship!r}")
     runner = run or sh
     out_root.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -1251,8 +1256,10 @@ def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, repo
             if any(c["parity"] and c["parity"]["passed"] for c in rec["candidates"]):
                 break
 
-    int8_attempts_loop(int8_attempts, None)
-    if not any(c["parity"] is not None for c in rec["candidates"]):
+    rec["ship"] = ship
+    if ship == "auto":
+        int8_attempts_loop(int8_attempts, None)
+    if ship == "auto" and not any(c["parity"] is not None for c in rec["candidates"]):
         # tf_converter gave no INT8 model that the interpreter could even run: only now try the flatbuffer_direct
         # variants, with a short limit (they hung for 25 min each on Kaggle 2026-10-14)
         log(f"no usable INT8 model from the primary attempts -> fallback attempts (limit {fallback_timeout / 60:.0f} min each)")
@@ -1281,12 +1288,14 @@ def tflite_chain(*, onnx: Path, calib: Path, samples: Path, out_root: Path, repo
         f32 = run0["float32"]
         f16 = run0.get("float16")
         assert f32 is not None
-        f16_rep = parity(f32, f16, "parity_tensor_float16.json") if f16 is not None else None
-        precision = "float16" if f16 is not None and f16_rep is not None else "float32"
+        want16 = ship != "float32"
+        f16_rep = parity(f32, f16, "parity_tensor_float16.json") if f16 is not None and want16 else None
+        precision = "float16" if f16 is not None and f16_rep is not None and want16 else "float32"
         rec["candidates"].append({"attempt": "float16", "kind": "float16", "model": str(f16), "float32": str(f32),
                                   "parity": _parity_summary(f16_rep), "_cos": first_cosine(f16_rep)} if f16 is not None else {})
         rec.update(precision=precision, int8_ok=False, model=str(f16 if precision == "float16" else f32), float32=str(f32),
-                   int8_method=f"none -- no usable INT8 model; fallback {precision}")
+                   int8_method=(f"none -- no usable INT8 model; fallback {precision}" if ship == "auto"
+                                else f"skipped (ship={ship}) -- shipping {precision}"))
     conv = parity(src, Path(rec["float32"]), "parity_conversion_onnx_vs_float32.json")
     rec["conversion_parity"] = _parity_summary(conv)
     for c in rec["candidates"]:

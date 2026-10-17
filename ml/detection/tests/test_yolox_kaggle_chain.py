@@ -660,13 +660,30 @@ class FakeTools:
 ALL = ("float32", "float16", "integer_quant", "full_integer_quant")
 
 
-def _chain(tmp_path: Path, tools: FakeTools) -> dict[str, Any]:
+def _chain(tmp_path: Path, tools: FakeTools, **kw: Any) -> dict[str, Any]:
     tmp_path.mkdir(parents=True, exist_ok=True)
     onnx = tmp_path / "m.onnx"
     onnx.write_bytes(b"onnx")
     return nbkit.tflite_chain(onnx=onnx, calib=tmp_path / "c.npy", samples=tmp_path / "s.npy", out_root=tmp_path / "export",
                               report_dir=tmp_path / "out", export_py=tmp_path / "venv" / "bin" / "python", det=DET, run=tools,
-                              log=lambda s: None)
+                              log=lambda s: None, **kw)
+
+
+def test_chain_ship_float_skips_int8_entirely(tmp_path: Path) -> None:
+    """YOLOX-Nano INT8 collapsed (mAP50 0.27 vs 0.83 float, Kaggle 2026-10-17): ship=float* converts float only.
+    FakeTools raises KeyError for any INT8 attempt name, so an INT8 conversion would fail this test."""
+    tools = FakeTools({"tf_converter_float": (0, ("float32", "float16"), {})})
+    rec = _chain(tmp_path, tools, ship="float16")
+    assert rec["precision"] == "float16" and rec["int8_ok"] is False and rec["model"].endswith("m_float16.tflite")
+    assert rec["ship"] == "float16" and rec["int8_method"].startswith("skipped (ship=float16)")
+    assert [a["name"] for a in rec["attempts"]] == ["tf_converter_float"]
+    rec32 = _chain(tmp_path / "b", FakeTools({"tf_converter_float": (0, ("float32", "float16"), {})}), ship="float32")
+    assert rec32["precision"] == "float32" and rec32["model"].endswith("m_float32.tflite")
+    only32 = _chain(tmp_path / "c", FakeTools({"tf_converter_float": (0, ("float32",), {})}), ship="float16")
+    assert only32["precision"] == "float32"  # no float16 file -> float32
+    assert _chain(tmp_path / "d", FakeTools({"tf_converter": (0, ALL, {"integer_quant": 0.995})}))["ship"] == "auto"
+    with pytest.raises(ValueError, match="ship must be"):
+        _chain(tmp_path / "e", FakeTools({}), ship="int4")
 
 
 def test_chain_tf_converter_int8_ok(tmp_path: Path) -> None:
