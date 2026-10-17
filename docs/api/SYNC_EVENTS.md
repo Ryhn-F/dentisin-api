@@ -58,7 +58,7 @@ Respons HTTP 200: array dengan **jumlah dan urutan sama** dengan input.
 |---|---|---|---|
 | `schema_invalid` | kunci/tipe/nilai tidak sesuai, payload > 8 KiB, `child_id` tidak valid, waktu di luar rentang, pelanggaran CHECK/NOT NULL/enum, path foto tidak cocok atau objek belum ada | ya (kecuali amplop/`event_id` tidak valid) | bug klien atau data lokal rusak: buang dari antrean, catat lokal (tanpa PII); jangan kirim ulang |
 | `unknown_event_type` | `type` bukan salah satu dari 8 | ya | bug versi app; jangan kirim ulang |
-| `forbidden` | bukan pemilik/anggota roster anak itu, **akun anak mengirim tipe di luar yang diizinkan atau untuk anak lain, atau akun non-anak mengirim `screening_requested` / `brushing_proof_registered`**, peran kurang (mis. `paper_via_kader` tanpa peran kader), RLS menolak, referensi (mis. `screening_id` di rujukan) tidak ada/bukan milik anak itu, atau anak tidak ada pada event non-consent | ya | event tidak sah untuk akun ini; buang |
+| `forbidden` | bukan pemilik/anggota roster anak itu, **akun anak mengirim tipe di luar yang diizinkan atau untuk anak lain, atau akun non-anak mengirim `screening_requested`, atau akun yang bukan anak dan bukan kader pemilik mengirim `brushing_proof_registered`**, peran kurang (mis. `paper_via_kader` tanpa peran kader), RLS menolak, referensi (mis. `screening_id` di rujukan) tidak ada/bukan milik anak itu, atau anak tidak ada pada event non-consent | ya | event tidak sah untuk akun ini; buang |
 | `consent_required` | consent (b) tidak aktif (event data) atau consent (c) tidak aktif (foto) | ya | kirim `consent_changed` yang diperlukan **lebih dulu** lalu kirim data sebagai event **baru** (`event_id` baru). Bila consent ditarik, hapus event data anak itu dari outbox |
 | `feature_disabled` | flag `dataset_contribution` mati (`image_upload_registered`) | ya | jangan unggah foto; buang event |
 | `limit_exceeded` | batas harian permintaan skrining / video bukti, atau ukuran/durasi video melewati batas (`app_setting`, lihat `ACCOUNTS_AND_FLOWS.md` §3 `limits`) | ya | jangan kirim ulang; beri tahu pengguna dan coba lagi besok / perkecil video |
@@ -165,7 +165,7 @@ Urutan cek: bukan akun anak / bukan anaknya / akun dinonaktifkan (`forbidden`) -
 
 Batas `request_max_per_child_per_day` (bawaan 5 per hari kalender WIB). Status awal `pending`; kedaluwarsa `request_expiry_days` (14). Server tidak menilai level dari permintaan (red flag tetap tanggung jawab app/kuesioner).
 
-### 3.8 `brushing_proof_registered` (hanya akun anak; ADR 017)
+### 3.8 `brushing_proof_registered` (akun anak, atau kader pemilik anak; ADR 017)
 
 Mendaftarkan metadata video bukti sikat gigi **sebelum** berkas diunggah. Kunci (semua wajib): `proof_id`, `child_id`, `brushing_event_id`, `size_bytes`, `duration_s`, `mime`.
 Urutan cek: `forbidden` -> `deletion_pending` -> flag `brushing_proof_video` (`feature_disabled`) -> consent (b) **dan (d)** (`consent_required`) -> ukuran/durasi/batas harian (`limit_exceeded`) -> `brushing_event_id` milik anak itu sudah ada (`schema_invalid`).
@@ -181,6 +181,8 @@ Urutan cek: `forbidden` -> `deletion_pending` -> flag `brushing_proof_video` (`f
 Server membentuk `object_path = <guardian_id>/<child_id>/<proof_id>.mp4` (`.mov` untuk `video/quicktime`); **unggah ke bucket `brushing_proofs` setelah event ini `applied`** ([`SUPABASE_API.md`](SUPABASE_API.md) §4, alur lengkap: [`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md) §2.4). Batas harian `proof_max_per_child_per_day` (bawaan 3, hari WIB); retensi `proof_retention_days` (7).
 
 Akun anak hanya boleh mengirim `brushing_recorded`, `screening_requested`, dan `brushing_proof_registered`, hanya untuk anaknya sendiri; tipe lain -> `forbidden`.
+
+**Kader (amandemen 2026-10-18):** kader (peran `kader`) juga boleh mengirim `brushing_proof_registered`, hanya untuk anak yang **ia miliki** (roster sendiri); `uploaded_by` = kader dan path `<kader_id>/<child_id>/<proof_id>.(mp4|mov)`. Gerbang dan batas sama; consent (d) murid dapat dicatat kader dengan `consent_changed` `method: "paper_via_kader"`. Akun guardian/remaja biasa tetap `forbidden`. Kader tidak boleh mengirim `screening_requested`.
 
 ## 4. Idempotensi
 

@@ -47,6 +47,9 @@ Tombol: [Saya setuju] [Tidak sekarang] (jika tidak setuju: aplikasi tetap bisa d
 > Saya dapat **menarik** persetujuan ini kapan saja: video yang ada langsung disembunyikan dan dihapus dari server, dan video baru tidak dapat dikirim. Menolak pilihan ini **tidak** mengurangi fitur lain; anak tetap bisa menyikat gigi dan mencatat streak tanpa video.
 > `[ISI: teks final menunggu tinjauan hukum Q-15/Q-18 dan KEPK bila diteliti]`
 
+**Varian kader/ sekolah (`consent-d-kader-v0.1-draft-id`, izin kertas via kader):**
+> Saya orang tua/ wali murid ini. Saya mengizinkan **kader/ guru pendamping** merekam **video singkat saat murid menyikat gigi** di sekolah dan menyimpannya di server privat di Singapura. Video hanya dapat dilihat oleh **kader yang merekam**, tidak dipakai untuk melatih model, tidak dibagikan ke puskesmas/ pihak lain, dan dihapus otomatis paling lama **7 hari**. Saya dapat menarik izin kapan saja. Menolak tidak mengurangi layanan lain. `[ISI: nama kader/ sekolah, tinjauan hukum Q-19]`
+
 ## Assent anak — `assent-child-v0.1-draft-id` (bahasa sederhana, mode anak)
 > Halo! Aplikasi ini membantu melihat gigimu dengan foto dan kamera. Hasilnya bukan dari dokter. Kalau ada yang perlu dilihat, kamu akan diajak ke puskesmas atau dokter gigi.
 > Kamu boleh bilang "tidak mau" kapan saja, dan kamu tidak akan dimarahi.

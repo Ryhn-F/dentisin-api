@@ -2,6 +2,13 @@
 
 Format: tanggal (YYYY-MM-DD), perubahan pada kontrak yang didokumentasikan. Perubahan kontrak nyata (migrasi, aturan, model) tetap dicatat di `../regulatory/CHANGELOG.md` dan ADR; berkas ini hanya melacak dokumen di `docs/api/`.
 
+## 2026-10-18 (kader, amandemen ADR 017)
+
+- Kader **tidak** membuat akun anak: `child-accounts` menjawab 403 untuk peran `kader`; database menolak pemilik berperan `kader` (`child_account_invalid`).
+- Video bukti tersedia juga bagi kader sebagai riwayat atas murid miliknya: `brushing_proof_registered` (+ unggah `brushing_proofs`) dari kader pemilik anak; `list_brushing_proofs`, `mark_proof_viewed`, `delete_brushing_proof`, `child_history` bekerja untuk kader pemilik. `facility_viewer`/admin tetap tanpa akses.
+- `my_account()` memuat `capabilities` (`create_child_accounts`, `register_proofs`). Perubahan aditif.
+- Dokumen: `ACCOUNTS_AND_FLOWS.md` §2.8, `SYNC_EVENTS.md` §3.8, `SUPABASE_API.md`, `EDGE_FUNCTIONS_AND_HOOKS.md` §1.5.
+
 ## 2026-10-18 (akun v2, ADR 017)
 
 - Baru: `ACCOUNTS_AND_FLOWS.md` (jenis akun, daftar remaja/orang tua, orang tua membuat akun anak, login anak, streak + video bukti, permintaan skrining, riwayat, hak akses, galat, daftar periksa UI).

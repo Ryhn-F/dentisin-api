@@ -1,8 +1,9 @@
 # Akun, login anak, streak, bukti video, permintaan skrining, riwayat
 
 > **Ringkasan (ID).** Ada tiga jenis akun: **orang tua** (`guardian`), **remaja** (`teen`, untuk dirinya sendiri), dan **akun anak** (`child`, dibuat oleh orang tua). Anak masuk dengan **email orang tua + username anak + password anak** lewat Edge Function `child-login`, lalu memakai sesi Supabase biasa; hak anak dibatasi di database (RLS), bukan di app. Anak hanya bisa: mencatat sikat gigi (streak), merekam video bukti sikat gigi, dan **meminta skrining** ke orang tua. **Skrining dilakukan oleh akun orang tua/remaja.** Orang tua menonton bukti, menandai permintaan, dan melihat riwayat.
+> **Kader (amandemen 2026-10-18):** kader **tidak** membuat akun anak. Fitur video bukti juga tersedia untuk kader sebagai riwayat atas murid yang ia miliki (bagian 2.8).
 > Keputusan dan alasan: [ADR 017](../../../docs/decisions/017-account-model-v2.md). Dokumen ini: alur lengkap, kontrak panggilan, tabel hak, galat, dan daftar periksa UI. Pelengkap: [`SYNC_EVENTS.md`](SYNC_EVENTS.md) (tipe event baru), [`SUPABASE_API.md`](SUPABASE_API.md) (RPC, Storage), [`EDGE_FUNCTIONS_AND_HOOKS.md`](EDGE_FUNCTIONS_AND_HOOKS.md) (`child-accounts`, `child-login`).
-> Status verifikasi (2026-10-18): skema, RLS, RPC, dan event diuji pgTAP pada Postgres 17 tanpa Docker (476 asersi, 17 berkas, migrasi dijalankan dua kali); Edge Function diuji Deno dengan klien tiruan (122 uji). `supabase test db` kanonik belum dijalankan (Docker mati). **Belum dijalankan terhadap proyek dev yang hidup** dan belum e2e dari HP (`[PERLU VERIFIKASI]`, lihat bagian 11).
+> Status verifikasi (2026-10-18): skema, RLS, RPC, dan event diuji pgTAP pada Postgres 17 tanpa Docker (501 asersi, 18 berkas, migrasi dijalankan dua kali); Edge Function diuji Deno dengan klien tiruan (122 uji). `supabase test db` kanonik belum dijalankan (Docker mati). **Belum dijalankan terhadap proyek dev yang hidup** dan belum e2e dari HP (`[PERLU VERIFIKASI]`, lihat bagian 11).
 
 ## 1. Tiga jenis akun
 
@@ -18,6 +19,8 @@
 | Tonton / hapus bukti | ya | ya | **tidak** (tidak bisa membaca ulang) |
 | Kelola akun anak | ya | tidak | tidak |
 | Hapus data / akun | ya | ya | **tidak** |
+
+**Kader** adalah peran tambahan pada akun bertipe `guardian` (diberikan admin, bukan dipilih saat daftar). Kader tidak membuat akun anak, tetapi dapat merekam dan melihat video bukti murid miliknya (bagian 2.8).
 
 Pilihan `guardian` / `teen` dibuat saat `signUp`; app membaca jenis akun dari `my_account()` (bagian 3), jangan menyimpulkannya dari tebakan di sisi klien.
 
@@ -90,7 +93,7 @@ const res = await fetch(`${SUPABASE_URL}/functions/v1/child-accounts`, {
 |---|---|---|
 | 400 | `invalid_body` | `action`/`child_id` salah atau body > 4 KiB: bug klien |
 | 401 | `unauthorized` | JWT hilang/kedaluwarsa: refresh sesi / masuk ulang |
-| 403 | `forbidden` | pemanggil remaja atau akun anak |
+| 403 | `forbidden` | pemanggil remaja, akun anak, atau **kader** (kader tidak membuat/mengelola akun anak) |
 | 404 | `child_not_found` | anak bukan milik pemanggil **atau** belum ada di server (sama persis) → pastikan sinkron `applied`; atau `reset_password` untuk anak yang belum punya akun |
 | 409 | `child_already_has_account` | tampilkan "akun anak sudah ada" (ubah lewat reset/nonaktifkan) |
 | 409 | `child_account_limit` | batas `max_child_accounts_per_guardian` tercapai |
@@ -239,7 +242,7 @@ await supabase.rpc('delete_brushing_proof', { p_proof: p.id });   // sembunyikan
 
 - `object_present = false`: pendaftaran sudah masuk tetapi berkas belum tiba (anak belum selesai mengunggah); tampilkan "belum selesai diunggah".
 - Hanya klip hidup yang dikembalikan (`uploaded`/`viewed`, belum kedaluwarsa, belum dihapus, consent `d` aktif). Tampilkan sisa waktu dari `expires_at` ("dihapus otomatis dalam N hari") dan tombol Hapus.
-- URL bertanda tangan: ≤ 300 detik; buat baru tiap memutar. Video hanya untuk orang tua/remaja pemilik; kader, fasilitas kesehatan, dan admin tidak punya akses.
+- URL bertanda tangan: ≤ 300 detik; buat baru tiap memutar. Video hanya untuk pemilik anak (orang tua/remaja, atau kader untuk murid yang ia miliki, bagian 2.8); fasilitas kesehatan dan admin tidak punya akses.
 
 ### 2.7 Riwayat dan streak
 
@@ -269,6 +272,16 @@ const { data: streak } = await supabase.rpc('brushing_streak', { p_child: childI
 - `status` permintaan pada riwayat sudah efektif (pending/seen yang lewat waktu = `expired`).
 - **Streak**: dihitung server per hari kalender zona `p_tz` (nama zona IANA; salah → `invalid_timezone`). `current` = hari berturut-turut sampai hari ini, atau sampai kemarin bila hari ini belum terhitung (`today_done=false`) — tampilkan "sikat gigi hari ini supaya streak tidak putus". Untuk mode offline, app tetap boleh menghitung streak lokal; angka server menjadi acuan setelah sinkron.
 
+### 2.8 Kader: video bukti sebagai riwayat (amandemen 2026-10-18)
+
+Kader (peran `kader` pada akun bertipe `guardian`) **tidak membuat dan tidak mengelola akun anak** (`child-accounts` dan database menolaknya). Murid kader adalah profil anak yang **dimiliki kader sendiri** (roster), jadi tidak ada akun login anak untuk mereka. Fitur video tersedia bagi kader sebagai riwayat:
+
+1. Persetujuan: consent `b` dan `d` untuk murid itu. Bila orang tua memberi izin di atas kertas, kader mencatatnya dengan `consent_changed` `method: "paper_via_kader"` (lihat [`SYNC_EVENTS.md`](SYNC_EVENTS.md) §3.1). Tanpa `d`: `consent_required`.
+2. Kader merekam sesi sikat gigi murid dari **akun kader sendiri**, mengompres klip (aturan sama dengan bagian 2.4), lalu mengirim `brushing_recorded` + `brushing_proof_registered` (`child_id` = murid milik kader) dan mengunggah ke `<kader_id>/<child_id>/<proof_id>.mp4` setelah `applied`. Kader hanya bisa mendaftarkan bukti untuk anak yang **ia miliki**; anak orang lain atau anak yang dimiliki orang tua -> `forbidden`.
+3. Riwayat: `child_history` (jenis `brushing_proof` dan `brushing`), `list_brushing_proofs`, `createSignedUrl`, `mark_proof_viewed`, `delete_brushing_proof` bekerja untuk kader pada anak miliknya persis seperti untuk orang tua (bagian 2.6, 2.7). `list_children().unviewed_proofs` memberi lencana.
+4. Batas, retensi 7 hari, penghapusan otomatis, dan penghapusan oleh pemilik **sama persis**. Fasilitas kesehatan (`facility_viewer`) dan admin tetap tidak punya akses ke video.
+5. UI: tampilkan fitur ini hanya bila `my_account().capabilities.register_proofs` bernilai `true`; sembunyikan "Buat akun anak" bila `capabilities.create_child_accounts` bernilai `false`.
+
 ## 3. `my_account()` — satu panggilan untuk routing app
 
 ```json
@@ -277,6 +290,7 @@ const { data: streak } = await supabase.rpc('brushing_streak', { p_child: childI
   "child_account": { "child_id": "…", "guardian_id": "…", "username": "si.budi",
                     "disabled": false, "sync_allowed": true, "proof_allowed": true },
   "flags": { "brushing_proof_video": true },
+  "capabilities": { "create_child_accounts": true, "register_proofs": false },
   "limits": { "teen_min_age": 10, "teen_max_age": 19, "max_child_accounts_per_guardian": 6,
               "streak_min_duration_s": 60, "request_max_per_child_per_day": 5, "request_expiry_days": 14,
               "proof_max_bytes": 10485760, "proof_max_duration_s": 180,
@@ -311,7 +325,7 @@ Satu baris per anak milik pemanggil (remaja: profil dirinya): `child_id, is_self
 | `screening`, `referral`, `image_upload` | seperti sebelumnya | **tidak ada** |
 | `brushing_event` | baca, catat | catat dan baca miliknya |
 | `screening_request` | baca; ubah status lewat RPC | buat (via `sync_events`) dan baca miliknya |
-| `brushing_proof` + Storage `brushing_proofs` | baca metadata, tandai dilihat, hapus, tonton lewat URL bertanda tangan | daftar + unggah; tidak bisa membaca berkas |
+| `brushing_proof` + Storage `brushing_proofs` | baca metadata, tandai dilihat, hapus, tonton lewat URL bertanda tangan (kader: juga mendaftar + mengunggah untuk murid miliknya) | daftar + unggah; tidak bisa membaca berkas |
 | `child_account` | baca akun anaknya (tanpa kredensial) | baca barisnya sendiri |
 | `request_deletion` | ya | **tidak** (`forbidden`) |
 | `sync_events` | semua tipe lama | hanya `brushing_recorded`, `screening_requested`, `brushing_proof_registered` untuk anak itu sendiri |
@@ -335,7 +349,7 @@ Galat RPC datang sebagai respons PostgREST dengan `code` = SQLSTATE dan `message
 
 ## 8. Tipe event baru di `sync_events`
 
-Ringkas (rinci di [`SYNC_EVENTS.md`](SYNC_EVENTS.md) §3.7–3.8): `screening_requested` dan `brushing_proof_registered` (hanya akun anak); `screening_recorded` menerima `request_id` opsional; `consent_changed` menerima jenis `d`; kode penolakan baru `limit_exceeded`. Akun anak yang mengirim tipe lain → `forbidden`; orang tua/remaja/kader yang mengirim dua tipe baru → `forbidden`. Urutan gerbang: `forbidden` → `deletion_pending` → `feature_disabled` (video) → `consent_required` → `limit_exceeded` → `schema_invalid`.
+Ringkas (rinci di [`SYNC_EVENTS.md`](SYNC_EVENTS.md) §3.7–3.8): `screening_requested` (hanya akun anak) dan `brushing_proof_registered` (akun anak, atau kader pemilik anak); `screening_recorded` menerima `request_id` opsional; `consent_changed` menerima jenis `d`; kode penolakan baru `limit_exceeded`. Akun anak yang mengirim tipe lain → `forbidden`; orang tua/remaja yang mengirim kedua tipe baru, atau kader yang mengirim `screening_requested` → `forbidden`. Urutan gerbang: `forbidden` → `deletion_pending` → `feature_disabled` (video) → `consent_required` → `limit_exceeded` → `schema_invalid`.
 
 ## 9. Penghapusan dan pembersihan otomatis
 
@@ -360,6 +374,11 @@ Ringkas (rinci di [`SYNC_EVENTS.md`](SYNC_EVENTS.md) §3.7–3.8): `screening_re
 - [ ] Pemutar bukti (URL ≤ 300 detik), sisa waktu retensi, hapus; teks consent `d`.
 - [ ] Riwayat per anak (`child_history`) dan streak (`brushing_streak`).
 
+**Kader**
+- [ ] Tidak ada menu "Buat akun anak" (`capabilities.create_child_accounts === false`).
+- [ ] Rekam + kompres + unggah video murid hanya bila `capabilities.register_proofs`; consent `b` + `d` per murid (kertas: `paper_via_kader`).
+- [ ] Riwayat murid: `child_history`, pemutar bukti, hapus; lencana `unviewed_proofs`.
+
 **Anak (kelas 4 SD, kosakata sederhana)**
 - [ ] Beranda hanya: streak, mulai sikat gigi, "Gigiku sakit" (minta periksa). Tidak ada hasil skrining, foto, rujukan, pengaturan akun, atau hapus.
 - [ ] Rekam video bukti hanya bila `proof_allowed`; kompres; tampilkan kemajuan unggah; batasi sesuai `limits`.
@@ -377,6 +396,7 @@ Ringkas (rinci di [`SYNC_EVENTS.md`](SYNC_EVENTS.md) §3.7–3.8): `screening_re
 | Alamat IP untuk throttle | Dibaca dari `cf-connecting-ip`, lalu hop pertama `x-forwarded-for`; apakah Supabase meneruskan header itu **belum diverifikasi** |
 | OPTIONS/CORS web | Apakah preflight lolos dengan `verify_jwt=true` belum diverifikasi (hanya berpengaruh pada web) |
 | Belum dijalankan live | Migrasi `20261017*`, kedua Edge Function, dan Storage belum di-push ke proyek dev; belum ada uji HTTP e2e dan uji di HP. Jangan mengandalkan perilaku nyata sebelum backend memberi tahu "dev sudah di-deploy" |
-| Akun kader | Akun kader bertipe `guardian` sehingga secara teknis dapat membuat akun anak untuk anak yang ia miliki sendiri; belum diblokir (keputusan produk). App sebaiknya menyembunyikan menu itu untuk peran `kader` |
+| Kader dan akun anak | Diblokir di dua lapis: `child-accounts` menjawab 403 untuk kader, dan database menolak membuat akun anak bagi pemilik berperan `kader` (`child_account_invalid`). Akun anak yang sudah ada sebelum seseorang menjadi kader tidak dihapus otomatis |
+| Kader melihat video murid | Dari keputusan pemilik produk 2026-10-18 (membalik janji "tidak dibagikan ke kader" di draf consent). Teks consent `d` dan pemberitahuan privasi harus menyebut kader; persetujuan kertas orang tua dan kedudukan sekolah/UKS sebagai pengendali data: `OPEN_LEGAL_QUESTIONS.md` Q-19 |
 | Realtime/push | Tidak ada; polling |
 | Hukum ⚖ | UU PDP (data pribadi anak, video wajah/mulut), remaja < 18 th mendaftar sendiri, retensi 7 hari & lokasi Singapura, email sintetis `.invalid`/pemulihan akun: belum ditinjau — `docs/regulatory/OPEN_LEGAL_QUESTIONS.md`. Fitur video sebaiknya tetap di balik flag `brushing_proof_video` sampai ditinjau |

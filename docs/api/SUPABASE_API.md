@@ -225,15 +225,15 @@ Semua mengembalikan `forbidden` (42501) identik untuk "bukan milik Anda" dan "ti
 
 | RPC | Untuk | Hasil |
 |---|---|---|
-| `my_account()` | semua | jenis akun, peran, `self_child_id`, `child_account`, flag, `limits` |
+| `my_account()` | semua | jenis akun, peran, `self_child_id`, `child_account`, flag, `capabilities` (`create_child_accounts`, `register_proofs`), `limits` |
 | `ensure_self_profile(p_child_id, p_birth_year, p_birth_month)` | remaja | `uuid` profil diri (idempoten) |
 | `list_children()` | orang tua / remaja / kader | ringkasan beranda per anak (lencana permintaan & bukti) |
 | `child_history(p_child, p_before, p_limit, p_kinds, p_from)` | orang tua / remaja / kader / anak | `{items[], next_before}` |
 | `brushing_streak(p_child, p_tz)` | semua yang berhak | `{current, longest, last_day, today_done, week[], ...}` |
 | `list_screening_requests(p_child, p_status, p_limit)` | orang tua / remaja / anak | permintaan (status efektif) |
 | `ack_screening_request(p_id, p_action)` | orang tua / remaja | `seen` atau `cancel` |
-| `list_brushing_proofs(p_child, p_before, p_limit)` | orang tua / remaja | klip hidup + `object_path` untuk `createSignedUrl` |
-| `mark_proof_viewed(p_proof)` / `delete_brushing_proof(p_proof)` | orang tua / remaja | status baru |
+| `list_brushing_proofs(p_child, p_before, p_limit)` | orang tua / remaja / kader (pemilik anak) | klip hidup + `object_path` untuk `createSignedUrl` |
+| `mark_proof_viewed(p_proof)` / `delete_brushing_proof(p_proof)` | orang tua / remaja / kader (pemilik anak) | status baru |
 
 ## 4. Storage
 
@@ -243,7 +243,7 @@ Batas proyek: `storage.file_size_limit = 50MiB`.
 |---|---|---|---|
 | `manifests` | **publik baca** lewat URL; tulis hanya `admin` atau `service_role` | 50 MiB; MIME `application/json`, `application/octet-stream`, `text/plain` | berisi `manifest.json`, `manifest.sig`, `model/<v>/...`, `rules/<v>/...`, `recommender/<v>/...` (lihat `CLIENT_CONTRACTS.md`) |
 | `dataset_photos` | privat; klien hanya **INSERT** | 512000 byte (500 KiB); MIME `image/jpeg` | lihat di bawah; tidak ada SELECT/UPDATE/DELETE untuk klien |
-| `brushing_proofs` (ADR 017) | privat; **akun anak** hanya INSERT; **orang tua/remaja pemilik** hanya SELECT (signed URL) untuk klip hidup | 10 MiB; MIME `video/mp4`, `video/quicktime` | path persis `<guardian_id>/<child_id>/<proof_id>.mp4\|.mov` dari event `brushing_proof_registered`; tanpa UPDATE/DELETE/upsert; retensi 7 hari; rinci di bawah |
+| `brushing_proofs` (ADR 017) | privat; **akun anak** atau **kader pemilik anak** hanya INSERT; **pemilik anak (orang tua/remaja/kader)** hanya SELECT (signed URL) untuk klip hidup | 10 MiB; MIME `video/mp4`, `video/quicktime` | path persis `<guardian_id>/<child_id>/<proof_id>.mp4\|.mov` dari event `brushing_proof_registered`; tanpa UPDATE/DELETE/upsert; retensi 7 hari; rinci di bawah |
 
 Syarat unggah `dataset_photos` (kebijakan `dentisai_dataset_photos_insert`; semua harus benar):
 
@@ -268,7 +268,7 @@ await supabase.storage.from('dataset_photos')
   .upload(`${uid}/${childId}/${uploadId}.jpg`, jpegArrayBuffer, { contentType: 'image/jpeg', upsert: false });
 ```
 
-Syarat unggah `brushing_proofs` (kebijakan `dentisai_brushing_proofs_insert`; semua harus benar): akun anak aktif (tidak dinonaktifkan); path persis milik baris `brushing_proof` yang didaftarkan anak itu (status `uploaded`, belum kedaluwarsa); flag `brushing_proof_video` hidup; consent (d) aktif; tidak ada permintaan hapus; ukuran dan MIME sesuai pendaftaran. Baca (`dentisai_brushing_proofs_select`): hanya pemilik anak (segmen pertama path = `auth.uid()`), hanya klip hidup dengan consent (d) aktif; kader, fasilitas, dan admin tidak punya akses. Pembersihan berkas oleh Edge Function `retention-sweep` / `process-deletion`.
+Syarat unggah `brushing_proofs` (kebijakan `dentisai_brushing_proofs_insert`; semua harus benar): pengunggah = akun anak aktif untuk anaknya sendiri, atau kader pemilik anak; path persis milik baris `brushing_proof` yang didaftarkan pengunggah itu (status `uploaded`, belum kedaluwarsa); flag `brushing_proof_video` hidup; consent (d) aktif; tidak ada permintaan hapus; ukuran dan MIME sesuai pendaftaran. Baca (`dentisai_brushing_proofs_select`): hanya pemilik anak (segmen pertama path = `auth.uid()`), hanya klip hidup dengan consent (d) aktif; fasilitas kesehatan dan admin tidak punya akses; kader hanya untuk anak yang ia miliki. Pembersihan berkas oleh Edge Function `retention-sweep` / `process-deletion`.
 
 ```ts
 // Anak: setelah brushing_proof_registered berstatus applied
