@@ -26,16 +26,16 @@ select lives_ok($$ insert into public.child_profile (id, owner_id, birth_year, b
                    values ('00000000-0000-4000-8000-00000000ca05', '00000000-0000-4000-8000-0000000000a1', 2017, 5, array['mint', 'sls']) $$,
                 'a valid pseudonymous profile is accepted');
 
-insert into public.class_roster (id, kader_id, label) values
-  ('00000000-0000-4000-8000-0000000f0005', '00000000-0000-4000-8000-0000000000c1', 'Kelas 4A');
-select throws_ok($$ insert into public.class_roster_member (roster_id, child_id, member_label)
-                    values ('00000000-0000-4000-8000-0000000f0005', '00000000-0000-4000-8000-00000000ca05', 'Budi') $$,
-                 '23514', null, 'roster member labels cannot be names');
-select lives_ok($$ insert into public.class_roster_member (roster_id, child_id, member_label)
-                   values ('00000000-0000-4000-8000-0000000f0005', '00000000-0000-4000-8000-00000000ca05', 'A-07') $$,
-                'pseudonymous member label A-07 is accepted');
-select throws_ok($$ insert into public.class_roster (kader_id, label) values ('00000000-0000-4000-8000-0000000000c1', '<script>') $$,
-                 '23514', null, 'roster label is constrained');
+-- Retired values (ADR 018): enum values stay, but nothing may use them.
+select throws_ok($$ insert into public.user_role (user_id, role) values ('00000000-0000-4000-8000-0000000000a1', 'kader') $$,
+                 '23514', null, 'user_role cannot hold the retired kader role');
+select throws_ok($$ insert into public.user_role (user_id, role, facility_code)
+                    values ('00000000-0000-4000-8000-0000000000a1', 'facility_viewer', 'TST-FAC-1') $$,
+                 '23514', null, 'user_role cannot hold the retired facility_viewer role');
+select throws_ok($$ insert into public.consent (child_id, granted_by, consent_type, text_version, method, granted_at)
+                    values ('00000000-0000-4000-8000-00000000ca05', '00000000-0000-4000-8000-0000000000a1', 'a', 'v1',
+                            'paper_via_kader', now()) $$,
+                 '22023', null, 'consent method paper_via_kader is refused for every writer (also the owner)');
 
 select throws_ok($$ insert into public.screening (id, child_id, screened_at, model_version, rules_version, level, findings)
                     values (gen_random_uuid(), '00000000-0000-4000-8000-00000000ca05', now(), '1.0.0', '1.0.0', 'green',

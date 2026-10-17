@@ -34,8 +34,10 @@ select ok((select bool_and(details ? 'overall_status' and not details ? 'metrics
 select tests.as_user('00000000-0000-4000-8000-0000000000a1');
 select throws_ok($$ select public.admin_quota_usage() $$, '42501', null, 'guardian cannot read quotas');
 select throws_ok($$ select public.service_quota_usage() $$, '42501', null, 'guardian cannot call the service RPC');
-select tests.as_user('00000000-0000-4000-8000-0000000000d1');
-select throws_ok($$ select public.admin_quota_usage() $$, '42501', null, 'facility_viewer cannot read quotas');
+select tests.as_owner();
+do $$ begin perform tests.new_teen('00000000-0000-4000-8000-0000000010f1'); end $$;
+select tests.as_user('00000000-0000-4000-8000-0000000010f1');
+select throws_ok($$ select public.admin_quota_usage() $$, '42501', null, 'teen cannot read quotas');
 select tests.as_anon();
 select throws_ok($$ select public.admin_quota_usage() $$, '42501', null, 'anon cannot read quotas');
 

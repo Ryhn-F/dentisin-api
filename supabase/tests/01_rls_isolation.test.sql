@@ -1,14 +1,11 @@
--- RLS isolation: guardian A vs B, kader vs other kader, facility_viewer
--- aggregates-only, admin only via audited RPC, anon sees nothing.
+-- RLS isolation: guardian A vs B, teen vs guardians, admin only via audited
+-- RPC, anon sees nothing. (Kader / facility_viewer were removed by ADR 018.)
 begin;
 \ir _helpers.psql
-select plan(38);
+select plan(26);
 
 -- Fixtures (owner) ------------------------------------------------------------
 do $$
-declare
-  i int;
-  cid uuid;
 begin
   perform tests.make_child('00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-00000000ca01');
   perform tests.make_child('00000000-0000-4000-8000-0000000000b1', '00000000-0000-4000-8000-00000000cb01');
@@ -18,23 +15,10 @@ begin
          ('00000000-0000-4000-8000-0000000005b1', '00000000-0000-4000-8000-00000000cb01',
           '00000000-0000-4000-8000-0000000000b1', now(), '1.0.0', '1.0.0', 'orange');
 
-  insert into public.class_roster (id, kader_id, label, facility_code) values
-    ('00000000-0000-4000-8000-0000000f00c1', '00000000-0000-4000-8000-0000000000c1', 'Kelas 4A', 'TST-FAC-1'),
-    ('00000000-0000-4000-8000-0000000f00c2', '00000000-0000-4000-8000-0000000000c2', 'Kelas 5B', 'TST-FAC-2');
-  -- K1: 8 children in TST-FAC-1 (6 green + 2 yellow this month); K2: 1 child
-  for i in 1..8 loop
-    cid := ('00000000-0000-4000-8000-0000c1c1' || lpad(i::text, 4, '0'))::uuid;
-    perform tests.make_child('00000000-0000-4000-8000-0000000000c1', cid);
-    insert into public.class_roster_member (roster_id, child_id, member_label)
-    values ('00000000-0000-4000-8000-0000000f00c1', cid, 'A-' || i);
-    insert into public.screening (id, child_id, recorded_by, screened_at, model_version, rules_version, level)
-    values (('00000000-0000-4000-8000-00005c1c' || lpad(i::text, 4, '0'))::uuid, cid,
-            '00000000-0000-4000-8000-0000000000c1', date_trunc('month', now()) + interval '1 hour',
-            '1.0.0', '1.0.0', case when i <= 6 then 'green' else 'yellow' end::public.triage_level);
-  end loop;
-  perform tests.make_child('00000000-0000-4000-8000-0000000000c2', '00000000-0000-4000-8000-0000c2c20001');
-  insert into public.class_roster_member (roster_id, child_id, member_label)
-  values ('00000000-0000-4000-8000-0000000f00c2', '00000000-0000-4000-8000-0000c2c20001', 'B-1');
+  -- Teen T with its self profile
+  perform tests.new_teen('00000000-0000-4000-8000-0000000001f1');
+  insert into public.child_profile (id, owner_id, birth_year, birth_month, is_self)
+  values ('00000000-0000-4000-8000-00000000cf01', '00000000-0000-4000-8000-0000000001f1', 2012, 1, true);
 end
 $$;
 
@@ -62,8 +46,6 @@ select lives_ok($$ update public.child_profile set birth_year = 2010 where id = 
                 'update of B''s child by A runs ...');
 select is((select count(*) from public.audit_log)::int, 0, 'A cannot read audit_log');
 select is((select count(*) from public.app_setting)::int, 0, 'A cannot read app_setting');
-select throws_ok($$ insert into public.class_roster (kader_id, label) values ('00000000-0000-4000-8000-0000000000a1', 'Kelas 1') $$,
-                 '42501', null, 'non-kader cannot create a roster');
 select throws_ok($$ insert into public.child_profile (id, owner_id) values ('00000000-0000-4000-8000-00000000ca99', '00000000-0000-4000-8000-0000000000b1') $$,
                  '42501', null, 'A cannot create a child owned by B');
 
@@ -76,47 +58,13 @@ select tests.as_user('00000000-0000-4000-8000-0000000000b1');
 select is((select array_agg(id) from public.child_profile), array['00000000-0000-4000-8000-00000000cb01'::uuid],
           'B sees only own child');
 
--- Kader K1 ---------------------------------------------------------------------
-select tests.as_user('00000000-0000-4000-8000-0000000000c1');
-select is((select count(*) from public.child_profile)::int, 8, 'K1 sees the 8 children of own roster');
-select is_empty($$ select 1 from public.child_profile where id in ('00000000-0000-4000-8000-0000c2c20001',
-                  '00000000-0000-4000-8000-00000000ca01') $$, 'K1 cannot see K2''s or a parent''s child');
-select is((select count(*) from public.class_roster)::int, 1, 'K1 sees only own roster');
-select is((select count(*) from public.class_roster_member)::int, 8, 'K1 sees only own roster members');
-select throws_ok($$ insert into public.class_roster_member (roster_id, child_id, member_label)
-                    values ('00000000-0000-4000-8000-0000000f00c1', '00000000-0000-4000-8000-00000000ca01', 'A-99') $$,
-                 '42501', null, 'K1 cannot pull a parent''s child into own roster');
-select throws_ok($$ insert into public.class_roster_member (roster_id, child_id, member_label)
-                    values ('00000000-0000-4000-8000-0000000f00c2', '00000000-0000-4000-8000-0000c1c10001', 'A-98') $$,
-                 '42501', null, 'K1 cannot add members to K2''s roster');
-select throws_ok($$ insert into public.class_roster (kader_id, label, facility_code)
-                    values ('00000000-0000-4000-8000-0000000000c1', 'Kelas 6', 'TST-FAC-2') $$,
-                 '42501', null, 'K1 cannot tag a roster with another facility');
-select throws_ok($$ select * from public.facility_screening_summary(current_date, current_date) $$,
-                 '42501', null, 'kader cannot call facility aggregates');
-
-select tests.as_user('00000000-0000-4000-8000-0000000000c2');
-select is((select array_agg(id) from public.child_profile), array['00000000-0000-4000-8000-0000c2c20001'::uuid],
-          'K2 sees only own roster child');
-
--- facility_viewer ------------------------------------------------------------
-select tests.as_user('00000000-0000-4000-8000-0000000000d1');
-select is((select count(*) from public.child_profile)::int
-        + (select count(*) from public.screening)::int
-        + (select count(*) from public.consent)::int
-        + (select count(*) from public.referral)::int
-        + (select count(*) from public.brushing_event)::int
-        + (select count(*) from public.image_upload)::int
-        + (select count(*) from public.class_roster)::int
-        + (select count(*) from public.class_roster_member)::int, 0,
-          'facility_viewer sees ZERO row-level child data');
-select results_eq(
-  $$ select facility_code, level::text, screenings, suppressed
-     from public.facility_screening_summary(current_date, current_date) $$,
-  $$ values ('TST-FAC-1'::text, 'yellow'::text, null::int, true), ('TST-FAC-1', 'green', 6, false) $$,
-  'aggregates: own facility only, cells < 5 suppressed');
-select throws_ok($$ select * from public.facility_screening_summary(current_date, current_date + 800) $$,
-                 '22023', null, 'aggregate range is bounded');
+-- Teen T ----------------------------------------------------------------------
+select tests.as_user('00000000-0000-4000-8000-0000000001f1');
+select is((select array_agg(id) from public.child_profile), array['00000000-0000-4000-8000-00000000cf01'::uuid],
+          'teen sees only its self profile');
+select tests.as_user('00000000-0000-4000-8000-0000000000a1');
+select is_empty($$ select 1 from public.child_profile where id = '00000000-0000-4000-8000-00000000cf01' $$,
+                'a guardian cannot read a teen''s self profile');
 
 -- admin ------------------------------------------------------------------------
 select tests.as_user('00000000-0000-4000-8000-0000000000e1');
@@ -128,8 +76,6 @@ select is((public.admin_get_child_record('00000000-0000-4000-8000-00000000ca01',
 select ok(exists (select 1 from public.audit_log where action = 'admin_child_read'), '... and the read is audited');
 select is_empty($$ select 1 from public.audit_log a where a::text like '%00000000-0000-4000-8000-00000000ca01%' $$,
                 'audit_log stores no raw child id');
-select ok((select count(*) from public.facility_screening_summary(current_date, current_date)) > 0,
-          'admin may read all-facility aggregates');
 
 -- anon -------------------------------------------------------------------------
 select tests.as_anon();

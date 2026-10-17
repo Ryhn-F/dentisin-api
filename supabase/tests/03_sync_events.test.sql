@@ -130,7 +130,7 @@ select is((public.sync_events(jsonb_build_array(tests.ev('e0000000-0000-4000-800
 select is((public.sync_events(jsonb_build_array(tests.ev('e0000000-0000-4000-8000-0000000000b3', 'consent_changed',
           jsonb_build_object('child_id', '00000000-0000-4000-8000-00000000cb02', 'consent_type', 'a',
                              'action', 'grant', 'text_version', 'v1', 'method', 'paper_via_kader'))))) -> 0 ->> 'code',
-          'forbidden', 'only kader may record paper consent');
+          'forbidden', 'paper consent (paper_via_kader, retired by ADR 018) is refused');
 
 select tests.as_owner();
 select is((select count(*) from public.screening where child_id = '00000000-0000-4000-8000-00000000ca01')::int, 1,

@@ -5,9 +5,6 @@
 -- Fixed synthetic identities used across the suite:
 --   A  00000000-0000-4000-8000-0000000000a1  guardian
 --   B  00000000-0000-4000-8000-0000000000b1  guardian
---   K1 00000000-0000-4000-8000-0000000000c1  kader (facility TST-FAC-1)
---   K2 00000000-0000-4000-8000-0000000000c2  kader (facility TST-FAC-2)
---   FV 00000000-0000-4000-8000-0000000000d1  facility_viewer (TST-FAC-1)
 --   AD 00000000-0000-4000-8000-0000000000e1  admin
 
 do $$
@@ -143,18 +140,11 @@ do $$
 begin
   perform tests.new_user('00000000-0000-4000-8000-0000000000a1');
   perform tests.new_user('00000000-0000-4000-8000-0000000000b1');
-  perform tests.new_user('00000000-0000-4000-8000-0000000000c1');
-  perform tests.new_user('00000000-0000-4000-8000-0000000000c2');
-  perform tests.new_user('00000000-0000-4000-8000-0000000000d1');
   perform tests.new_user('00000000-0000-4000-8000-0000000000e1');
 end
 $$;
 
-insert into public.user_role (user_id, role, facility_code) values
-  ('00000000-0000-4000-8000-0000000000c1', 'kader', 'TST-FAC-1'),
-  ('00000000-0000-4000-8000-0000000000c2', 'kader', 'TST-FAC-2'),
-  ('00000000-0000-4000-8000-0000000000d1', 'facility_viewer', 'TST-FAC-1'),
-  ('00000000-0000-4000-8000-0000000000e1', 'admin', null);
+insert into public.user_role (user_id, role) values
+  ('00000000-0000-4000-8000-0000000000e1', 'admin');
 delete from public.user_role
- where user_id in ('00000000-0000-4000-8000-0000000000d1', '00000000-0000-4000-8000-0000000000e1')
-   and role = 'guardian';
+ where user_id = '00000000-0000-4000-8000-0000000000e1' and role = 'guardian';

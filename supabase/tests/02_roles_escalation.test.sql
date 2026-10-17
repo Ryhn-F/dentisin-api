@@ -37,8 +37,8 @@ select throws_ok($$ select private.hash_ref('00000000-0000-4000-8000-0000000000a
 
 -- Admin path --------------------------------------------------------------------
 select tests.as_user('00000000-0000-4000-8000-0000000000e1');
-select lives_ok($$ select public.admin_grant_role('00000000-0000-4000-8000-0000000000b1', 'kader', 'TST-FAC-1') $$,
-                'admin can grant kader');
+select lives_ok($$ select public.admin_grant_role('00000000-0000-4000-8000-0000000000b1', 'admin') $$,
+                'admin can grant admin to an account without children');
 select ok(exists (select 1 from public.audit_log where action = 'role_granted'
                     and target_hash ~ '^[0-9a-f]{64}$'), 'role grant is audited with a hashed target');
 select throws_ok($$ select public.admin_set_feature_flag('dataset_contribution', true, null) $$,
@@ -49,8 +49,8 @@ select throws_ok($$ select public.admin_revoke_role('00000000-0000-4000-8000-000
 select tests.as_owner();
 do $$ begin perform tests.make_child('00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-00000000ca01'); end $$;
 select tests.as_user('00000000-0000-4000-8000-0000000000e1');
-select throws_ok($$ select public.admin_grant_role('00000000-0000-4000-8000-0000000000a1', 'facility_viewer', 'TST-FAC-1') $$,
-                 '22023', null, 'accounts owning child data cannot become facility_viewer (separation of duties)');
+select throws_ok($$ select public.admin_grant_role('00000000-0000-4000-8000-0000000000a1', 'admin') $$,
+                 '22023', null, 'accounts owning child data cannot become admin (separation of duties)');
 
 -- audit_log append-only ---------------------------------------------------------
 select tests.as_owner();

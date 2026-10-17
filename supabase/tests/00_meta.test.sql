@@ -35,7 +35,7 @@ $$, 'every SECURITY DEFINER function pins search_path = ''''');
 select is_empty($$
   select table_name || '.' || column_name from information_schema.columns
   where table_schema = 'public'
-    and table_name in ('child_profile', 'guardian', 'class_roster_member', 'screening', 'consent')
+    and table_name in ('child_profile', 'guardian', 'screening', 'consent', 'brushing_proof')
     and column_name ~* '(name|nama|nik|nisn|dob|birth_date|birthday|tanggal_lahir|address|alamat|phone|telp|email|photo|image|foto|day)'
 $$, 'no identity / exact-DOB / photo columns on child-facing tables');
 

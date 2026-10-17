@@ -158,7 +158,7 @@ select throws_ok($$ select public.request_deletion('child', '00000000-0000-4000-
 select tests.as_user('00000000-0000-4000-8000-0000000000e1');
 select throws_ok($$ select public.admin_grant_role('00000000-0000-4000-8000-0000000000b1', 'child') $$,
                  '22023', null, 'admin cannot grant the child role');
-select throws_ok($$ select public.admin_grant_role('00000000-0000-4000-8000-0000000d1101', 'kader', 'TST-FAC-1') $$,
+select throws_ok($$ select public.admin_grant_role('00000000-0000-4000-8000-0000000d1101', 'admin') $$,
                  '22023', null, 'admin cannot give a child account another role');
 
 select tests.as_anon();

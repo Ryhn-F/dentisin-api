@@ -10,12 +10,12 @@ Run (from backend/, with the local stack up — see supabase/README.md):
     python supabase/scripts/rls_http_check.py
 
 What it does (re-runnable; every run uses fresh random accounts and ids):
-  * creates 6 accounts through the GoTrue admin API (no e-mail is sent) and signs
+  * creates 3 accounts through the GoTrue admin API (no e-mail is sent) and signs
     each one in through GoTrue (password grant + CAPTCHA test token) to obtain
-    real access tokens: guardian A, guardian B, kader K, facility_viewer FV,
-    admin AD (bootstrapped with service_role, like the README's first-admin
-    step), plus an extra account for role-escalation probes;
-  * asserts row isolation, role self-escalation, sync_events idempotency, Storage
+    real access tokens: guardian A, guardian B, admin AD (bootstrapped with
+    service_role, like the README's first-admin step);
+  * asserts row isolation, role self-escalation, sync_events idempotency, the
+    removal of kader / class roster / facility aggregates (ADR 018), Storage
     upload rules and the manifests bucket — all via HTTP;
   * cleans up: test objects removed through the Storage API, flag restored OFF,
     test accounts deleted through the GoTrue admin API (cascades their rows).
@@ -52,9 +52,9 @@ def main() -> int:
     users: dict[str, User] = {}
     uploaded: list[tuple[str, str]] = []
     try:
-        for label in ("a", "b", "k", "fv", "ad"):
+        for label in ("a", "b", "ad"):
             users[label] = admin_create_user(stack, label, run)
-        A, B, K, FV, AD = (users[x] for x in ("a", "b", "k", "fv", "ad"))
+        A, B, AD = (users[x] for x in ("a", "b", "ad"))
 
         # Bootstrap the first admin exactly like the README (owner/service side).
         r = rest(stack, "POST", "user_role", None, body={"user_id": AD.id, "role": "admin"},
@@ -66,12 +66,12 @@ def main() -> int:
         c.check(all(m == "password" for m in methods.values()),
                 "GoTrue password grant (with CAPTCHA test token) issues real JWTs", str(set(methods.values())))
 
-        # Admin grants kader / facility_viewer through the audited RPC (over REST).
-        r = rpc(stack, "admin_grant_role", AD.token, {"p_user": K.id, "p_role": "kader", "p_facility_code": "TST-HTTP-1"})
-        c.check(r.ok, "admin grants kader via REST RPC", f"HTTP {r.status} {r.body}")
-        r = rpc(stack, "admin_grant_role", AD.token,
-                {"p_user": FV.id, "p_role": "facility_viewer", "p_facility_code": "TST-HTTP-1"})
-        c.check(r.ok, "admin grants facility_viewer via REST RPC", f"HTTP {r.status} {r.body}")
+        # Retired roles (ADR 018): the audited RPC refuses them (22023 -> HTTP 400).
+        for role in ("kader", "facility_viewer"):
+            r = rpc(stack, "admin_grant_role", AD.token,
+                    {"p_user": B.id, "p_role": role, "p_facility_code": "TST-HTTP-1"})
+            c.check(r.status == 400, f"AD: retired role {role} cannot be granted (role_not_available)",
+                    f"HTTP {r.status} {r.body}")
 
         # ------------------------------------------------------------------ anon
         r = rest(stack, "GET", "child_profile?select=id", None)
@@ -91,8 +91,7 @@ def main() -> int:
         # ------------------------------------------------------- A vs B isolation
         a_child = make_child_via_sync(stack, A)
         b_child = make_child_via_sync(stack, B)
-        k_child = make_child_via_sync(stack, K)
-        for who, child, lvl in ((A, a_child, "green"), (B, b_child, "orange"), (K, k_child, "yellow")):
+        for who, child, lvl in ((A, a_child, "green"), (B, b_child, "orange")):
             r = rpc(stack, "sync_events", who.token, {"batch": [ev("screening_recorded", {
                 "screening_id": str(uuid.uuid4()), "child_id": child, "screened_at": "2026-10-01T08:00:00Z",
                 "model_version": "0.1.0", "rules_version": "0.1.0", "level": lvl})]})
@@ -182,41 +181,17 @@ def main() -> int:
         r = rpc(stack, "sync_events", A.token, {"batch": []})
         c.check(r.status == 400, "sync: empty batch rejected (22023 -> 400)", f"HTTP {r.status}")
 
-        # ------------------------------------------------------------- kader
-        r = rest(stack, "POST", "class_roster", K.token,
-                 body={"kader_id": K.id, "label": "Kelas 4A", "facility_code": "TST-HTTP-1"},
-                 prefer="return=representation")
-        roster = r.body[0]["id"] if r.ok and r.body else None
-        c.check(roster is not None, "K: creates a roster for own facility", f"HTTP {r.status} {r.body}")
-        r = rest(stack, "POST", "class_roster", K.token,
-                 body={"kader_id": K.id, "label": "Kelas 5", "facility_code": "TST-OTHER-9"})
-        c.check(r.status in (401, 403), "K: roster for another facility denied", f"HTTP {r.status}")
-        r = rest(stack, "POST", "class_roster_member", K.token,
-                 body={"roster_id": roster, "child_id": k_child, "member_label": "A-01"})
-        c.check(r.status == 201, "K: adds own child to own roster", f"HTTP {r.status} {r.body}")
-        r = rest(stack, "POST", "class_roster_member", K.token,
-                 body={"roster_id": roster, "child_id": a_child, "member_label": "A-02"})
-        c.check(r.status in (401, 403), "K: cannot pull A's child into the roster", f"HTTP {r.status}")
-        r = rest(stack, "GET", "child_profile?select=id", K.token)
-        c.check(r.ok and [x["id"] for x in r.body] == [k_child], "K: sees only own/roster children")
-        r = rest(stack, "GET", "class_roster?select=id", A.token)
-        c.check(r.ok and r.body == [], "A: cannot see K's roster")
-        r = rest(stack, "POST", "class_roster", A.token, body={"kader_id": A.id, "label": "Kelas 1"})
-        c.check(r.status in (401, 403), "A (not kader): cannot create a roster", f"HTTP {r.status}")
-
-        # --------------------------------------------------- facility_viewer
-        tot = 0
-        for t in ("child_profile", "screening", "consent", "referral", "brushing_event", "image_upload",
-                  "class_roster", "class_roster_member"):
-            r = rest(stack, "GET", f"{t}?select=*", FV.token)
-            tot += len(r.body) if r.ok and isinstance(r.body, list) else 999
-        c.check(tot == 0, "FV: ZERO row-level child data over REST", f"rows={tot}")
-        r = rpc(stack, "facility_screening_summary", FV.token, {"p_from": "2026-10-01", "p_to": "2026-10-31"})
-        c.check(r.ok and all(x["facility_code"] == "TST-HTTP-1" for x in r.body)
-                and all(x["suppressed"] and x["screenings"] is None for x in r.body),
-                "FV: aggregates only own facility, small cells suppressed", f"HTTP {r.status} {r.body}")
-        r = rpc(stack, "facility_screening_summary", K.token, {"p_from": "2026-10-01", "p_to": "2026-10-31"})
-        c.check(r.status in (401, 403), "K: cannot call facility aggregates", f"HTTP {r.status}")
+        # ------------------------------------- kader / roster / facility (ADR 018)
+        for t in ("class_roster", "class_roster_member"):
+            r = rest(stack, "GET", f"{t}?select=*", A.token)
+            c.check(r.status == 404, f"REST: table {t} no longer exists", f"HTTP {r.status}")
+        r = rpc(stack, "facility_screening_summary", AD.token, {"p_from": "2026-10-01", "p_to": "2026-10-31"})
+        c.check(r.status == 404, "REST: rpc/facility_screening_summary no longer exists", f"HTTP {r.status}")
+        r = rpc(stack, "sync_events", A.token, {"batch": [ev("consent_changed", {
+            "child_id": a_child, "consent_type": "c", "action": "grant", "text_version": "local-c-v1",
+            "method": "paper_via_kader"})]})
+        c.check(r.ok and r.body[0].get("code") == "forbidden", "sync: paper_via_kader consent (retired) -> forbidden",
+                str(r.body))
 
         # --------------------------------------------------------------- admin
         r = rest(stack, "GET", "child_profile?select=id", AD.token)
@@ -226,9 +201,8 @@ def main() -> int:
         r = rest(stack, "GET", "audit_log?select=action,target_hash&action=eq.admin_child_read", AD.token)
         c.check(r.ok and len(r.body) >= 1 and all(a_child not in str(x) for x in r.body),
                 "AD: read is audited with a hash (no raw id)")
-        r = rpc(stack, "admin_grant_role", AD.token, {"p_user": A.id, "p_role": "facility_viewer",
-                                                     "p_facility_code": "TST-HTTP-1"})
-        c.check(r.status == 400, "AD: account owning child data cannot become facility_viewer", f"HTTP {r.status}")
+        r = rpc(stack, "admin_grant_role", AD.token, {"p_user": A.id, "p_role": "admin"})
+        c.check(r.status == 400, "AD: account owning child data cannot become admin", f"HTTP {r.status}")
 
         # ------------------------------------------------------------- storage
         base = f"{A.id}/{a_child}"

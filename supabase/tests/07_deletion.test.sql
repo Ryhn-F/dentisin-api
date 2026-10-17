@@ -32,11 +32,6 @@ do $$ begin
   perform tests.make_child('00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-00000000ca07', array['a', 'b', 'c']);
   perform tests.make_child('00000000-0000-4000-8000-0000000000a1', '00000000-0000-4000-8000-00000000ca08');
   perform tests.make_child('00000000-0000-4000-8000-0000000000b1', '00000000-0000-4000-8000-00000000cb07');
-  insert into public.user_role (user_id, role) values ('00000000-0000-4000-8000-0000000000b1', 'kader');
-  insert into public.class_roster (id, kader_id, label) values
-    ('00000000-0000-4000-8000-0000000f0007', '00000000-0000-4000-8000-0000000000b1', 'Kelas 2C');
-  insert into public.class_roster_member (roster_id, child_id, member_label) values
-    ('00000000-0000-4000-8000-0000000f0007', '00000000-0000-4000-8000-00000000cb07', 'C-01');
 end $$;
 
 select tests.as_user('00000000-0000-4000-8000-0000000000a1');
@@ -163,10 +158,10 @@ select is_empty($$ select * from tests.tables_containing('00000000-0000-4000-800
 select is_empty($$ select * from tests.tables_containing('tst-00000000-0000-4000-8000-0000000000b1@') $$,
                 'NO table contains the account e-mail');
 select results_eq(format($$ select status::text, requested_by, executed_by, (rows_deleted ->> 'auth_user')::int,
-                            (rows_deleted ->> 'class_roster')::int, (rows_deleted ->> 'child_profile')::int
+                            (rows_deleted ->> 'user_role')::int, (rows_deleted ->> 'child_profile')::int
                      from public.deletion_request where id = %L $$, :'req2'),
                   $$ values ('completed'::text, null::uuid, 'pg_cron'::text, 1, 1, 1) $$,
-                  'account proof: auth user, roster and child counted; requester link cleared');
+                  'account proof: auth user, role and child counted; requester link cleared');
 select ok(exists (select 1 from auth.users where id = '00000000-0000-4000-8000-0000000000a1'),
           'other accounts untouched');
 select is(private.run_pending_deletions(), 0, 'nothing left to process');
