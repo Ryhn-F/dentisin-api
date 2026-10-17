@@ -2,7 +2,15 @@
 
 Format: tanggal (YYYY-MM-DD), perubahan pada kontrak yang didokumentasikan. Perubahan kontrak nyata (migrasi, aturan, model) tetap dicatat di `../regulatory/CHANGELOG.md` dan ADR; berkas ini hanya melacak dokumen di `docs/api/`.
 
-## 2026-10-18 (kader, amandemen ADR 017)
+## 2026-10-18 (kader dihapus, ADR 018)
+
+- **Peran `kader`, mode kelas, `paper_via_kader`, dan rekap fasilitas dihapus** (ADR 018 menggantikan amandemen kader di bawah). App hanya untuk orang tua (`guardian`), remaja (`teen`), dan akun anak buatan orang tua. Peran yang dikembalikan `my_account().roles`: `guardian`, `child`, `admin`; `kader` dan `facility_viewer` tidak lagi bisa diberikan (`admin_grant_role` menjawab `role_not_available`, 22023).
+- Dihapus dari API: tabel `class_roster`, `class_roster_member`; RPC `facility_screening_summary`; metode consent `paper_via_kader` (selalu `forbidden`).
+- **Remaja menonton sendiri videonya:** akun `teen` mendaftarkan `brushing_proof_registered` untuk profil dirinya (`is_self`), mengunggah ke `<teen_id>/<self_child_id>/<proof_id>.mp4`, dan melihatnya lewat `list_brushing_proofs`, `child_history`, signed URL, `mark_proof_viewed`, `delete_brushing_proof`. `capabilities.register_proofs` benar untuk akun anak (`proof_allowed`) dan remaja (flag hidup). Guardian tidak mendaftarkan video.
+- `child-accounts` kembali hanya memeriksa `account_type = 'guardian'`.
+- Dokumen: `ACCOUNTS_AND_FLOWS.md` §2.8 (Remaja), `SYNC_EVENTS.md` §3.1/§3.8, `SUPABASE_API.md`, `README.md`, `APP_TEAM_GUIDE.md`, `EDGE_FUNCTIONS_AND_HOOKS.md`.
+
+## 2026-10-18 (kader, amandemen ADR 017; digantikan ADR 018)
 
 - Kader **tidak** membuat akun anak: `child-accounts` menjawab 403 untuk peran `kader`; database menolak pemilik berperan `kader` (`child_account_invalid`).
 - Video bukti tersedia juga bagi kader sebagai riwayat atas murid miliknya: `brushing_proof_registered` (+ unggah `brushing_proofs`) dari kader pemilik anak; `list_brushing_proofs`, `mark_proof_viewed`, `delete_brushing_proof`, `child_history` bekerja untuk kader pemilik. `facility_viewer`/admin tetap tanpa akses.

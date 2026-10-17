@@ -132,7 +132,7 @@ Tujuan: membawa produk dari bukti teknis ke bukti klinis dan memperluas cakupan.
 - 7.3 **Uji lapangan:** sensitivitas/spesifisitas vs drg, % foto diagnostik, under-triage, SUS pada pengguna sasaran.
 - 7.4 Data lokal ≥ 2 anotator (κ), kelas tambahan, latih ulang di PC tim/ lab kampus; ML sikat gigi dari landmark.
 - 7.5 Deploy FastAPI (`backend/api`) ke Azure Container Apps (Jepang) bila diperlukan; peran `reviewer`, URL foto bertanda tangan jangka pendek, auto-batal item bila foto ditarik.
-- 7.6 Dasbor fasilitas (agregat, `facility_viewer`), rekap kelas PDF/CSV.
+- 7.6 ~~Dasbor fasilitas (agregat, `facility_viewer`), rekap kelas PDF/CSV.~~ **Dicabut (ADR 018):** mode kader/kelas dan `facility_screening_summary` dihapus. Rekap puskesmas dari data rujukan hanya bila produk membutuhkannya (ADR baru).
 - 7.7 Chatbot (v2) hanya dengan keputusan anggaran/penyedia baru — Gemini terlarang di jalur runtime (ADR 006/010).
 - 7.8 Migrasi ke tier berbayar/ regenerasi audio TTS di akun berbayar dan tinjau ulang lisensi bobot YOLOX (ADR 014 §5) sebelum rilis komersial.
 

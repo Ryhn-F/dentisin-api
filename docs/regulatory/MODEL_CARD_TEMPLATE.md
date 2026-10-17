@@ -15,9 +15,9 @@
 | Entri CHANGELOG | `[ISI]` |
 
 ## 2. Tujuan penggunaan (intended use)
-- Alat bantu **skrining** (indikasi, bukan diagnosis) pada foto gigi depan anak usia sekolah oleh orang tua/kader, dengan rujukan ke dokter gigi. Bounding box untuk: `caries_permanent`, `caries_primary` (ADR 014; kotak hanya untuk overlay, bukan ukuran keparahan) `[sesuaikan dengan labels.json: classes]`.
+- Alat bantu **skrining** (indikasi, bukan diagnosis) pada foto gigi depan anak usia sekolah oleh orang tua (atau remaja untuk dirinya sendiri), dengan rujukan ke dokter gigi. Bounding box untuk: `caries_permanent`, `caries_primary` (ADR 014; kotak hanya untuk overlay, bukan ukuran keparahan) `[sesuaikan dengan labels.json: classes]`.
 - Bukan untuk: diagnosis, keputusan terapi, rontgen, rongga mulut dewasa `[PERLU VERIFIKASI cakupan usia data]`, kelainan non-karies, abses/fistula (bukan target model v1).
-- Pengguna: orang tua, kader, guru UKS. Lingkungan: HP Android kelas menengah-bawah, offline, senter.
+- Pengguna: orang tua/ wali dan remaja (untuk dirinya sendiri); kader/ guru UKS tidak lagi menjadi pengguna (ADR 018). Lingkungan: HP Android kelas menengah-bawah, offline, senter.
 - Tidak boleh dipakai di luar `intended_use` pada `labels.json`.
 
 ## 3. Detail model

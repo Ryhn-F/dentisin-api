@@ -9,7 +9,7 @@
 |---|---|---|
 | [`APP_TEAM_GUIDE.md`](APP_TEAM_GUIDE.md) | **engineer app (mulai di sini)** | Peta kebutuhan → mekanisme → dokumen → status, keputusan ADR yang memengaruhi kode, urutan integrasi, jebakan, uji cepat |
 | [`MODEL_BUNDLE.md`](MODEL_BUNDLE.md) | engineer app (ML on-device) | Bundel detektor YOLOX-Nano float32 (ADR 013): I/O, alur, dekoder TypeScript terverifikasi, ambang, batasan UI |
-| [`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md) | engineer app (akun, anak, orang tua) | Akun v2 (ADR 017): pilih remaja/orang tua, akun anak + login, streak + video bukti, permintaan skrining, riwayat; alur, hak, galat, daftar periksa UI |
+| [`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md) | engineer app (akun, anak, orang tua) | Akun v2 (ADR 017, 018): pilih remaja/orang tua, akun anak + login, streak + video bukti (anak → orang tua; remaja → dirinya sendiri), permintaan skrining, riwayat; alur, hak, galat, daftar periksa UI |
 | [`SUPABASE_API.md`](SUPABASE_API.md) | engineer app | Auth, tabel + RLS, RPC, Storage, rate limit, contoh supabase-js dan curl |
 | [`SYNC_EVENTS.md`](SYNC_EVENTS.md) | engineer app (outbox) | Kontrak `sync_events`: amplop, tipe event, validasi, idempotensi, retry |
 | [`EDGE_FUNCTIONS_AND_HOOKS.md`](EDGE_FUNCTIONS_AND_HOOKS.md) | ops / backend | `process-deletion`, `retention-sweep`, workflow terjadwal, hook Send Email, mailer |
@@ -33,8 +33,8 @@ flowchart LR
   subgraph SB["Supabase Free (Singapore) - dev"]
     AUTH["Auth (GoTrue)<br/>email + password"]
     REST["PostgREST + RPC<br/>(schema public, RLS)"]
-    STO["Storage<br/>manifests (publik)<br/>dataset_photos (privat)"]
-    EDGE["Edge Functions<br/>process-deletion<br/>retention-sweep"]
+    STO["Storage<br/>manifests (publik)<br/>dataset_photos (privat)<br/>brushing_proofs (privat)"]
+    EDGE["Edge Functions<br/>process-deletion<br/>retention-sweep<br/>child-accounts, child-login"]
     DB[("Postgres<br/>RLS + pg_cron")]
   end
   MAIL["Mailer (smtp-handler)<br/>mailer.ryhnfir.dev<br/>POST /hooks/send-email"]
@@ -69,9 +69,9 @@ Catatan: tidak ada jalur dari app ke FastAPI pada MVP; deteksi utama jalan on-de
 
 | Klien | Permukaan yang dipakai | Kredensial |
 |---|---|---|
-| App (orang tua / kader) | Auth; PostgREST baca (`child_profile`, `consent`, `screening`, `referral`, `brushing_event`, `deletion_request`, `feature_flag`, `user_role`, `class_roster*` untuk kader); RPC `sync_events`, `request_deletion`; Storage `manifests` (baca publik) dan `dataset_photos` (hanya INSERT); halaman `web/` | anon key + JWT pengguna |
+| App (orang tua / remaja) | Auth; PostgREST baca (`child_profile`, `consent`, `screening`, `referral`, `brushing_event`, `deletion_request`, `feature_flag`, `user_role`); RPC `sync_events`, `request_deletion`, RPC akun v2 (`my_account`, `list_children`, `child_history`, `list_brushing_proofs`, ...); Storage `manifests` (baca publik), `dataset_photos` (hanya INSERT), `brushing_proofs` (orang tua: tonton video anak; remaja: unggah + tonton video sendiri); Edge Function `child-accounts` (hanya orang tua); halaman `web/` | anon key + JWT pengguna |
+| App (akun anak) | Edge Function `child-login`, lalu `sync_events` (tiga tipe), RPC riwayat/streak miliknya, unggah `brushing_proofs` ([`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md)) | anon key + JWT akun anak |
 | App (anon, belum login) | Hanya Storage `manifests` publik dan Auth (signUp/signIn/recover); mode anak tanpa akun bersifat offline penuh | anon key |
-| Dasbor fasilitas (`facility_viewer`) | RPC `facility_screening_summary` | JWT pengguna berperan `facility_viewer` |
 | Admin | RPC `admin_*`, tabel `audit_log`, `app_setting`, `ml_*` (baca) | JWT pengguna berperan `admin` |
 | Scheduler (GitHub Actions) | RPC `keepalive`; Edge Functions | anon key; `CRON_SECRET` |
 | PC tim | `service_role` (ekspor dataset, unggah manifes, backup) | `service_role` **hanya di PC tim**, tidak pernah di app/CI publik |
@@ -93,9 +93,9 @@ Kunci yang boleh ada di app: URL proyek dan **anon key** saja. `service_role`, `
 ## Model auth dan peran
 
 - Auth: **email + password**, konfirmasi email wajib, tanpa SMS/anonymous/MFA. Token akses JWT 1 jam, refresh token berotasi.
-- Setiap akun baru otomatis mendapat baris `guardian` dan peran `guardian` (trigger `private.handle_new_user`); metadata dari klien **diabaikan**, jadi klien tidak bisa meminta peran.
-- Peran (`public.user_role`, enum `app_role`): `guardian` (orang tua), `kader` (kader/guru UKS), `facility_viewer` (agregat saja, wajib `facility_code`), `admin`. Peran selain `guardian` hanya diberikan lewat RPC `admin_grant_role` (diaudit) atau SQL oleh owner.
-- Pemisahan tugas: akun yang memiliki data anak tidak dapat menjadi `facility_viewer`/`admin`; pemberian peran itu mencabut `guardian`/`kader`.
+- Setiap akun baru otomatis mendapat baris `guardian` dan peran `guardian` (trigger `private.handle_new_user`); metadata dari klien hanya dibaca untuk `account_type` `guardian`/`teen` (bukan batas hak akses) dan tidak pernah memberi peran.
+- Peran (`public.user_role`, enum `app_role`) yang dipakai: `guardian` (akun orang tua dan remaja), `child` (akun anak buatan orang tua, ADR 017), `admin` (operasi). `admin` hanya diberikan lewat RPC `admin_grant_role` (diaudit) atau SQL oleh owner. Nilai enum lama `kader` dan `facility_viewer` tetap ada di Postgres tetapi **tidak dapat dipakai** (ADR 018: mode kelas/kader dan rekap fasilitas dihapus).
+- Pemisahan tugas: akun yang memiliki data anak tidak dapat menjadi `admin`; pemberian peran itu mencabut `guardian`. Admin tidak dapat membaca video bukti sikat gigi.
 - RLS aktif **dan dipaksa** di semua tabel; default deny. `anon` tidak punya akses tabel apa pun (hanya `keepalive()`).
 - Edge Functions: `verify_jwt = false`, auth dengan `Authorization: Bearer <CRON_SECRET>` (bukan `service_role`).
 - Data anak pseudonim: UUID dari perangkat, tahun+bulan lahir, kode alergi; tanpa nama/NIK/foto di tabel.

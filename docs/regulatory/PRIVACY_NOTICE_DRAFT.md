@@ -1,7 +1,7 @@
 # Pemberitahuan Privasi DentisAI (untuk orang tua/wali) — DRAF
 
 > **DRAF. BELUM DITINJAU AHLI HUKUM.** Wajib ditinjau konsultan hukum (UU PDP No. 27/2022, PP Tunas, transfer lintas negara) dan KEPK sebelum dipakai. Nomor pasal sengaja tidak dicantumkan karena belum diverifikasi (`OPEN_LEGAL_QUESTIONS.md`). Isian `[ISI]` harus diisi tim; jangan dikarang. Bahasa dibuat sederhana; versi untuk anak ada di `CONSENT_TEXT_DRAFT.md`.
-> `notice_version`: `privacy-v0.1-draft-id` (naikkan setiap perubahan dan catat di sini).
+> `notice_version`: `privacy-v0.2-draft-id` (naikkan setiap perubahan dan catat di sini). v0.2 (2026-10-18, ADR 018): kader/ mode kelas/ sekolah dihapus; remaja sebagai pemilik akun dan penonton video sikat giginya sendiri. v0.1 belum pernah dipakai.
 
 ---
 
@@ -13,14 +13,14 @@
 ## 1. Data apa yang kami simpan
 | Data | Untuk apa | Di mana |
 |---|---|---|
-| Alamat email dan kata sandi Anda (orang tua/ kader) | Membuat dan masuk ke akun, atur ulang kata sandi | Server (layanan Supabase, Singapura); kata sandi disimpan dalam bentuk terenkripsi (hash) oleh layanan |
+| Alamat email dan kata sandi Anda (orang tua/ wali, atau remaja yang mendaftar untuk dirinya sendiri) | Membuat dan masuk ke akun, atur ulang kata sandi | Server (layanan Supabase, Singapura); kata sandi disimpan dalam bentuk terenkripsi (hash) oleh layanan |
 | Profil anak: **kode acak** (bukan nama), **tahun dan bulan lahir**, alergi | Menyesuaikan saran (mis. kadar fluoride menurut usia, bebas bahan yang menyebabkan alergi) | Di ponsel; ke server hanya bila Anda mengizinkan (b) |
 | Jawaban gejala dan hasil skrining (tingkat, tanda yang terdeteksi, tanggal, versi aturan/ model) | Menampilkan hasil, riwayat, dan surat rujukan | Di ponsel (terenkripsi); ke server hanya bila diizinkan (b). **Tanpa gambar** |
 | Catatan sikat gigi: tanggal, durasi, "skor semangat" | Streak dan laporan | Di ponsel; ke server hanya bila diizinkan (b) |
 | Catatan persetujuan: jenis, versi teks, waktu | Bukti persetujuan dan penarikannya | Ponsel dan server |
 | Catatan teknis tanpa identitas (mis. versi aplikasi, jenis kesalahan) | Memperbaiki aplikasi | Server, tanpa nama/ foto/ data anak yang dapat dikenali `[ISI: verifikasi isi log]` |
 
-**Kamera saat menyikat gigi:** kamera depan dipakai untuk mengenali wajah dan gerakan tangan saat menyikat. **Video dan gambar tidak disimpan dan tidak dikirim**; gambar dibuang segera setelah diproses. **Satu pengecualian, hanya atas persetujuan orang tua (consent d, ADR 017):** pada akun anak, video singkat saat menyikat gigi dapat dikirim ke server privat di Singapura agar orang tua dapat menontonnya, dan dihapus otomatis paling lama 7 hari; tidak dipakai untuk melatih model dan tidak dilihat siapa pun selain orang tua anak itu, atau kader yang merekamnya pada mode kelas dengan izin orang tua `[ISI: tinjauan hukum Q-15, Q-19]`.
+**Kamera saat menyikat gigi:** kamera depan dipakai untuk mengenali wajah dan gerakan tangan saat menyikat. **Video dan gambar tidak disimpan dan tidak dikirim**; gambar dibuang segera setelah diproses. **Satu pengecualian, hanya atas persetujuan (consent d, ADR 017, 018):** pada akun anak (persetujuan orang tua), video singkat saat menyikat gigi dapat dikirim ke server privat di Singapura agar orang tua dapat menontonnya; pada akun remaja (persetujuan remaja itu sendiri), video dirinya disimpan agar ia sendiri dapat menontonnya lagi. Video dihapus otomatis paling lama 7 hari, tidak dipakai untuk melatih model, dan tidak dilihat siapa pun selain orang tua anak itu (akun anak) atau remaja itu sendiri (akun remaja); fasilitas kesehatan dan admin tidak punya akses `[ISI: tinjauan hukum Q-15, Q-16, Q-18]`.
 
 **Yang tidak kami lakukan:** tidak ada iklan, tidak ada pelacak pihak ketiga, tidak ada profil perilaku anak, tidak ada lokasi tepat dikirim ke server `[ISI: konfirmasi dengan tim app]`.
 
@@ -58,7 +58,7 @@ Anda berhak meminta: melihat data, memperbaiki, **menghapus**, dan **menarik per
 Data di ponsel dienkripsi; koneksi memakai TLS; akses server dibatasi per pengguna; log tidak memuat nama atau foto. Tidak ada sistem yang 100% aman; bila terjadi kebocoran yang berisiko bagi Anda, kami akan memberi tahu sesuai ketentuan `[PERLU VERIFIKASI tenggat]` (`INCIDENT_RESPONSE.md`).
 
 ## 8. Anak
-Akun dimiliki orang tua/ wali atau kader. Mode anak berjalan tanpa akun dan tanpa data pribadi. Untuk penggunaan di sekolah/ posyandu, persetujuan orang tua dicatat sebelum foto diambil.
+Akun dimiliki orang tua/ wali, atau remaja yang mendaftar untuk dirinya sendiri. Orang tua dapat membuatkan akun anak dengan hak terbatas (mencatat sikat gigi, merekam video bila orang tua mengizinkan, meminta skrining). Mode anak berjalan tanpa akun dan tanpa data pribadi. Tidak ada mode sekolah/ kader (ADR 018).
 
 ## 9. Perubahan dan kontak
 Bila pemberitahuan ini berubah, Anda akan melihat versi baru dan, bila perlu, diminta persetujuan ulang. Kontak pengelola data / pejabat PDP: `[ISI]`. Pengaduan: `[ISI]`; Anda juga dapat mengadu ke otoritas pelindungan data sesuai hukum `[PERLU VERIFIKASI nama lembaga]`.

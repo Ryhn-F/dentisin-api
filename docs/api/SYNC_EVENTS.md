@@ -58,7 +58,7 @@ Respons HTTP 200: array dengan **jumlah dan urutan sama** dengan input.
 |---|---|---|---|
 | `schema_invalid` | kunci/tipe/nilai tidak sesuai, payload > 8 KiB, `child_id` tidak valid, waktu di luar rentang, pelanggaran CHECK/NOT NULL/enum, path foto tidak cocok atau objek belum ada | ya (kecuali amplop/`event_id` tidak valid) | bug klien atau data lokal rusak: buang dari antrean, catat lokal (tanpa PII); jangan kirim ulang |
 | `unknown_event_type` | `type` bukan salah satu dari 8 | ya | bug versi app; jangan kirim ulang |
-| `forbidden` | bukan pemilik/anggota roster anak itu, **akun anak mengirim tipe di luar yang diizinkan atau untuk anak lain, atau akun non-anak mengirim `screening_requested`, atau akun yang bukan anak dan bukan kader pemilik mengirim `brushing_proof_registered`**, peran kurang (mis. `paper_via_kader` tanpa peran kader), RLS menolak, referensi (mis. `screening_id` di rujukan) tidak ada/bukan milik anak itu, atau anak tidak ada pada event non-consent | ya | event tidak sah untuk akun ini; buang |
+| `forbidden` | bukan pemilik anak itu, **akun anak mengirim tipe di luar yang diizinkan atau untuk anak lain, atau akun non-anak mengirim `screening_requested`, atau akun yang bukan anak dan bukan remaja (untuk profil dirinya) mengirim `brushing_proof_registered`**, `method` `paper_via_kader` (tidak berlaku lagi, ADR 018), RLS menolak, referensi (mis. `screening_id` di rujukan) tidak ada/bukan milik anak itu, atau anak tidak ada pada event non-consent | ya | event tidak sah untuk akun ini; buang |
 | `consent_required` | consent (b) tidak aktif (event data) atau consent (c) tidak aktif (foto) | ya | kirim `consent_changed` yang diperlukan **lebih dulu** lalu kirim data sebagai event **baru** (`event_id` baru). Bila consent ditarik, hapus event data anak itu dari outbox |
 | `feature_disabled` | flag `dataset_contribution` mati (`image_upload_registered`) | ya | jangan unggah foto; buang event |
 | `limit_exceeded` | batas harian permintaan skrining / video bukti, atau ukuran/durasi video melewati batas (`app_setting`, lihat `ACCOUNTS_AND_FLOWS.md` §3 `limits`) | ya | jangan kirim ulang; beri tahu pengguna dan coba lagi besok / perkecil video |
@@ -79,13 +79,13 @@ Kunci: `child_id`, `consent_type`, `action`, `text_version`, `at`, `method`.
 
 | Kunci | Aturan |
 |---|---|
-| `consent_type` | wajib; `a` (simpan lokal), `b` (kirim data teknis terpseudonim), `c` (unggah foto dataset), **`d` (bukti sikat gigi video ke orang tua; ADR 017)** |
+| `consent_type` | wajib; `a` (simpan lokal), `b` (kirim data teknis terpseudonim), `c` (unggah foto dataset), **`d` (bukti sikat gigi video; anak → orang tua, remaja → dirinya sendiri; ADR 017, 018)** |
 | `action` | wajib; `grant` atau `withdraw` |
 | `text_version` | wajib untuk `grant`; `^[A-Za-z0-9._-]{1,32}$` (versi teks persetujuan yang ditampilkan) |
 | `at` | opsional; bawaan jam server; untuk `withdraw` nilai efektif `max(at, granted_at)` |
-| `method` | opsional; `in_app` (bawaan) atau `paper_via_kader` (hanya peran `kader`, kalau tidak `forbidden`) |
+| `method` | opsional; hanya `in_app` (bawaan). `paper_via_kader` dihapus (ADR 018) dan selalu ditolak `forbidden` |
 
-Perilaku: anak belum ada + `grant` -> server membuat **profil anak kosong** milik pemanggil (butuh peran `guardian` atau `kader`); anak belum ada + `withdraw` -> `applied` (tidak ada yang ditarik). `grant` saat consent jenis itu sudah aktif -> `applied` tanpa baris baru. `grant` saat ada permintaan hapus -> `deletion_pending`; **penarikan selalu diterima**. Menarik (c) langsung menandai foto anak itu `withdrawn` (lalu dihapus oleh `retention-sweep`). Setelah ditarik, consent jenis itu bisa diberikan lagi sebagai baris baru.
+Perilaku: anak belum ada + `grant` -> server membuat **profil anak kosong** milik pemanggil (butuh peran `guardian`); anak belum ada + `withdraw` -> `applied` (tidak ada yang ditarik). `grant` saat consent jenis itu sudah aktif -> `applied` tanpa baris baru. `grant` saat ada permintaan hapus -> `deletion_pending`; **penarikan selalu diterima**. Menarik (c) langsung menandai foto anak itu `withdrawn` (lalu dihapus oleh `retention-sweep`). Setelah ditarik, consent jenis itu bisa diberikan lagi sebagai baris baru.
 
 ### 3.2 `child_upserted`
 
@@ -103,7 +103,7 @@ Syarat: pemanggil **pemilik** anak (`forbidden` bila bukan atau anak belum ada),
 ### 3.3 `screening_recorded`
 
 Kunci: `screening_id`, `child_id`, `screened_at`, `model_version`, `rules_version`, `level`, `red_flag`, `findings`, `request_id`.
-Syarat: akses anak (pemilik atau anggota roster kader), tidak ada permintaan hapus, consent (b) aktif.
+Syarat: akses anak (pemilik), tidak ada permintaan hapus, consent (b) aktif.
 
 | Kunci | Aturan |
 |---|---|
@@ -165,7 +165,7 @@ Urutan cek: bukan akun anak / bukan anaknya / akun dinonaktifkan (`forbidden`) -
 
 Batas `request_max_per_child_per_day` (bawaan 5 per hari kalender WIB). Status awal `pending`; kedaluwarsa `request_expiry_days` (14). Server tidak menilai level dari permintaan (red flag tetap tanggung jawab app/kuesioner).
 
-### 3.8 `brushing_proof_registered` (akun anak, atau kader pemilik anak; ADR 017)
+### 3.8 `brushing_proof_registered` (akun anak, atau remaja untuk profil dirinya; ADR 017, 018)
 
 Mendaftarkan metadata video bukti sikat gigi **sebelum** berkas diunggah. Kunci (semua wajib): `proof_id`, `child_id`, `brushing_event_id`, `size_bytes`, `duration_s`, `mime`.
 Urutan cek: `forbidden` -> `deletion_pending` -> flag `brushing_proof_video` (`feature_disabled`) -> consent (b) **dan (d)** (`consent_required`) -> ukuran/durasi/batas harian (`limit_exceeded`) -> `brushing_event_id` milik anak itu sudah ada (`schema_invalid`).
@@ -178,11 +178,11 @@ Urutan cek: `forbidden` -> `deletion_pending` -> flag `brushing_proof_video` (`f
 | `duration_s` | integer >= 1 dan <= `proof_max_duration_s` (bawaan 180) |
 | `mime` | `video/mp4` atau `video/quicktime` |
 
-Server membentuk `object_path = <guardian_id>/<child_id>/<proof_id>.mp4` (`.mov` untuk `video/quicktime`); **unggah ke bucket `brushing_proofs` setelah event ini `applied`** ([`SUPABASE_API.md`](SUPABASE_API.md) §4, alur lengkap: [`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md) §2.4). Batas harian `proof_max_per_child_per_day` (bawaan 3, hari WIB); retensi `proof_retention_days` (7).
+Server membentuk `object_path = <owner_id>/<child_id>/<proof_id>.mp4` (`.mov` untuk `video/quicktime`), dengan `owner_id` = id akun orang tua pemilik anak (akun anak) atau id akun remaja itu sendiri (profil diri); **unggah ke bucket `brushing_proofs` setelah event ini `applied`** ([`SUPABASE_API.md`](SUPABASE_API.md) §4, alur lengkap: [`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md) §2.4). Batas harian `proof_max_per_child_per_day` (bawaan 3, hari WIB); retensi `proof_retention_days` (7).
 
 Akun anak hanya boleh mengirim `brushing_recorded`, `screening_requested`, dan `brushing_proof_registered`, hanya untuk anaknya sendiri; tipe lain -> `forbidden`.
 
-**Kader (amandemen 2026-10-18):** kader (peran `kader`) juga boleh mengirim `brushing_proof_registered`, hanya untuk anak yang **ia miliki** (roster sendiri); `uploaded_by` = kader dan path `<kader_id>/<child_id>/<proof_id>.(mp4|mov)`. Gerbang dan batas sama; consent (d) murid dapat dicatat kader dengan `consent_changed` `method: "paper_via_kader"`. Akun guardian/remaja biasa tetap `forbidden`. Kader tidak boleh mengirim `screening_requested`.
+**Remaja (ADR 018):** akun `teen` juga boleh mengirim `brushing_proof_registered`, hanya untuk **profil dirinya** (`is_self`, `child_id` = `my_account().self_child_id`); `uploaded_by` = remaja itu dan path `<teen_uid>/<self_child_id>/<proof_id>.(mp4|mov)`. Gerbang dan batas sama; consent (b) dan (d) diberikan remaja sendiri untuk profil dirinya (`method: "in_app"`). `child_id` lain -> `forbidden`. Akun orang tua (`guardian`) tetap `forbidden` (orang tua tidak mendaftarkan video; ia menonton video anak-anaknya). Remaja tidak boleh mengirim `screening_requested`.
 
 ## 4. Idempotensi
 
@@ -202,7 +202,7 @@ Akun anak hanya boleh mengirim `brushing_recorded`, `screening_requested`, dan `
   3. `screening_recorded`, `brushing_recorded` (butuh consent b).
   4. `referral_created` dengan `screening_id` (butuh screening `applied`).
   5. Foto: `consent_changed` (grant c) -> unggah ke Storage -> `image_upload_registered`.
-  6. Akun anak: `brushing_recorded` (`applied`) -> `brushing_proof_registered` -> unggah video. `screening_requested` berdiri sendiri. Orang tua: `consent_changed` (grant b, lalu d) harus `applied` sebelum event akun anak apa pun.
+  6. Akun anak: `brushing_recorded` (`applied`) -> `brushing_proof_registered` -> unggah video. `screening_requested` berdiri sendiri. Orang tua: `consent_changed` (grant b, lalu d) harus `applied` sebelum event akun anak apa pun. Remaja: `ensure_self_profile` -> `consent_changed` (grant b, lalu d) untuk profil diri -> `brushing_recorded` -> `brushing_proof_registered` -> unggah video.
 - Bila event perantara ditolak, event yang bergantung akan ikut ditolak **permanen** (mis. `consent_required`, `forbidden`); tahan di antrean lokal dan jangan kirim.
 - Penarikan consent (b): server berhenti menerima data anak itu (RPC dan RLS). App harus membersihkan event data anak itu dari outbox dan berhenti menambah yang baru.
 - Penghapusan akun/anak (`request_deletion`) menghentikan sinkron subjek segera.
@@ -230,7 +230,7 @@ Ukuran batch yang dianjurkan: <= 50 event per panggilan (batas keras 100 dan 256
 
 ## 8. Contoh lengkap
 
-Batch (kader/orang tua baru; flag foto mati; satu event cacat sengaja):
+Batch (orang tua baru; flag foto mati; satu event cacat sengaja):
 
 ```json
 { "batch": [

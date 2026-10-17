@@ -4,7 +4,7 @@
 > **Privasi:** jangan mencatat nama, kontak, foto, atau data kesehatan identitas. Rujuk lewat ID pseudonim/ ID laporan; detail sensitif disimpan terpisah dan dibatasi aksesnya.
 
 ## Kanal masuk
-`[ISI]` (mis. email dukungan, formulir di app tanpa data anak, laporan kader/ puskesmas, ulasan toko). Alamat/ penanggung jawab: `[ISI]`. Pengguna harus tahu cara melapor (layar Tentang) — `[ISI]`.
+`[ISI]` (mis. email dukungan, formulir di app tanpa data anak, laporan dari dokter gigi/ puskesmas tujuan rujukan, ulasan toko). Alamat/ penanggung jawab: `[ISI]`. Pengguna harus tahu cara melapor (layar Tentang) — `[ISI]`.
 
 ## Klasifikasi
 | Jenis | Contoh | Penanganan |

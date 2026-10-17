@@ -97,28 +97,28 @@ Galat GoTrue (bentuk `{"code":<http>,"error_code":"<nama>","msg":"..."}`; nama m
 
 Endpoint: `GET|POST|PATCH /rest/v1/<tabel>`. Hanya schema `public` (dan `graphql_public`) yang diekspos; schema `private` (helper, rahasia, job) **tidak**. `max_rows = 1000` per respons. Semua tabel memakai `ENABLE` + `FORCE ROW LEVEL SECURITY`; hak kolom diberikan eksplisit (grant per kolom). `anon` tidak punya akses tabel.
 
-Kunci: R = SELECT, I = INSERT, U = UPDATE, D = DELETE. "Sendiri" = baris milik akun pemanggil. "Anak yang dapat diakses" = anak milik sendiri, atau (kader) anak di roster sendiri.
+Kunci: R = SELECT, I = INSERT, U = UPDATE, D = DELETE. "Sendiri" = baris milik akun pemanggil. "Anak yang dapat diakses" = anak milik sendiri (remaja: profil dirinya). Kolom `guardian` berlaku untuk akun orang tua **dan** remaja (keduanya memegang peran `guardian`); hak akun anak (peran `child`) ada di [`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md) §6. Peran `kader` dan `facility_viewer` tidak dipakai lagi (ADR 018; nilai enum lama tetap ada tetapi tidak dapat diberikan).
 
-| Tabel | guardian | kader | facility_viewer | admin | service_role |
-|---|---|---|---|---|---|
-| `guardian` | R sendiri; U kolom `locale` (nilai `id`) | sama | R sendiri | R sendiri | semua |
-| `user_role` | R sendiri; tanpa tulis | sama | sama | R sendiri (tulis lewat RPC) | semua |
-| `child_profile` | R anak sendiri; I hanya "shell" kosong (`owner_id` = sendiri; tahun/bulan lahir null, alergi kosong); U (`birth_year`, `birth_month`, `allergies`) bila consent (b) aktif dan tidak ada permintaan hapus; tanpa D | + R anak di roster | tidak ada | tidak ada (hanya `admin_get_child_record`) | semua |
-| `consent` | R; I (`method='in_app'`, `granted_by`=sendiri, tidak ada permintaan hapus); U hanya `withdrawn_at` (sekali; baris tidak bisa dibuka lagi) | + `method='paper_via_kader'` | - | - | semua |
-| `screening`, `brushing_event`, `referral` | R; I bila consent (b) aktif, tidak ada permintaan hapus, pelaku = sendiri; tanpa U/D | sama (anak di roster) | - | - | semua |
-| `image_upload` | R; I (`id`,`child_id`,`uploaded_by`,`consent_id`,`object_path`) bila consent (c) aktif, flag `dataset_contribution` hidup, path berawalan `<uid>/<child_id>/`; kolom status/waktu diatur server | sama | - | - | semua |
-| `class_roster` | - | CRUD roster sendiri; `facility_code` null atau sama dengan cakupan kader | - | - | semua |
-| `class_roster_member` | - | CRUD dalam roster sendiri; menambah hanya anak yang dimiliki sendiri | - | - | semua |
-| `deletion_request` | R sendiri; I via `request_deletion()` (I langsung hanya untuk `pending` pada anak/akun sendiri) | sama | - | - | semua |
-| `sync_event` | R sendiri (ditulis oleh `sync_events`) | sama | - | - | semua |
-| `child_account` (ADR 017) | R akun anak miliknya (tanpa kredensial); tanpa tulis klien | - | - | - | semua |
-| `screening_request` (ADR 017) | R untuk anaknya; status diubah lewat RPC `ack_screening_request` / `screening_recorded`; tulis lewat `sync_events` | - | - | - | semua |
-| `brushing_proof` (ADR 017) | R metadata klip hidup anaknya; tandai dilihat/hapus lewat RPC | - | - | - | semua |
-| `child_login_attempt` | tidak ada | - | - | - | semua |
-| `feature_flag` | R (perlu login) | R | R | R; tulis lewat RPC | semua |
-| `app_setting` | - | - | - | R | semua |
-| `audit_log` | - | - | - | R | R/I saja (append-only) |
-| `ml_review_queue`, `ml_review_result`, `ml_model_registry` | - | - | - | R | semua (ditulis FastAPI) |
+| Tabel | guardian (orang tua / remaja) | admin | service_role |
+|---|---|---|---|
+| `guardian` | R sendiri; U kolom `locale` (nilai `id`) | R sendiri | semua |
+| `user_role` | R sendiri; tanpa tulis | R sendiri (tulis lewat RPC) | semua |
+| `child_profile` | R anak sendiri; I hanya "shell" kosong (`owner_id` = sendiri; tahun/bulan lahir null, alergi kosong); U (`birth_year`, `birth_month`, `allergies`) bila consent (b) aktif dan tidak ada permintaan hapus; tanpa D | tidak ada (hanya `admin_get_child_record`) | semua |
+| `consent` | R; I (`method='in_app'`, `granted_by`=sendiri, tidak ada permintaan hapus); U hanya `withdrawn_at` (sekali; baris tidak bisa dibuka lagi) | - | semua |
+| `screening`, `brushing_event`, `referral` | R; I bila consent (b) aktif, tidak ada permintaan hapus, pelaku = sendiri; tanpa U/D | - | semua |
+| `image_upload` | R; I (`id`,`child_id`,`uploaded_by`,`consent_id`,`object_path`) bila consent (c) aktif, flag `dataset_contribution` hidup, path berawalan `<uid>/<child_id>/`; kolom status/waktu diatur server | - | semua |
+| `deletion_request` | R sendiri; I via `request_deletion()` (I langsung hanya untuk `pending` pada anak/akun sendiri) | - | semua |
+| `sync_event` | R sendiri (ditulis oleh `sync_events`) | - | semua |
+| `child_account` (ADR 017) | R akun anak miliknya (tanpa kredensial); tanpa tulis klien | - | semua |
+| `screening_request` (ADR 017) | R untuk anaknya; status diubah lewat RPC `ack_screening_request` / `screening_recorded`; tulis lewat `sync_events` | - | semua |
+| `brushing_proof` (ADR 017, 018) | R metadata klip hidup anaknya (remaja: klip miliknya sendiri); tandai dilihat/hapus lewat RPC | - | semua |
+| `child_login_attempt` | tidak ada | - | semua |
+| `feature_flag` | R (perlu login) | R; tulis lewat RPC | semua |
+| `app_setting` | - | R | semua |
+| `audit_log` | - | R | R/I saja (append-only) |
+| `ml_review_queue`, `ml_review_result`, `ml_model_registry` | - | R | semua (ditulis FastAPI) |
+
+Tabel `class_roster` dan `class_roster_member` dihapus (ADR 018).
 
 Tidak ada kebijakan DELETE untuk klien pada tabel data anak: penghapusan hanya lewat `request_deletion`. `private.secret` tidak dapat dibaca siapa pun kecuali owner.
 
@@ -126,7 +126,7 @@ Contoh baca (app):
 
 ```bash
 # Peran sendiri
-curl -sS "https://<project-ref>.supabase.co/rest/v1/user_role?select=role,facility_code" \
+curl -sS "https://<project-ref>.supabase.co/rest/v1/user_role?select=role" \
   -H "apikey: <anon-key>" -H "Authorization: Bearer <jwt>"
 # Flag unggah foto dataset
 curl -sS "https://<project-ref>.supabase.co/rest/v1/feature_flag?select=key,enabled&key=eq.dataset_contribution" \
@@ -158,7 +158,7 @@ Galat tingkat panggilan (HTTP 400, `code` `22023`): `batch_must_be_array`, `batc
 
 ### 3.2 `request_deletion(p_scope deletion_scope, p_child_id uuid default null) -> uuid`  (authenticated)
 
-Meminta hak hapus. Efek langsung: sinkronisasi untuk subjek berhenti (`deletion_pending`). `p_scope`: `child` (wajib `p_child_id`, anak milik sendiri) atau `account` (`p_child_id` harus kosong; menghapus semua anak, roster, peran, ledger, dan akun auth).
+Meminta hak hapus. Efek langsung: sinkronisasi untuk subjek berhenti (`deletion_pending`). `p_scope`: `child` (wajib `p_child_id`, anak milik sendiri) atau `account` (`p_child_id` harus kosong; menghapus semua anak, akun anak, bukti video, peran, ledger, dan akun auth).
 
 ```bash
 curl -sS -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/request_deletion" \
@@ -181,24 +181,15 @@ curl -sS -X POST "https://<project-ref>.supabase.co/rest/v1/rpc/keepalive" \
 # 200: 1
 ```
 
-### 3.4 `facility_screening_summary(p_from date, p_to date) -> table`  (facility_viewer, admin)
+### 3.4 (dihapus) `facility_screening_summary`
 
-Agregat bulanan per fasilitas, hanya `facility_code` milik pemanggil (admin: semua). Sel dengan < k penapisan disembunyikan (k = `max(aggregate_min_cell_size, 5)`); tidak ada complementary suppression (batasan yang diketahui). Setiap panggilan diaudit.
-
-```json
-// POST /rest/v1/rpc/facility_screening_summary   {"p_from":"2026-09-01","p_to":"2026-10-31"}
-[
-  {"facility_code":"PKM-3201-01","period_month":"2026-09-01","level":"yellow","screenings":12,"suppressed":false},
-  {"facility_code":"PKM-3201-01","period_month":"2026-09-01","level":"red","screenings":null,"suppressed":true}
-]
-```
-Galat: `forbidden` (42501: bukan `facility_viewer` berscope atau admin), `invalid_range` (22023: null, `p_to < p_from`, atau rentang > 400 hari). Rentang dibulatkan ke bulan penuh. `level` = `red|orange|yellow|green`.
+Dihapus oleh ADR 018 bersama peran `facility_viewer`: satu-satunya sumber datanya adalah roster kader, yang juga dihapus. Tidak ada rekap fasilitas/puskesmas di MVP; bila kelak dibutuhkan, dibangun ulang dari data rujukan lewat ADR baru. App tidak boleh memanggilnya.
 
 ### 3.5 RPC admin (peran `admin`, semua diaudit)
 
 | RPC | Argumen | Hasil | Galat (SQLSTATE) |
 |---|---|---|---|
-| `admin_grant_role` | `p_user uuid`, `p_role app_role`, `p_facility_code text = null` | void | `forbidden` (42501); `unknown_user` (22023); `role_conflict_owns_children` (22023, `facility_viewer`/`admin` pada akun yang memiliki anak). `facility_viewer` wajib `p_facility_code` (CHECK, 23514). Pemberian `facility_viewer`/`admin` mencabut `guardian`/`kader` |
+| `admin_grant_role` | `p_user uuid`, `p_role app_role`, `p_facility_code text = null` | void | `forbidden` (42501); `unknown_user` (22023); `role_conflict_owns_children` (22023, `admin` pada akun yang memiliki anak). Pemberian `admin` mencabut `guardian`. `kader` dan `facility_viewer` tidak dapat diberikan lagi (ADR 018; galat `role_not_available`, SQLSTATE 22023) |
 | `admin_revoke_role` | `p_user uuid`, `p_role app_role` | void | `forbidden`; `cannot_revoke_own_admin` (22023) |
 | `admin_set_feature_flag` | `p_key text`, `p_enabled boolean`, `p_approval_ref text = null` | void | `forbidden`; `approval_ref_required` (22023: mengaktifkan `dataset_contribution` tanpa nomor persetujuan KEPK); `unknown_flag` (22023). `p_approval_ref` cocok `^[A-Za-z0-9./_-]{1,64}$` |
 | `admin_get_child_record` | `p_child uuid`, `p_reason_code text` (`^[a-z][a-z0-9_]{2,39}$`) | jsonb | `forbidden`; `reason_code_required` (22023) |
@@ -225,15 +216,15 @@ Semua mengembalikan `forbidden` (42501) identik untuk "bukan milik Anda" dan "ti
 
 | RPC | Untuk | Hasil |
 |---|---|---|
-| `my_account()` | semua | jenis akun, peran, `self_child_id`, `child_account`, flag, `capabilities` (`create_child_accounts`, `register_proofs`), `limits` |
+| `my_account()` | semua | jenis akun, peran (`guardian`/`child`/`admin`; tidak pernah `kader`/`facility_viewer`), `self_child_id`, `child_account`, flag, `capabilities` (`create_child_accounts`: hanya akun `guardian`; `register_proofs`: akun anak dengan `proof_allowed`, atau akun `teen` selama flag `brushing_proof_video` hidup), `limits` |
 | `ensure_self_profile(p_child_id, p_birth_year, p_birth_month)` | remaja | `uuid` profil diri (idempoten) |
-| `list_children()` | orang tua / remaja / kader | ringkasan beranda per anak (lencana permintaan & bukti) |
-| `child_history(p_child, p_before, p_limit, p_kinds, p_from)` | orang tua / remaja / kader / anak | `{items[], next_before}` |
+| `list_children()` | orang tua / remaja | ringkasan beranda per anak (lencana permintaan & bukti) |
+| `child_history(p_child, p_before, p_limit, p_kinds, p_from)` | orang tua / remaja / anak | `{items[], next_before}` |
 | `brushing_streak(p_child, p_tz)` | semua yang berhak | `{current, longest, last_day, today_done, week[], ...}` |
 | `list_screening_requests(p_child, p_status, p_limit)` | orang tua / remaja / anak | permintaan (status efektif) |
 | `ack_screening_request(p_id, p_action)` | orang tua / remaja | `seen` atau `cancel` |
-| `list_brushing_proofs(p_child, p_before, p_limit)` | orang tua / remaja / kader (pemilik anak) | klip hidup + `object_path` untuk `createSignedUrl` |
-| `mark_proof_viewed(p_proof)` / `delete_brushing_proof(p_proof)` | orang tua / remaja / kader (pemilik anak) | status baru |
+| `list_brushing_proofs(p_child, p_before, p_limit)` | orang tua (anak-anaknya) / remaja (video miliknya sendiri) | klip hidup + `object_path` untuk `createSignedUrl` |
+| `mark_proof_viewed(p_proof)` / `delete_brushing_proof(p_proof)` | orang tua (anak-anaknya) / remaja (video miliknya sendiri) | status baru |
 
 ## 4. Storage
 
@@ -243,7 +234,7 @@ Batas proyek: `storage.file_size_limit = 50MiB`.
 |---|---|---|---|
 | `manifests` | **publik baca** lewat URL; tulis hanya `admin` atau `service_role` | 50 MiB; MIME `application/json`, `application/octet-stream`, `text/plain` | berisi `manifest.json`, `manifest.sig`, `model/<v>/...`, `rules/<v>/...`, `recommender/<v>/...` (lihat `CLIENT_CONTRACTS.md`) |
 | `dataset_photos` | privat; klien hanya **INSERT** | 512000 byte (500 KiB); MIME `image/jpeg` | lihat di bawah; tidak ada SELECT/UPDATE/DELETE untuk klien |
-| `brushing_proofs` (ADR 017) | privat; **akun anak** atau **kader pemilik anak** hanya INSERT; **pemilik anak (orang tua/remaja/kader)** hanya SELECT (signed URL) untuk klip hidup | 10 MiB; MIME `video/mp4`, `video/quicktime` | path persis `<guardian_id>/<child_id>/<proof_id>.mp4\|.mov` dari event `brushing_proof_registered`; tanpa UPDATE/DELETE/upsert; retensi 7 hari; rinci di bawah |
+| `brushing_proofs` (ADR 017, 018) | privat; **akun anak** (untuk dirinya) atau **remaja** (untuk profil dirinya) hanya INSERT; **pemilik profil** (orang tua untuk anak-anaknya, remaja untuk dirinya) hanya SELECT (signed URL) untuk klip hidup | 10 MiB; MIME `video/mp4`, `video/quicktime` | path persis `<owner_id>/<child_id>/<proof_id>.mp4\|.mov` (`owner_id` = id orang tua pemilik anak, atau id remaja) dari event `brushing_proof_registered`; tanpa UPDATE/DELETE/upsert; retensi 7 hari; rinci di bawah |
 
 Syarat unggah `dataset_photos` (kebijakan `dentisai_dataset_photos_insert`; semua harus benar):
 
@@ -268,13 +259,14 @@ await supabase.storage.from('dataset_photos')
   .upload(`${uid}/${childId}/${uploadId}.jpg`, jpegArrayBuffer, { contentType: 'image/jpeg', upsert: false });
 ```
 
-Syarat unggah `brushing_proofs` (kebijakan `dentisai_brushing_proofs_insert`; semua harus benar): pengunggah = akun anak aktif untuk anaknya sendiri, atau kader pemilik anak; path persis milik baris `brushing_proof` yang didaftarkan pengunggah itu (status `uploaded`, belum kedaluwarsa); flag `brushing_proof_video` hidup; consent (d) aktif; tidak ada permintaan hapus; ukuran dan MIME sesuai pendaftaran. Baca (`dentisai_brushing_proofs_select`): hanya pemilik anak (segmen pertama path = `auth.uid()`), hanya klip hidup dengan consent (d) aktif; fasilitas kesehatan dan admin tidak punya akses; kader hanya untuk anak yang ia miliki. Pembersihan berkas oleh Edge Function `retention-sweep` / `process-deletion`.
+Syarat unggah `brushing_proofs` (kebijakan `dentisai_brushing_proofs_insert`; semua harus benar): pengunggah = akun anak aktif untuk anaknya sendiri, atau akun remaja untuk profil dirinya (`is_self`); path persis milik baris `brushing_proof` yang didaftarkan pengunggah itu (status `uploaded`, belum kedaluwarsa); flag `brushing_proof_video` hidup; consent (d) aktif; tidak ada permintaan hapus; ukuran dan MIME sesuai pendaftaran. Baca (`dentisai_brushing_proofs_select`): hanya pemilik anak (segmen pertama path = `auth.uid()`), hanya klip hidup dengan consent (d) aktif; untuk remaja pemilik = dirinya sendiri; tidak ada peran lain (fasilitas kesehatan, admin) yang punya akses. Pembersihan berkas oleh Edge Function `retention-sweep` / `process-deletion`.
 
 ```ts
 // Anak: setelah brushing_proof_registered berstatus applied
 await supabase.storage.from('brushing_proofs')
   .upload(`${guardianId}/${childId}/${proofId}.mp4`, videoArrayBuffer, { contentType: 'video/mp4', upsert: false });
-// Orang tua: tonton
+// Remaja: path = `${me.user_id}/${me.self_child_id}/${proofId}.mp4`
+// Orang tua (video anak) atau remaja (video sendiri): tonton
 const { data } = await supabase.storage.from('brushing_proofs').createSignedUrl(objectPath, 300);
 ```
 

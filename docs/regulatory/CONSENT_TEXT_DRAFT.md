@@ -1,17 +1,23 @@
 # Teks Persetujuan DentisAI — DRAF
 
-> **DRAF. BELUM DITINJAU AHLI HUKUM DAN KEPK.** Dipakai untuk mendefinisikan `consent` (jenis a/b/c + `text_version`) di app dan DB (PRD FR-02, §9.3). Setiap perubahan kata = `text_version` baru; persetujuan lama tetap terikat pada versi yang dilihat penggunanya. Persetujuan harus **granular, terpisah, tidak dicentang otomatis**; (b) dan (c) **default mati**; dapat ditarik kapan saja. Teks mengacu `PRIVACY_NOTICE_DRAFT.md` (`privacy-v0.1-draft-id`).
+> **DRAF. BELUM DITINJAU AHLI HUKUM DAN KEPK.** Dipakai untuk mendefinisikan `consent` (jenis a/b/c + `text_version`) di app dan DB (PRD FR-02, §9.3). Setiap perubahan kata = `text_version` baru; persetujuan lama tetap terikat pada versi yang dilihat penggunanya. Persetujuan harus **granular, terpisah, tidak dicentang otomatis**; (b) dan (c) **default mati**; dapat ditarik kapan saja. Teks mengacu `PRIVACY_NOTICE_DRAFT.md` (`privacy-v0.2-draft-id`).
 > Pemberi persetujuan: orang tua/ wali anak (atau dewasa untuk dirinya sendiri sebagai sukarelawan). Anak < 18 th: persetujuan wali + assent anak (pendekatan konservatif, `docs/research/05_ethics_regulation.md` §5.2 — celah definisi anak [PERLU VERIFIKASI]).
+> **Remaja (ADR 017, 018):** akun `teen` (10–19 th, mendaftar sendiri) memberi persetujuan **sendiri** untuk profil dirinya, termasuk (d) varian remaja. Apakah ini cukup bagi remaja < 18 th belum ditinjau (`OPEN_LEGAL_QUESTIONS.md` Q-16, Q-15). Teks (a)/(b) di bawah masih ditulis untuk orang tua; varian kalimat remaja untuk (a)/(b) `[ISI]`.
+> **Mode kader/ sekolah dicabut (ADR 018, 2026-10-18):** tidak ada lagi izin kertas via kader (`paper_via_kader`) atau varian teks kader.
 
 ## Daftar versi teks
 | `text_version` | Jenis | Status | Dipakai sejak | Catatan |
 |---|---|---|---|---|
 | `consent-a-v0.1-draft-id` | (a) simpan lokal | DRAF | - | |
-| `consent-b-v0.1-draft-id` | (b) data teknis terpseudonim | DRAF | - | |
+| `consent-b-v0.1-draft-id` | (b) data teknis terpseudonim | Diganti `v0.2` (belum pernah dipakai) | - | Teks v0.1 sama dengan v0.2 kecuali kalimat tujuan yang juga memuat "rekap kelas untuk puskesmas/ sekolah (bila ikut)" (dihapus, ADR 018) |
+| `consent-b-v0.2-draft-id` | (b) data teknis terpseudonim | DRAF | - | |
 | `consent-c-v0.1-draft-id` | (c) unggah foto | DRAF; **fitur mati sampai KEPK menyetujui** | - | `[PENDING]` KEPK |
 | `consent-d-v0.1-draft-id` | (d) bukti sikat gigi video ke orang tua (ADR 017) | DRAF; **fitur di balik flag `brushing_proof_video`; menunggu tinjauan hukum (Q-15)** | - | `[PENDING]` hukum |
+| `consent-d-teen-v0.1-draft-id` | (d) video sikat gigi remaja untuk dirinya sendiri (ADR 018) | DRAF; flag `brushing_proof_video`; menunggu tinjauan hukum (Q-15, Q-16) | - | Diberikan remaja sendiri untuk profil dirinya |
+| `consent-d-kader-v0.1-draft-id` | (d) varian kader/ sekolah | **Dicabut (ADR 018)**; tidak pernah dipakai | - | Mode kader dihapus 2026-10-18 |
 | `assent-child-v0.1-draft-id` | persetujuan anak (assent) | DRAF | - | Ditulis untuk kelas 4 SD; `[ISI]` uji keterbacaan 5 anak |
-| `brushing-camera-notice-v0.1-draft-id` | pemberitahuan kamera sikat gigi | DRAF | - | informasi, bukan jenis consent (a/b/c) `[ISI: keputusan hukum]` |
+| `brushing-camera-notice-v0.1-draft-id` | pemberitahuan kamera sikat gigi | Diganti `v0.2` (belum pernah dipakai) | - | v0.1 hanya menyebut pengecualian akun anak; v0.2 menambah remaja (ADR 018) |
+| `brushing-camera-notice-v0.2-draft-id` | pemberitahuan kamera sikat gigi | DRAF | - | informasi, bukan jenis consent (a/b/c) `[ISI: keputusan hukum]` |
 
 Rekaman di DB (kolom yang disarankan): `guardian_id`, `child_id` (pseudonim), `type` (a|b|c|d), `text_version`, `granted` (bool), `granted_at`, `withdrawn_at`, `locale` = `id`. Tidak menyimpan teks lengkap berulang; teks tersimpan di repo menurut versi.
 
@@ -25,9 +31,9 @@ Rekaman di DB (kolom yang disarankan): `guardian_id`, `child_id` (pseudonim), `t
 
 Tombol: [Saya setuju] [Tidak sekarang] (jika tidak setuju: aplikasi tetap bisa dipakai dalam mode tanpa menyimpan riwayat `[ISI: konfirmasi dengan tim app]`).
 
-## (b) Kirim data teknis tanpa identitas — `consent-b-v0.1-draft-id` (bawaan: MATI)
+## (b) Kirim data teknis tanpa identitas — `consent-b-v0.2-draft-id` (bawaan: MATI)
 **Judul:** Sinkron data ke server (tanpa foto)
-> Saya mengizinkan DentisAI mengirim ke server **data teknis berkode acak** tentang anak saya: tahun-bulan lahir, hasil skrining (tingkat dan tanda yang terdeteksi, tanpa gambar), tanggal, versi aturan/ model, dan catatan sikat gigi. Tujuannya: menyimpan riwayat di beberapa ponsel, rekap kelas untuk puskesmas/ sekolah (bila ikut), dan memperbaiki aplikasi.
+> Saya mengizinkan DentisAI mengirim ke server **data teknis berkode acak** tentang anak saya: tahun-bulan lahir, hasil skrining (tingkat dan tanda yang terdeteksi, tanpa gambar), tanggal, versi aturan/ model, dan catatan sikat gigi. Tujuannya: menyimpan riwayat di beberapa ponsel dan memperbaiki aplikasi.
 > Server berada di **Singapura** (layanan Supabase), yaitu di luar Indonesia. Email saya diproses oleh layanan pengirim email di luar negeri hanya untuk konfirmasi dan atur ulang kata sandi.
 > Saya dapat **menarik** persetujuan ini kapan saja; setelah itu data baru tidak dikirim lagi. Saya dapat meminta data saya dihapus.
 
@@ -47,8 +53,15 @@ Tombol: [Saya setuju] [Tidak sekarang] (jika tidak setuju: aplikasi tetap bisa d
 > Saya dapat **menarik** persetujuan ini kapan saja: video yang ada langsung disembunyikan dan dihapus dari server, dan video baru tidak dapat dikirim. Menolak pilihan ini **tidak** mengurangi fitur lain; anak tetap bisa menyikat gigi dan mencatat streak tanpa video.
 > `[ISI: teks final menunggu tinjauan hukum Q-15/Q-18 dan KEPK bila diteliti]`
 
-**Varian kader/ sekolah (`consent-d-kader-v0.1-draft-id`, izin kertas via kader):**
-> Saya orang tua/ wali murid ini. Saya mengizinkan **kader/ guru pendamping** merekam **video singkat saat murid menyikat gigi** di sekolah dan menyimpannya di server privat di Singapura. Video hanya dapat dilihat oleh **kader yang merekam**, tidak dipakai untuk melatih model, tidak dibagikan ke puskesmas/ pihak lain, dan dihapus otomatis paling lama **7 hari**. Saya dapat menarik izin kapan saja. Menolak tidak mengurangi layanan lain. `[ISI: nama kader/ sekolah, tinjauan hukum Q-19]`
+**Varian remaja (`consent-d-teen-v0.1-draft-id`, diberikan remaja sendiri untuk profil dirinya; bawaan: MATI):**
+**Judul:** Simpan video sikat gigimu untuk kamu tonton sendiri
+> Aku mengizinkan DentisAI merekam **video singkat saat aku menyikat gigi** (menampilkan mulut dan mungkin wajahku) dan menyimpannya di server **privat di Singapura** supaya **aku sendiri** bisa menontonnya lagi.
+> **Siapa yang dapat melihat:** hanya akunku. Orang tua, sekolah, fasilitas kesehatan, dan admin **tidak** dapat melihatnya. Video **tidak** dipakai untuk melatih model dan tidak dianalisis otomatis.
+> **Lama simpan:** dihapus otomatis paling lama **7 hari**; aku bisa menghapusnya lebih cepat kapan saja.
+> Aku bisa **menarik** izin ini kapan saja: video yang ada langsung disembunyikan dan dihapus, dan video baru tidak bisa dikirim. Kalau tidak setuju, aku tetap bisa menyikat gigi dan mencatat streak tanpa video.
+> `[ISI: teks final menunggu tinjauan hukum Q-15/Q-16/Q-18, termasuk apakah remaja < 18 th perlu pendampingan orang tua]`
+
+**Varian kader/ sekolah (`consent-d-kader-v0.1-draft-id`): Dicabut (ADR 018).** Mode kader dan izin kertas via kader dihapus 2026-10-18; teks ini tidak pernah dipakai.
 
 ## Assent anak — `assent-child-v0.1-draft-id` (bahasa sederhana, mode anak)
 > Halo! Aplikasi ini membantu melihat gigimu dengan foto dan kamera. Hasilnya bukan dari dokter. Kalau ada yang perlu dilihat, kamu akan diajak ke puskesmas atau dokter gigi.
@@ -57,8 +70,8 @@ Tombol: [Saya setuju] [Tidak sekarang] (jika tidak setuju: aplikasi tetap bisa d
 
 (Jangan menampilkan gambar menakutkan; nada menenangkan. Uji keterbacaan: `[ISI]`.)
 
-## Pemberitahuan kamera sikat gigi — `brushing-camera-notice-v0.1-draft-id`
-> Saat menyikat gigi, kamera depan melihat wajah dan tangan supaya hitungan 2 menit berjalan hanya saat kamu menyikat. **Video dan foto tidak disimpan dan tidak dikirim** (kecuali pada akun anak yang orang tuanya mengaktifkan consent (d): lihat teks (d) dan layar perekaman yang menyatakannya jelas sebelum merekam). Kalau kamera tidak mau dipakai, ada timer dengan musik tanpa kamera.
+## Pemberitahuan kamera sikat gigi — `brushing-camera-notice-v0.2-draft-id`
+> Saat menyikat gigi, kamera depan melihat wajah dan tangan supaya hitungan 2 menit berjalan hanya saat kamu menyikat. **Video dan foto tidak disimpan dan tidak dikirim** (kecuali pada akun anak yang orang tuanya mengaktifkan consent (d), atau akun remaja yang mengaktifkan consent (d) untuk dirinya sendiri: lihat teks (d) dan layar perekaman yang menyatakannya jelas sebelum merekam). Kalau kamera tidak mau dipakai, ada timer dengan musik tanpa kamera.
 
 ## Penarikan persetujuan (UI)
 - Pengaturan > Privasi: tiap jenis dapat dimatikan sendiri; konfirmasi: "Data baru tidak akan dikirim. Mau sekaligus menghapus data yang sudah dikirim?"
@@ -66,7 +79,7 @@ Tombol: [Saya setuju] [Tidak sekarang] (jika tidak setuju: aplikasi tetap bisa d
 - Hapus akun/ data anak membuat `deletion_request` dan bukti.
 
 ## Mode kader/ sekolah
-Persetujuan orang tua **per murid, tercatat sebelum foto diambil** (PRD FR-80). Surat izin sekolah/ Dinkes: `[ISI]`. Lembar informasi + formulir kertas untuk orang tua tanpa email aktif: `[ISI]` — format mengikuti arahan KEPK.
+**Dicabut (ADR 018, 2026-10-18).** Mode kader/ sekolah (persetujuan per murid via kader, PRD FR-80, izin kertas) tidak lagi dalam cakupan. Bila kelak dihidupkan kembali, perlu ADR baru, teks baru, dan tinjauan hukum/ KEPK.
 
 ## Daftar tinjauan
 - [ ] Ahli hukum: kecukupan persetujuan wali, penarikan, transfer lintas negara, kategori data spesifik

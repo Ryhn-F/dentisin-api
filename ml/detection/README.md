@@ -62,7 +62,7 @@ Ambang skor = PLACEHOLDER sampai ditetapkan pada split val (bukan test) dan diti
 3. **Hanya kotak** (seluruh gigi bertanda karies), tanpa kelas `tooth` → triase memakai kelas, skor, dan **jumlah** temuan; ukuran/ luas kotak tidak pernah dipakai (ADR 014).
 4. Dataset **tidak membedakan berlubang vs belum berlubang** (label hanya D/d = jenis gigi; ADR 014); lesi awal tidak andal dari foto smartphone (literatur sens 0–38%). Tidak ada klaim keparahan.
 5. **ID pasien tidak terdokumentasi** di dataset → split per pasien mungkin heuristik (lihat `fetch_ahmed2025.md` §4) → metrik bisa optimistis.
-6. Foto data latih kemungkinan berkualitas "klinis" (retraktor, dokter) — foto orang tua/kader lebih buruk.
+6. Foto data latih kemungkinan berkualitas "klinis" (retraktor, dokter) — foto orang tua/remaja di HP lebih buruk.
 7. Hanya gigi depan/ permukaan terlihat; sela-sela dan gigi belakang tidak dinilai.
 8. Heuristik "gigi terlihat" bukan detektor gigi (kertas putih + objek merah bisa lolos). Semua ambang quality gate PLACEHOLDER (FR-21: ≥ 200 foto berlabel).
 9. Format keluaran tiap kandidat (`output_format_verified: false`) belum dibaca dari model nyata. Lisensi bobot: lihat `WEIGHT_LICENSES.md`

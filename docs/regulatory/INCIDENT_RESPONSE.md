@@ -38,7 +38,7 @@ Simpan daftar ini juga **offline** (bukan hanya di layanan yang bisa mati/bocor)
 | **Kunci penandatangan manifes hilang/ bocor** | Bocor: anggap manifes baru tak tepercaya; terbitkan kunci baru, rilis app dengan kunci publik baru (kunci publik di-embed — butuh update app), cabut manifes lama; hilang: gunakan cadangan terenkripsi, bila tak ada → rotasi seperti bocor. Tidak ada rilis aturan sampai pulih |
 | **Model/aturan salah terpasang (regresi klinis)** | Rollback ke versi sebelumnya di manifes (FR-101); matikan `medical_modules` bila perlu; entri `CHANGELOG.md`; kabari drg |
 | **Red flag terlewat (laporan pengguna)** | SEV1 klinis: selamatkan masukan yang direproduksi (tanpa PII), reproduksi di `triage/tests`, tambah kasus uji, perbaiki aturan, persetujuan drg `[PENDING]`, kabari pelapor untuk segera ke faskes bila masih relevan |
-| **HP kader hilang/ dicuri** | Data lokal terenkripsi (SQLCipher); minta pengguna mengganti kata sandi akun; cabut sesi; catat; nilai apakah data anak tereksposisi |
+| **HP orang tua/ remaja hilang/ dicuri** | Data lokal terenkripsi (SQLCipher); minta pengguna mengganti kata sandi akun; cabut sesi; catat; nilai apakah data anak tereksposisi (termasuk video bukti sikat gigi yang dapat ditonton akun itu; orang tua dapat menonaktifkan akun anak bila HP anak yang hilang) |
 | **Proyek Supabase dijeda / data hilang** | Pulihkan dari `pg_dump` terenkripsi terbaru; app tetap jalan offline; kabari mitra; periksa keep-alive |
 | **Email konfirmasi/ reset bermasalah (Resend)** | Batas 100/hari; gunakan prosedur reset oleh admin; cadangan SMTP sesuai ADR 008; jangan kirim data anak lewat email |
 | **Dependensi rentan / rantai pasok** | Regenerasi SBOM, tentukan terdampak, patch/ kunci versi, rilis perbaikan |
