@@ -166,9 +166,13 @@ def test_stall_writes_a_report_beside_the_log(tmp_path: Path, monkeypatch: pytes
             fh.write("Thread 0x1 (most recent call first):\n  File dataloader.py, line 9 in _get_data\n")
 
     monkeypatch.setattr(os, "kill", kill)
-    ya._dump_stacks(SimpleNamespace(pid=4242), lambda s: None, log, run=lambda cmd, **kw: SimpleNamespace(stdout="ok " + cmd[0], stderr=""))
+    console = tmp_path / "trainer_output.txt"
+    console.write_text("warning: something\nlast stderr line\n", encoding="utf-8")
+    ya._dump_stacks(SimpleNamespace(pid=4242), lambda s: None, log, run=lambda cmd, **kw: SimpleNamespace(stdout="ok " + cmd[0], stderr=""),
+                    output=console)
     out = capsys.readouterr().out
     assert killed == [(4242, 10)] and "_get_data" in out and "old dump" not in out and "ok nvidia-smi" in out
+    assert "last stderr line" in out
     assert "_get_data" in (tmp_path / "stall_report.txt").read_text(encoding="utf-8")
 
 
@@ -364,6 +368,53 @@ def test_run_with_budget_prints_yolox_progress_and_tolerates_a_growing_log(
                                      tail_every_s=20.0, popen=lambda *a, **k: proc, clock=lambda: t[0], sleep=_clocked(t, grow))
     assert (rc, stopped) == (0, False)
     assert "[yolox" in capsys.readouterr().out
+
+
+def test_run_with_budget_sends_trainer_output_to_a_file_never_to_the_notebook_pipes(tmp_path: Path) -> None:
+    """Kaggle 2026-10-17: the kernel stopped draining the trainer's stderr; loguru's stderr sink blocked and the training
+    loop froze in logger.info at epoch 9. The trainer must write to a file."""
+    seen: dict[str, Any] = {}
+
+    def popen(cmd: list[str], **kw: Any) -> FakeProc:
+        seen.update(kw)
+        kw["stdout"].write(b"line from the trainer\n")  # the child writes through its copy of the descriptor
+        return FakeProc(finish_after=1, rc=0)
+
+    out = tmp_path / "nested" / "trainer_output.txt"
+    rc, stopped = ya.run_with_budget(["x"], cwd=tmp_path, env={}, budget_s=None, watch=tmp_path / "w", output=out, popen=popen,
+                                     clock=lambda: 0.0, sleep=lambda s: None)
+    assert (rc, stopped) == (0, False)
+    assert seen["stderr"] == subprocess.STDOUT and seen["stdout"].closed  # parent closed its handle, the child kept its own
+    assert out.read_bytes() == b"line from the trainer\n"
+    seen.clear()
+    ya.run_with_budget(["x"], cwd=tmp_path, env={}, budget_s=None, watch=tmp_path / "w", popen=popen_plain(seen),
+                       clock=lambda: 0.0, sleep=lambda s: None)
+    assert "stdout" not in seen and "stderr" not in seen  # without `output` the child inherits (old behaviour)
+
+
+def test_run_with_budget_real_child_can_write_megabytes_without_a_reader(tmp_path: Path) -> None:
+    """A real process writing far more than a pipe holds (64 KiB) to stderr AND stdout finishes, because nothing reads a pipe."""
+    import os
+
+    code = "import sys; sys.stderr.write('e' * 3_000_000); sys.stdout.write('o' * 3_000_000); sys.stderr.write('\\nend of stderr\\n')"
+    out = tmp_path / "trainer_output.txt"
+    rc, stopped = ya.run_with_budget([sys.executable, "-c", code], cwd=tmp_path, env=dict(os.environ), budget_s=None,
+                                     watch=tmp_path / "w", output=out, poll_s=0.05)
+    assert (rc, stopped) == (0, False) and out.stat().st_size > 6_000_000 and ya.tail_text(out, 1) == "end of stderr"
+
+
+def popen_plain(seen: dict[str, Any]) -> Callable[..., FakeProc]:
+    def popen(cmd: list[str], **kw: Any) -> FakeProc:
+        seen.update(kw)
+        return FakeProc(finish_after=1, rc=0)
+
+    return popen
+
+
+def test_tail_text(tmp_path: Path) -> None:
+    f = tmp_path / "o.txt"
+    f.write_text("\n".join(f"l{i}" for i in range(100)), encoding="utf-8")
+    assert ya.tail_text(f, 3) == "l97\nl98\nl99" and ya.tail_text(tmp_path / "missing") == "" and ya.tail_text(None) == ""
 
 
 def test_is_retriable_only_for_hangs() -> None:

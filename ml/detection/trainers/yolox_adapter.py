@@ -373,8 +373,22 @@ def process_report(pid: int, run: Callable[..., Any] = subprocess.run) -> str:
     return "\n".join(parts)
 
 
+def tail_text(path: Path | None, lines: int = 30, tail_bytes: int = 16384) -> str:
+    """Last ``lines`` lines of a text file ('' if it is missing); used for the trainer's stdout/stderr file."""
+    if path is None:
+        return ""
+    try:
+        with path.open("rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(0, fh.tell() - tail_bytes))
+            data = fh.read().decode("utf-8", errors="replace")
+    except OSError:
+        return ""
+    return "\n".join(data.splitlines()[-lines:])
+
+
 def _dump_stacks(proc: Any, sleep: Callable[[float], None], log: Path | None = None,
-                 run: Callable[..., Any] = subprocess.run) -> None:
+                 run: Callable[..., Any] = subprocess.run, output: Path | None = None) -> None:
     """Ask the (hung) trainer for a Python traceback of all its threads (faulthandler.register(SIGUSR1) in the Exp, which
     writes ``stacks.txt`` next to ``train_log.txt``), print it with :func:`process_report`, and keep both in
     ``stall_report.txt`` there so they come back with the downloaded outputs."""
@@ -396,6 +410,8 @@ def _dump_stacks(proc: Any, sleep: Callable[[float], None], log: Path | None = N
             text = fh.read().decode("utf-8", errors="replace")
     stacks_text = text.strip() or "(no Python stacks: the Exp could not register faulthandler)"
     report = f"{stacks_text}\n\n{process_report(int(pid), run)}"
+    if output is not None:
+        report += f"\n[trainer stdout/stderr, last lines of {output.name}]\n{tail_text(output, 20)}"
     print(report, flush=True)
     if log is not None:
         with contextlib.suppress(OSError), log.with_name("stall_report.txt").open("a", encoding="utf-8") as fh:
@@ -426,13 +442,23 @@ def _stop(proc: Any, grace_s: float = 60.0) -> None:
 def run_with_budget(cmd: Sequence[str], *, cwd: Path, env: Mapping[str, str], budget_s: float | None, watch: Path,
                     grace_s: float = 1800.0, settle_s: float = 15.0, poll_s: float = 5.0,
                     log: Path | None = None, stall_s: float | None = 1800.0, tail_every_s: float = 60.0,
-                    popen: Callable[..., Any] = subprocess.Popen, clock: Callable[[], float] = time.time,
-                    sleep: Callable[[float], None] = time.sleep) -> tuple[int | None, bool]:
+                    output: Path | None = None, popen: Callable[..., Any] = subprocess.Popen,
+                    clock: Callable[[], float] = time.time, sleep: Callable[[float], None] = time.sleep) -> tuple[int | None, bool]:
     """Run the trainer; when ``budget_s`` is used up, stop it RIGHT AFTER its next ``latest_ckpt.pth`` write (epoch
     boundary + ``settle_s``), or after ``grace_s`` more seconds at the latest. Killing at a random moment (the old
     ``subprocess.run(timeout=...)``) could truncate the checkpoint the next session resumes from.
+    ``output``: the trainer's stdout+stderr go to this FILE instead of the notebook's pipes. On Kaggle the kernel stopped
+    draining the trainer's stderr after ~100 KB; loguru's stderr sink then blocked, its queue filled, and the training loop
+    froze in ``logger.info`` at epoch 9 (stack dump 2026-10-17). A file can never block the trainer.
     Returns (exit code or None if stopped by us, stopped_for_budget)."""
-    proc = popen(list(cmd), cwd=str(cwd), env=dict(env), start_new_session=sys.platform != "win32")
+    spawn: dict[str, Any] = {"cwd": str(cwd), "env": dict(env), "start_new_session": sys.platform != "win32"}
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        with output.open("ab") as sink:  # the child keeps its own copy of the descriptor
+            spawn.update(stdout=sink, stderr=subprocess.STDOUT)
+            proc = popen(list(cmd), **spawn)
+    else:
+        proc = popen(list(cmd), **spawn)
     started = clock()
     mark: float | None = None
     stop_at: float | None = None
@@ -452,7 +478,7 @@ def run_with_budget(cmd: Sequence[str], *, cwd: Path, env: Mapping[str, str], bu
                     print(f"  [yolox {now - started:.0f}s] {last_log_line(log) or '(train_log.txt still empty)'}", flush=True)
                 if stall_s is not None and stop_at is None and now - last_change >= stall_s:
                     line = last_log_line(log)
-                    _dump_stacks(proc, sleep, log)
+                    _dump_stacks(proc, sleep, log, output=output)
                     _stop(proc)
                     raise TrainerStalled(
                         f"YOLOX wrote nothing to train_log.txt for {stall_s / 60:.0f} min (after {now - started:.0f}s) -- "
@@ -552,6 +578,7 @@ def train(ctx: TrainContext) -> dict[str, Any]:  # pragma: no cover - needs torc
         if stale:
             print(f"fresh run: removed checkpoints of an earlier run in {exp_dir}: {stale}", flush=True)
     log = exp_dir / "train_log.txt"
+    console = exp_dir / "trainer_output.txt"  # the trainer's stdout+stderr (never the notebook's pipes, see run_with_budget)
     budget = opts.get("time_budget_h")
     budget_s = None if budget is None else float(budget) * 3600
     started = time.time()
@@ -572,11 +599,17 @@ def train(ctx: TrainContext) -> dict[str, Any]:  # pragma: no cover - needs torc
         offset = max(0, _log_size(log))
         remaining = None if budget_s is None else max(60.0, budget_s - (time.time() - started))
         print("$", " ".join(cmd), f"(cwd {repo})", flush=True)
+        print(f"trainer stdout/stderr -> {console} (progress lines are repeated below once a minute)", flush=True)
         rc, stopped = run_with_budget(cmd, cwd=repo, env=env, budget_s=remaining, watch=latest,
-                                      grace_s=float(opts.get("stop_grace_s", 1800)), log=log, stall_s=float(opts["stall_s"]))
+                                      grace_s=float(opts.get("stop_grace_s", 1800)), log=log, stall_s=float(opts["stall_s"]),
+                                      output=console)
         errors = caught_errors(log, offset)
         epoch = checkpoint_epoch(latest)
-        return outcome(rc=rc, stopped=stopped, errors=errors, epoch=epoch, max_epoch=max_epoch), stopped, epoch
+        try:
+            return outcome(rc=rc, stopped=stopped, errors=errors, epoch=epoch, max_epoch=max_epoch), stopped, epoch
+        except RuntimeError:
+            print(f"--- last lines of the trainer's stdout/stderr ({console.name}) ---\n{tail_text(console, 40)}", flush=True)
+            raise
 
     (status, stopped, epoch), restarts = supervise(run_once, max_restarts=int(opts["max_restarts"]))
     best = exp_dir / "best_ckpt.pth"
