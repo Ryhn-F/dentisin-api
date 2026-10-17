@@ -113,6 +113,30 @@ as $$
   select jsonb_build_object('event_id', p_event_id, 'type', p_type, 'payload', p_payload)
 $$;
 
+-- ADR 017: a child account as the Edge Function child-accounts creates it
+-- (server-controlled raw_app_meta_data, synthetic .invalid e-mail).
+create or replace function tests.new_child_user(p_id uuid, p_guardian uuid, p_child uuid, p_username text)
+returns uuid
+language sql
+as $$
+  insert into auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
+  values (p_id, 'authenticated', 'authenticated', 'child-' || p_child::text || '@child.dentisai.invalid', now(),
+          jsonb_build_object('provider', 'email', 'account_type', 'child', 'guardian_id', p_guardian,
+                             'child_id', p_child, 'username', p_username), '{}')
+  returning id
+$$;
+
+-- ADR 017: a teen account (signUp with options.data.account_type = 'teen').
+create or replace function tests.new_teen(p_id uuid)
+returns uuid
+language sql
+as $$
+  insert into auth.users (id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data)
+  values (p_id, 'authenticated', 'authenticated', 'tst-' || p_id::text || '@example.invalid', now(),
+          '{"provider": "email"}', '{"account_type": "teen"}')
+  returning id
+$$;
+
 grant execute on all functions in schema tests to anon, authenticated, service_role;
 
 do $$

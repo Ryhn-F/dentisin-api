@@ -37,6 +37,8 @@ create table auth.users (
   raw_app_meta_data jsonb,
   raw_user_meta_data jsonb,
   is_anonymous boolean not null default false,
+  last_sign_in_at timestamptz,
+  banned_until timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -44,6 +46,14 @@ create table auth.identities (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users (id) on delete cascade,
   provider text not null default 'email'
+);
+-- GoTrue audit trail (no FK to auth.users, payload carries ids/e-mails).
+create table auth.audit_log_entries (
+  instance_id uuid,
+  id uuid primary key,
+  payload json,
+  created_at timestamptz,
+  ip_address varchar(64) not null default ''
 );
 grant select on auth.users to service_role;
 
