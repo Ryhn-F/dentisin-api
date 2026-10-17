@@ -139,6 +139,8 @@ Paritas: `recommender/tests/cases.json` (`format_version: 1`, 50 kasus; himpunan
 
 Kontrak: [`../../ml/detection/DECODE_SPEC.md`](../../ml/detection/DECODE_SPEC.md) (versi 1.0.0), skema [`../../ml/detection/labels.schema.json`](../../ml/detection/labels.schema.json) (`schema_version: "2.0.0"`), implementasi acuan `decode.py`. Bundel `ml/exports/<semver>/`: `model.tflite`, `labels.json`, `MODEL_CARD.md`, `SHA256`.
 
+**Model terpilih (ADR 013): YOLOX-Nano `float32`** (INT8 gagal paritas). Panduan lengkap, nilai nyata bundel dev, kode dekoder TypeScript yang sudah diuji, dan fixture model nyata: **[`MODEL_BUNDLE.md`](MODEL_BUNDLE.md)** dan [`examples/detector/`](examples/detector/). Contoh di bawah hanya ilustrasi struktur.
+
 Hal yang mengikat (ADR 014):
 
 - Kelas **hanya** `caries_permanent` (id 0, `dentition: permanent`, label dataset **D**) dan `caries_primary` (id 1, `dentition: primary`, label **d**). Tidak ada kelas berlubang/belum berlubang. Teks UI: "indikasi karies pada gigi tetap/sulung, perlu diperiksa".
@@ -150,8 +152,8 @@ Struktur ringkas (contoh ini sah menurut `labels.schema.json`; nilai hanya ilust
 ```json
 {
   "schema_version": "2.0.0",
-  "model": { "name": "dentisai-caries-detector", "version": "0.1.0", "candidate": "yolox_nano", "variant": "int8",
-             "created_at": "2026-10-11T00:00:00Z", "sha256": "<sha256 model.tflite>", "size_bytes": 1234567, "int8": true },
+  "model": { "name": "dentisai-caries-detector", "version": "0.1.0", "candidate": "yolox_nano", "variant": "yolox_nano",
+             "created_at": "2026-10-11T00:00:00Z", "sha256": "<sha256 model.tflite>", "size_bytes": 3651644, "int8": false },
   "validation_status": "NOT_VALIDATED",
   "intended_use": "screening_only",
   "distribution": "internal_experiment_only",
@@ -192,7 +194,7 @@ Langkah app (ringkas; rinci di DECODE_SPEC):
 
 Vektor paritas dekode: `ml/detection/tests/decode_vectors.json` (`spec_version 1.0.0`; toleransi absolut 1e-6; bagian `vectors`, `geometry`, `quantization`, `postprocess`).
 
-Item terbuka `[PERLU VERIFIKASI]` (spike S1): bentuk tensor keluaran nyata untuk tiap kandidat, paritas INT8 model sebenarnya, ambang skor (belum ada, menunggu data validasi dan drg).
+Item terbuka `[PERLU VERIFIKASI]` (spike S1): latensi/memori float32 di HP RAM 3 dan 4 GB, kesetaraan resize di HP, dan tinjauan dokter gigi atas ambang skor (bundel dev: `thresholds.status = set_on_val`; bentuk tensor sudah diverifikasi interpreter, `tensors_verified: true`; INT8 tidak dikirim).
 
 ## 5. Manifes bertanda tangan
 

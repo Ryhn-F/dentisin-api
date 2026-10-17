@@ -7,6 +7,8 @@
 
 | Dokumen | Untuk siapa | Isi |
 |---|---|---|
+| [`APP_TEAM_GUIDE.md`](APP_TEAM_GUIDE.md) | **engineer app (mulai di sini)** | Peta kebutuhan → mekanisme → dokumen → status, keputusan ADR yang memengaruhi kode, urutan integrasi, jebakan, uji cepat |
+| [`MODEL_BUNDLE.md`](MODEL_BUNDLE.md) | engineer app (ML on-device) | Bundel detektor YOLOX-Nano float32 (ADR 013): I/O, alur, dekoder TypeScript terverifikasi, ambang, batasan UI |
 | [`SUPABASE_API.md`](SUPABASE_API.md) | engineer app | Auth, tabel + RLS, RPC, Storage, rate limit, contoh supabase-js dan curl |
 | [`SYNC_EVENTS.md`](SYNC_EVENTS.md) | engineer app (outbox) | Kontrak `sync_events`: amplop, tipe event, validasi, idempotensi, retry |
 | [`EDGE_FUNCTIONS_AND_HOOKS.md`](EDGE_FUNCTIONS_AND_HOOKS.md) | ops / backend | `process-deletion`, `retention-sweep`, workflow terjadwal, hook Send Email, mailer |

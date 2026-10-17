@@ -2,6 +2,13 @@
 
 Format: tanggal (YYYY-MM-DD), perubahan pada kontrak yang didokumentasikan. Perubahan kontrak nyata (migrasi, aturan, model) tetap dicatat di `../regulatory/CHANGELOG.md` dan ADR; berkas ini hanya melacak dokumen di `docs/api/`.
 
+## 2026-10-17 (panduan tim app, model terpilih)
+
+- Baru: `APP_TEAM_GUIDE.md` (mulai di sini: peta, status, urutan integrasi, jebakan, uji cepat) dan `MODEL_BUNDLE.md` (bundel detektor ADR 013: YOLOX-Nano float32, I/O, alur, ambang, batasan UI, bukti paritas).
+- Baru: `examples/detector/` — dekoder TypeScript acuan (`decode.ts`) + uji `node --test` terhadap `decode_vectors.json` dan fixture `golden/golden_runtime.json` (keluaran mentah model nyata); pembuat fixture `ml/detection/make_golden.py`.
+- `CLIENT_CONTRACTS.md` §4: model terpilih float32 (contoh `variant`/`int8`/`size_bytes` diperbarui), butir terbuka diperbarui, tautan ke `MODEL_BUNDLE.md`.
+- Kontrak model berubah (ADR 013): masukan **float32** (bukan uint8), keluaran logit `[1,3549,7]`, ambang `set_on_val`. Tidak ada perubahan skema `labels.json` (2.0.0).
+
 ## 2026-10-11 (kuota)
 
 - Migrasi `20261011000100_quota_monitoring.sql`: RPC `admin_quota_usage()` (admin, diaudit) dan `service_quota_usage()` (service); 6 baris `app_setting` `quota_*`.

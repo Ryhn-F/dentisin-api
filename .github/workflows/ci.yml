@@ -110,3 +110,18 @@ jobs:
       - name: deno check / lint / fmt --check / test
         working-directory: ${{ env.BACKEND_DIR }}supabase/functions
         run: deno task ci
+
+  detector-ts:
+    # TypeScript reference decoder for the app team (docs/api/examples/detector): parity with ml/detection/decode.py on the
+    # synthetic vectors and on the REAL model's raw output (golden fixture). Node >= 22.18 runs .ts directly; no dependencies.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.20.0"
+      - name: node --test (decode vectors + golden runtime fixture)
+        working-directory: ${{ env.BACKEND_DIR || '.' }}
+        run: node --test "docs/api/examples/detector/*.test.ts"

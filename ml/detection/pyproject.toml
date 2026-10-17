@@ -76,7 +76,7 @@ ignore = ["RUF001", "RUF002", "RUF003"]  # Indonesian text / typographic dashes 
 known-first-party = ["canonical", "convert_annotations", "decode", "eval", "export", "license_gate", "quality_gate",
                      "quality_gate_vectors", "train", "trainers", "check_int8_parity", "bake_off", "make_splits", "verify_dataset",
                      "preprocess", "predict", "thresholds", "artifacts", "nbkit", "make_ipynb", "mm_train_py310",
-                     "bootstrap", "local_simulate"]
+                     "bootstrap", "local_simulate", "make_golden"]
 
 [tool.mypy]
 python_version = "3.11"
