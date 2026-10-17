@@ -26,7 +26,8 @@ from .conftest import (
     IMG_NO_CONSENT,
     IMG_PATH,
     IMG_WITHDRAWN,
-    KADER,
+    RETIRED,
+    TEEN,
     AppFactory,
     TokenFactory,
     auth,
@@ -113,7 +114,7 @@ def test_auth_and_roles(make_client: Any, make_token: TokenFactory) -> None:
     assert expired.status_code == 401
     forged = c.post(URL, json=analyze_body(IMG), headers=auth(make_token(ADMIN, key="k" * 40)))
     assert forged.status_code == 401
-    for user in (GUARDIAN, KADER):
+    for user in (GUARDIAN, TEEN, RETIRED):
         resp = c.post(URL, json=analyze_body(IMG), headers=auth(make_token(user)))
         assert resp.status_code == 403 and _code(resp) == "forbidden"
 

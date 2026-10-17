@@ -15,7 +15,7 @@ Other endpoints of this service (review queue, model registry, `/v1/ml/infer`) a
 
 | Endpoint | Fungsi | Saklar | Peran | Menyimpan data? |
 |---|---|---|---|---|
-| `POST /v1/screening/evaluate` | Triase + rekomendasi pasta gigi dari jawaban kuesioner, nyeri, usia, dan **temuan model di HP** (`{class, confidence}` saja, tanpa kotak) | `ENABLE_SCREENING_API` | `guardian`, `kader`, `admin` | Tidak |
+| `POST /v1/screening/evaluate` | Triase + rekomendasi pasta gigi dari jawaban kuesioner, nyeri, usia, dan **temuan model di HP** (`{class, confidence}` saja, tanpa kotak) | `ENABLE_SCREENING_API` | `guardian`, `admin` | Tidak |
 | `POST /v1/screening/analyze` | Pipeline QA/*second opinion* atas **foto dataset berizin** (hanya `image_upload.id`): tanda bahaya → consent → foto → quality gate → detektor → triase → rekomendasi | `ENABLE_SCREENING_API` **dan** `ENABLE_CLOUD_INFER` | `admin` | Tidak (foto hanya di memori; akses foto dicatat di `audit_log`) |
 | `GET /v1/screening/rules` | Metadata: versi aturan, `rules_status`, kelas, daftar parameter + `placeholder: true/false` | `ENABLE_SCREENING_API` | semua peran aplikasi | Tidak |
 | `GET /v1/screening/schema/input` · `/schema/output` | JSON Schema masukan/keluaran mesin triase (dari `triage/dist`) untuk codegen | `ENABLE_SCREENING_API` | semua peran aplikasi | Tidak |
@@ -47,9 +47,12 @@ Aturan penting untuk klien:
 
 | Route | Roles allowed |
 |---|---|
-| `POST /evaluate` | `guardian`, `kader`, `admin` |
+| `POST /evaluate` | `guardian` (parent and teen accounts), `admin` |
 | `POST /analyze` | `admin` (dentist reviewers use admin accounts; there is no `reviewer` role) |
-| `GET /rules`, `GET /schema/*` | any app role: `guardian`, `kader`, `facility_viewer`, `admin` |
+| `GET /rules`, `GET /schema/*` | `guardian`, `admin` |
+
+Schema roles (ADR 017/018): `guardian` (parent **and** teen accounts), `child` (child accounts: no access to
+this API), `admin`. The retired values `kader` / `facility_viewer` (ADR 018) grant nothing.
 
 ## 3. Feature switches
 
@@ -1260,7 +1263,7 @@ sequenceDiagram
 
 ```bash
 API=http://127.0.0.1:8000
-TOKEN="<Supabase access token of a guardian/kader/admin>"   # from supabase.auth.getSession()
+TOKEN="<Supabase access token of a guardian/teen/admin>"   # from supabase.auth.getSession()
 
 curl -s "$API/v1/screening/rules" -H "Authorization: Bearer $TOKEN"
 curl -s "$API/v1/screening/schema/input" -H "Authorization: Bearer $TOKEN" > input.schema.json

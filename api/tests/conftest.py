@@ -34,8 +34,9 @@ VECTORS_DIR = Path(__file__).resolve().parents[2] / "tools" / "manifest" / "vect
 
 ADMIN = "00000000-0000-4000-8000-0000000000a1"
 GUARDIAN = "00000000-0000-4000-8000-0000000000b1"
-KADER = "00000000-0000-4000-8000-0000000000c1"
-VIEWER = "00000000-0000-4000-8000-0000000000d1"
+TEEN = "00000000-0000-4000-8000-0000000000c1"  # teen accounts hold the guardian role
+RETIRED = "00000000-0000-4000-8000-0000000000d1"  # only retired role values (ADR 018)
+KID = "00000000-0000-4000-8000-0000000000f1"  # child account (role child)
 NOROLE = "00000000-0000-4000-8000-0000000000e1"
 CHILD = "11111111-1111-4111-8111-111111111111"
 CHILD_NO_CONSENT = "22222222-2222-4222-8222-222222222222"
@@ -148,8 +149,9 @@ def seeded_repo() -> InMemoryRepository:
     repo.roles = {
         ADMIN: {"admin", "guardian"},
         GUARDIAN: {"guardian"},
-        KADER: {"kader", "guardian"},
-        VIEWER: {"facility_viewer"},
+        TEEN: {"guardian"},
+        RETIRED: {"kader", "facility_viewer"},
+        KID: {"child"},
     }
     repo.flags = {"dataset_contribution": True}
     repo.dataset_consent = {CHILD: True, CHILD_NO_CONSENT: False}

@@ -12,9 +12,9 @@ Layanan FastAPI ini **hanya untuk ML dan integrasi AI** (ADR 005, ADR 009):
 | `POST /v1/ml/review-queue/{id}/review` | drg mengirim hasil review: keputusan + kotak (format kanonik `ml/detection/canonical.py`), ID grader **pseudonim**, catatan ≤ 500 karakter | `admin` (peran reviewer) |
 | `POST /v1/ml/models` | mendaftarkan versi model/aturan dari **manifes bertanda tangan Ed25519** — server **hanya memverifikasi**, tidak pernah menandatangani | `admin` |
 | `POST /v1/ml/infer` | **opsional** (mati secara default, `ENABLE_CLOUD_INFER=false` → 404): second-opinion/QA; hanya `NullDetector`, tanpa bobot model | `admin` |
-| `POST /v1/screening/evaluate` | **pipeline skrining referensi** (mati secara default, `ENABLE_SCREENING_API=false` → 404): triase + rekomendasi pasta gigi dari masukan perangkat (`{class, confidence}` saja), memakai mesin referensi `../triage` & `../recommender` | `guardian`, `kader`, `admin` |
+| `POST /v1/screening/evaluate` | **pipeline skrining referensi** (mati secara default, `ENABLE_SCREENING_API=false` → 404): triase + rekomendasi pasta gigi dari masukan perangkat (`{class, confidence}` saja), memakai mesin referensi `../triage` & `../recommender` | `guardian` (orang tua & remaja), `admin` |
 | `POST /v1/screening/analyze` | QA atas foto dataset berizin (referensi saja): tanda bahaya dulu → consent → quality gate → detektor → triase; butuh juga `ENABLE_CLOUD_INFER` | `admin` |
-| `GET /v1/screening/rules`, `/schema/input`, `/schema/output` | metadata aturan (`rules_status`, parameter `placeholder`) & JSON Schema triase | semua peran |
+| `GET /v1/screening/rules`, `/schema/input`, `/schema/output` | metadata aturan (`rules_status`, parameter `placeholder`) & JSON Schema triase | `guardian`, `admin` |
 
 **Dokumentasi lengkap pipeline skrining (kontrak "aturan draf", contoh JSON hasil kode, kode error, alur): [`docs/API.md`](docs/API.md).** Selama `rules_status != approved` keluaran tidak boleh ditampilkan sebagai tervalidasi klinis.
 
@@ -24,6 +24,7 @@ Layanan FastAPI ini **hanya untuk ML dan integrasi AI** (ADR 005, ADR 009):
 - **Gerbang consent:** flag `dataset_contribution` harus ON (default OFF sampai KEPK menyetujui → `409 dataset_contribution_disabled`), foto berstatus `uploaded` dan belum kedaluwarsa, consent (c) aktif. Trigger database mengecek ulang di dalam INSERT (aman dari race saat consent ditarik).
 - **Chatbot tetap ditunda** (ADR 008). Semua keluaran deteksi = *indikasi skrining*, bukan diagnosis.
 - Tidak ada peran `reviewer` di skema Supabase; drg reviewer memakai akun `admin` (lihat `app/deps.py`).
+- Peran skema (ADR 017/018): `guardian` (akun orang tua **dan** remaja), `child` (akun anak; tidak punya akses ke API ini), `admin`. Nilai lama `kader`/`facility_viewer` dihapus (ADR 018) dan tidak memberi akses apa pun.
 
 ## Developer notes (English)
 

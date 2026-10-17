@@ -18,9 +18,10 @@ from .conftest import (
     IMG_EXPIRED,
     IMG_NO_CONSENT,
     IMG_WITHDRAWN,
-    KADER,
+    KID,
     NOROLE,
-    VIEWER,
+    RETIRED,
+    TEEN,
     TokenFactory,
     auth,
     new_uuid,
@@ -52,7 +53,7 @@ def _enqueue(client: TestClient, token: str, image: str = IMG, **extra: Any) -> 
 
 # --- RBAC matrix ---------------------------------------------------------------------
 
-NON_ADMINS = [GUARDIAN, KADER, VIEWER, NOROLE]
+NON_ADMINS = [GUARDIAN, TEEN, RETIRED, KID, NOROLE]
 
 
 @pytest.mark.parametrize("user", NON_ADMINS)

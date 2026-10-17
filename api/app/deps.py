@@ -20,16 +20,19 @@ from .services.quality import QualityGate, UnavailableQualityGate
 from .services.screening_rules import ScreeningRules
 from .settings import Settings
 
-# Role model of backend/supabase (public.app_role): guardian, kader,
-# facility_viewer, admin. There is no `reviewer` role in the schema, so dentist
+# Role model of backend/supabase (public.app_role, ADR 017/018): guardian (orang tua
+# AND remaja/teen accounts), child (child accounts created by a guardian), admin.
+# The retired values kader / facility_viewer (ADR 018) grant nothing here. Child
+# accounts only record brushing and request screenings (ADR 017), so they are in
+# none of the sets below. There is no `reviewer` role in the schema, so dentist
 # reviewers are `admin` accounts (granted via public.admin_grant_role). If a
 # `reviewer` role is added later, add it to REVIEWER_ROLES only.
 ADMIN_ROLES: Final = frozenset({"admin"})
 REVIEWER_ROLES: Final = frozenset({"admin"})
-# /v1/screening/evaluate: the people who run a screening in the app.
-SCREENING_ROLES: Final = frozenset({"guardian", "kader", "admin"})
-# Metadata (rules/schema): any app role, incl. facility_viewer; anonymous never.
-ANY_APP_ROLE: Final = frozenset({"guardian", "kader", "facility_viewer", "admin"})
+# /v1/screening/evaluate: the people who run a screening in the app (guardian/teen).
+SCREENING_ROLES: Final = frozenset({"guardian", "admin"})
+# Metadata (rules/schema): any app role that screens; anonymous never.
+ANY_APP_ROLE: Final = frozenset({"guardian", "admin"})
 
 
 @dataclass

@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 from triage.loader import read_json
 from triage.paths import DIST_DIR
 
-from .conftest import ADMIN, GUARDIAN, NOROLE, VIEWER, AppFactory, TokenFactory, auth
+from .conftest import ADMIN, GUARDIAN, KID, NOROLE, RETIRED, TEEN, AppFactory, TokenFactory, auth
 from .screening_support import FakeDetector, rules_for_profile, screening_settings
 
 RULES = "/v1/screening/rules"
@@ -43,13 +43,14 @@ def test_metadata_switch_and_auth(
     assert client.get(path, headers=auth(make_token(ADMIN))).status_code == 404  # switch off
     assert sclient.get(path).status_code == 401
     assert sclient.get(path, headers=auth(make_token(ADMIN, exp_delta=-60))).status_code == 401
-    assert sclient.get(path, headers=auth(make_token(NOROLE))).status_code == 403
-    for user in (GUARDIAN, VIEWER, ADMIN):
+    for user in (NOROLE, RETIRED, KID):
+        assert sclient.get(path, headers=auth(make_token(user))).status_code == 403
+    for user in (GUARDIAN, TEEN, ADMIN):
         assert sclient.get(path, headers=auth(make_token(user))).status_code == 200
 
 
 def test_rules_metadata_shows_placeholders(sclient: TestClient, make_token: TokenFactory) -> None:
-    data = sclient.get(RULES, headers=auth(make_token(VIEWER))).json()
+    data = sclient.get(RULES, headers=auth(make_token(TEEN))).json()
     assert data["rules_status"] == "draft" and data["clinically_validated"] is False
     assert data["rules_version"] == {"triage": "0.2.0-draft", "recommender": "0.1.0-draft"}
     assert [c["id"] for c in data["classes"]] == ["caries_permanent", "caries_primary"]

@@ -17,9 +17,10 @@ from fastapi.testclient import TestClient
 from .conftest import (
     ADMIN,
     GUARDIAN,
-    KADER,
+    KID,
     NOROLE,
-    VIEWER,
+    RETIRED,
+    TEEN,
     AppFactory,
     TokenFactory,
     auth,
@@ -78,7 +79,7 @@ def test_auth_missing_expired_forged(sclient: TestClient, make_token: TokenFacto
     assert forged.status_code == 401 and _code(forged) == "invalid_token"
 
 
-@pytest.mark.parametrize(("user", "status"), [(GUARDIAN, 200), (KADER, 200), (ADMIN, 200)])
+@pytest.mark.parametrize(("user", "status"), [(GUARDIAN, 200), (TEEN, 200), (ADMIN, 200)])
 def test_screening_roles_allowed(
     sclient: TestClient, make_token: TokenFactory, user: str, status: int
 ) -> None:
@@ -87,7 +88,7 @@ def test_screening_roles_allowed(
     )
 
 
-@pytest.mark.parametrize("user", [VIEWER, NOROLE])
+@pytest.mark.parametrize("user", [RETIRED, KID, NOROLE])
 def test_other_roles_forbidden(sclient: TestClient, make_token: TokenFactory, user: str) -> None:
     resp = sclient.post(URL, json=evaluate_body(), headers=auth(make_token(user)))
     assert resp.status_code == 403 and _code(resp) == "forbidden"
@@ -144,7 +145,7 @@ def test_red_flag_wins_over_detections(sclient: TestClient, make_token: TokenFac
         symptoms=symptoms(facial_swelling="yes"),
         detections=[{"class": "caries_permanent", "confidence": 0.99}] * 5,
     )
-    data = sclient.post(URL, json=body, headers=auth(make_token(KADER))).json()
+    data = sclient.post(URL, json=body, headers=auth(make_token(TEEN))).json()
     assert data["triage"]["level"] == "emergency"
     assert data["triage"]["referral_template_id"] == "REF_EMERGENCY"
     _assert_envelope(data)
@@ -154,7 +155,7 @@ def test_unknown_answer_is_never_treated_as_no(
     sclient: TestClient, make_token: TokenFactory
 ) -> None:
     body = evaluate_body(symptoms=symptoms(trismus="unknown"))
-    data = sclient.post(URL, json=body, headers=auth(make_token(KADER))).json()
+    data = sclient.post(URL, json=body, headers=auth(make_token(TEEN))).json()
     assert data["triage"]["level"] == "emergency"
     assert "RF_UNKNOWN_ANSWER" in [r["id"] for r in data["triage"]["reasons"]]
 

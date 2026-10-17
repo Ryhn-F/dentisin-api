@@ -234,8 +234,8 @@ def test_anonymous_user_cannot_use_admin_endpoints(
 
 
 def test_roles_from_app_metadata_filters_garbage() -> None:
-    claims = {"app_metadata": {"roles": ["admin", 3, "bad role!"], "role": "kader"}}
-    assert roles_from_app_metadata(claims) == frozenset({"admin", "kader"})
+    claims = {"app_metadata": {"roles": ["admin", 3, "bad role!"], "role": "guardian"}}
+    assert roles_from_app_metadata(claims) == frozenset({"admin", "guardian"})
     assert roles_from_app_metadata({"app_metadata": "admin"}) == frozenset()
     assert roles_from_app_metadata({}) == frozenset()
 
