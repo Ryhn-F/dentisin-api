@@ -30,7 +30,7 @@ Amplop satu event (hanya kunci ini; kunci lain -> `schema_invalid`):
 | Field | Wajib | Aturan |
 |---|---|---|
 | `event_id` | ya | UUID (format `8-4-4-4-12` hex; huruf besar diterima dan disimpan huruf kecil). Dibuat app, **unik per event**, disimpan di outbox dan dipakai ulang pada setiap pengiriman ulang |
-| `type` | ya | salah satu dari 6 tipe (bagian 3); selain itu `unknown_event_type` |
+| `type` | ya | salah satu dari 8 tipe (bagian 3); selain itu `unknown_event_type` |
 | `payload` | ya | objek JSON <= 8192 byte, harus memuat `child_id` (UUID); kunci di luar daftar putih tipe itu -> `schema_invalid` (sehingga nama/teks bebas tidak bisa diselundupkan) |
 | `occurred_at` | tidak | diterima tetapi **tidak divalidasi, tidak disimpan, dan tidak ikut hash idempotensi**; jangan diandalkan. Waktu kejadian ada di payload (`screened_at`, `started_at`, ...) |
 
@@ -57,10 +57,11 @@ Respons HTTP 200: array dengan **jumlah dan urutan sama** dengan input.
 | `code` | Penyebab | Disimpan? | Tindakan app |
 |---|---|---|---|
 | `schema_invalid` | kunci/tipe/nilai tidak sesuai, payload > 8 KiB, `child_id` tidak valid, waktu di luar rentang, pelanggaran CHECK/NOT NULL/enum, path foto tidak cocok atau objek belum ada | ya (kecuali amplop/`event_id` tidak valid) | bug klien atau data lokal rusak: buang dari antrean, catat lokal (tanpa PII); jangan kirim ulang |
-| `unknown_event_type` | `type` bukan salah satu dari 6 | ya | bug versi app; jangan kirim ulang |
-| `forbidden` | bukan pemilik/anggota roster anak itu, peran kurang (mis. `paper_via_kader` tanpa peran kader), RLS menolak, referensi (mis. `screening_id` di rujukan) tidak ada/bukan milik anak itu, atau anak tidak ada pada event non-consent | ya | event tidak sah untuk akun ini; buang |
+| `unknown_event_type` | `type` bukan salah satu dari 8 | ya | bug versi app; jangan kirim ulang |
+| `forbidden` | bukan pemilik/anggota roster anak itu, **akun anak mengirim tipe di luar yang diizinkan atau untuk anak lain, atau akun non-anak mengirim `screening_requested` / `brushing_proof_registered`**, peran kurang (mis. `paper_via_kader` tanpa peran kader), RLS menolak, referensi (mis. `screening_id` di rujukan) tidak ada/bukan milik anak itu, atau anak tidak ada pada event non-consent | ya | event tidak sah untuk akun ini; buang |
 | `consent_required` | consent (b) tidak aktif (event data) atau consent (c) tidak aktif (foto) | ya | kirim `consent_changed` yang diperlukan **lebih dulu** lalu kirim data sebagai event **baru** (`event_id` baru). Bila consent ditarik, hapus event data anak itu dari outbox |
 | `feature_disabled` | flag `dataset_contribution` mati (`image_upload_registered`) | ya | jangan unggah foto; buang event |
+| `limit_exceeded` | batas harian permintaan skrining / video bukti, atau ukuran/durasi video melewati batas (`app_setting`, lihat `ACCOUNTS_AND_FLOWS.md` §3 `limits`) | ya | jangan kirim ulang; beri tahu pengguna dan coba lagi besok / perkecil video |
 | `deletion_pending` | ada permintaan hapus `pending`/`processing` untuk anak/akun ini | ya | hentikan sinkron subjek itu |
 | `entity_conflict` | id entitas sudah ada (`screening_id`, `brushing_id`, `referral_id`, `upload_id`) di bawah `event_id` lain | ya | kemungkinan sudah tersinkron; buang event (verifikasi lewat `select` bila perlu) |
 | `event_id_conflict` | `event_id` sama dengan isi (`type`+`payload`) berbeda, atau `event_id` milik akun lain | tidak disimpan ulang | bug klien (payload diubah setelah kirim pertama / tabrakan id); buat `event_id` baru dengan payload final |
@@ -78,7 +79,7 @@ Kunci: `child_id`, `consent_type`, `action`, `text_version`, `at`, `method`.
 
 | Kunci | Aturan |
 |---|---|
-| `consent_type` | wajib; `a` (simpan lokal), `b` (kirim data teknis terpseudonim), `c` (unggah foto dataset) |
+| `consent_type` | wajib; `a` (simpan lokal), `b` (kirim data teknis terpseudonim), `c` (unggah foto dataset), **`d` (bukti sikat gigi video ke orang tua; ADR 017)** |
 | `action` | wajib; `grant` atau `withdraw` |
 | `text_version` | wajib untuk `grant`; `^[A-Za-z0-9._-]{1,32}$` (versi teks persetujuan yang ditampilkan) |
 | `at` | opsional; bawaan jam server; untuk `withdraw` nilai efektif `max(at, granted_at)` |
@@ -101,7 +102,7 @@ Syarat: pemanggil **pemilik** anak (`forbidden` bila bukan atau anak belum ada),
 
 ### 3.3 `screening_recorded`
 
-Kunci: `screening_id`, `child_id`, `screened_at`, `model_version`, `rules_version`, `level`, `red_flag`, `findings`.
+Kunci: `screening_id`, `child_id`, `screened_at`, `model_version`, `rules_version`, `level`, `red_flag`, `findings`, `request_id`.
 Syarat: akses anak (pemilik atau anggota roster kader), tidak ada permintaan hapus, consent (b) aktif.
 
 | Kunci | Aturan |
@@ -111,6 +112,7 @@ Syarat: akses anak (pemilik atau anggota roster kader), tidak ada permintaan hap
 | `model_version`, `rules_version` | wajib; `^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}([-+][0-9A-Za-z.-]{1,32})?$` (mis. `0.1.0`, `0.2.0-draft`) |
 | `level` | wajib; `red`, `orange`, `yellow`, `green` (lihat pemetaan di bawah) |
 | `red_flag` | opsional boolean (bawaan `false`); konvensi app: `true` bila ada alasan `RF_*` pada keluaran triase (server tidak memverifikasi) |
+| `request_id` | opsional UUID atau `null` (ADR 017): permintaan skrining **anak yang sama**; bila `pending`/`seen` dan belum kedaluwarsa menjadi `done` (`responded_at`, `screening_id` terisi). Permintaan tak dikenal / milik anak lain -> `forbidden` |
 | `findings` | opsional array <= 50 objek (bawaan `[]`); tiap objek hanya kunci `class`, `confidence`, `box`. `class` kode `^[a-z][a-z0-9_]{1,39}$` (v1: `caries_permanent`, `caries_primary`); `confidence` angka 0..1; `box` array 4 angka 0..1 `[x, y, w, h]` ternormalisasi, **hanya geometri overlay** |
 
 ADR 014: `rel_area` (turunan ukuran kotak) **tidak diterima lagi** (kunci itu -> `schema_invalid`); ukuran kotak tidak boleh dipakai untuk keparahan. Tidak ada gambar, nama, atau teks bebas.
@@ -150,6 +152,36 @@ PDF surat rujukan dibuat offline di app; server hanya menyimpan metadata ini.
 Mendaftarkan metadata foto dataset **setelah** objek diunggah ke Storage. Kunci: `upload_id`, `child_id`, `object_path`.
 Urutan cek: akses anak (`forbidden`) -> permintaan hapus (`deletion_pending`) -> flag `dataset_contribution` (`feature_disabled`) -> consent (c) (`consent_required`) -> `object_path` persis `<uid>/<child_id>/<upload_id>.jpg` atau `.jpeg` (huruf kecil) -> objek benar-benar ada di `dataset_photos` di bawah prefiks akun pemanggil (`schema_invalid` bila tidak). Server menetapkan `status='uploaded'`, `uploaded_at`, dan `expires_at = now + image_upload_ttl_days`. Aturan unggah Storage: [`SUPABASE_API.md`](SUPABASE_API.md) bagian 4. Selama KEPK belum menyetujui, flag mati dan jalur ini tidak boleh dipakai.
 
+### 3.7 `screening_requested` (hanya akun anak; ADR 017)
+
+Anak meminta orang tuanya melakukan skrining. Kunci: `request_id`, `child_id`, `reason_code`, `pain_level`.
+Urutan cek: bukan akun anak / bukan anaknya / akun dinonaktifkan (`forbidden`) -> permintaan hapus (`deletion_pending`) -> consent (b) (`consent_required`) -> batas harian (`limit_exceeded`).
+
+| Kunci | Aturan |
+|---|---|
+| `request_id` | wajib UUID dibuat app; duplikat di bawah `event_id` lain -> `entity_conflict` |
+| `reason_code` | wajib; `toothache`, `sensitive_teeth`, `bleeding_gums`, `swelling`, `other` (kode, tanpa teks bebas) |
+| `pain_level` | opsional integer 0..10 atau `null` |
+
+Batas `request_max_per_child_per_day` (bawaan 5 per hari kalender WIB). Status awal `pending`; kedaluwarsa `request_expiry_days` (14). Server tidak menilai level dari permintaan (red flag tetap tanggung jawab app/kuesioner).
+
+### 3.8 `brushing_proof_registered` (hanya akun anak; ADR 017)
+
+Mendaftarkan metadata video bukti sikat gigi **sebelum** berkas diunggah. Kunci (semua wajib): `proof_id`, `child_id`, `brushing_event_id`, `size_bytes`, `duration_s`, `mime`.
+Urutan cek: `forbidden` -> `deletion_pending` -> flag `brushing_proof_video` (`feature_disabled`) -> consent (b) **dan (d)** (`consent_required`) -> ukuran/durasi/batas harian (`limit_exceeded`) -> `brushing_event_id` milik anak itu sudah ada (`schema_invalid`).
+
+| Kunci | Aturan |
+|---|---|
+| `proof_id` | UUID dibuat app |
+| `brushing_event_id` | `brushing_id` dari `brushing_recorded` anak yang sama yang sudah `applied` (satu bukti per sesi) |
+| `size_bytes` | integer >= 1 dan <= `proof_max_bytes` (bawaan 10 MiB) |
+| `duration_s` | integer >= 1 dan <= `proof_max_duration_s` (bawaan 180) |
+| `mime` | `video/mp4` atau `video/quicktime` |
+
+Server membentuk `object_path = <guardian_id>/<child_id>/<proof_id>.mp4` (`.mov` untuk `video/quicktime`); **unggah ke bucket `brushing_proofs` setelah event ini `applied`** ([`SUPABASE_API.md`](SUPABASE_API.md) §4, alur lengkap: [`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md) §2.4). Batas harian `proof_max_per_child_per_day` (bawaan 3, hari WIB); retensi `proof_retention_days` (7).
+
+Akun anak hanya boleh mengirim `brushing_recorded`, `screening_requested`, dan `brushing_proof_registered`, hanya untuk anaknya sendiri; tipe lain -> `forbidden`.
+
 ## 4. Idempotensi
 
 - Kunci idempotensi: `event_id`. Server menghitung `sha256(type + "|" + payload::text)` (jsonb kanonik: urutan kunci dan spasi tidak berpengaruh; **angka dipertahankan seperti ditulis**, mis. `0.82` dan `0.820` berbeda). Simpan **string JSON payload persis** di outbox dan kirim byte yang sama setiap kali.
@@ -168,6 +200,7 @@ Urutan cek: akses anak (`forbidden`) -> permintaan hapus (`deletion_pending`) ->
   3. `screening_recorded`, `brushing_recorded` (butuh consent b).
   4. `referral_created` dengan `screening_id` (butuh screening `applied`).
   5. Foto: `consent_changed` (grant c) -> unggah ke Storage -> `image_upload_registered`.
+  6. Akun anak: `brushing_recorded` (`applied`) -> `brushing_proof_registered` -> unggah video. `screening_requested` berdiri sendiri. Orang tua: `consent_changed` (grant b, lalu d) harus `applied` sebelum event akun anak apa pun.
 - Bila event perantara ditolak, event yang bergantung akan ikut ditolak **permanen** (mis. `consent_required`, `forbidden`); tahan di antrean lokal dan jangan kirim.
 - Penarikan consent (b): server berhenti menerima data anak itu (RPC dan RLS). App harus membersihkan event data anak itu dari outbox dan berhenti menambah yang baru.
 - Penghapusan akun/anak (`request_deletion`) menghentikan sinkron subjek segera.

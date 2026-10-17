@@ -2,6 +2,14 @@
 
 Format: tanggal (YYYY-MM-DD), perubahan pada kontrak yang didokumentasikan. Perubahan kontrak nyata (migrasi, aturan, model) tetap dicatat di `../regulatory/CHANGELOG.md` dan ADR; berkas ini hanya melacak dokumen di `docs/api/`.
 
+## 2026-10-18 (akun v2, ADR 017)
+
+- Baru: `ACCOUNTS_AND_FLOWS.md` (jenis akun, daftar remaja/orang tua, orang tua membuat akun anak, login anak, streak + video bukti, permintaan skrining, riwayat, hak akses, galat, daftar periksa UI).
+- `SYNC_EVENTS.md`: tipe `screening_requested` dan `brushing_proof_registered` (hanya akun anak), `request_id` opsional pada `screening_recorded`, consent jenis `d`, kode penolakan `limit_exceeded` (8 tipe event).
+- `SUPABASE_API.md`: `signUp` menerima `options.data.account_type` (`guardian`|`teen`); tabel baru (`child_account`, `screening_request`, `brushing_proof`); RPC §3.7; bucket `brushing_proofs`.
+- `EDGE_FUNCTIONS_AND_HOOKS.md`: `child-accounts`, `child-login`; `retention-sweep` dan `process-deletion` ikut menangani video bukti.
+- Kontrak berubah **aditif** (tidak ada tipe/kolom lama yang berubah makna). Catatan: trigger pendaftaran kini menerima `teen`; akun lama tetap `guardian`.
+
 ## 2026-10-17 (panduan tim app, model terpilih)
 
 - Baru: `APP_TEAM_GUIDE.md` (mulai di sini: peta, status, urutan integrasi, jebakan, uji cepat) dan `MODEL_BUNDLE.md` (bundel detektor ADR 013: YOLOX-Nano float32, I/O, alur, ambang, batasan UI, bukti paritas).

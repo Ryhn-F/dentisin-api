@@ -20,7 +20,7 @@
 | Catatan persetujuan: jenis, versi teks, waktu | Bukti persetujuan dan penarikannya | Ponsel dan server |
 | Catatan teknis tanpa identitas (mis. versi aplikasi, jenis kesalahan) | Memperbaiki aplikasi | Server, tanpa nama/ foto/ data anak yang dapat dikenali `[ISI: verifikasi isi log]` |
 
-**Kamera saat menyikat gigi:** kamera depan dipakai untuk mengenali wajah dan gerakan tangan saat menyikat. **Video dan gambar tidak disimpan dan tidak dikirim**; gambar dibuang segera setelah diproses.
+**Kamera saat menyikat gigi:** kamera depan dipakai untuk mengenali wajah dan gerakan tangan saat menyikat. **Video dan gambar tidak disimpan dan tidak dikirim**; gambar dibuang segera setelah diproses. **Satu pengecualian, hanya atas persetujuan orang tua (consent d, ADR 017):** pada akun anak, video singkat saat menyikat gigi dapat dikirim ke server privat di Singapura agar orang tua dapat menontonnya, dan dihapus otomatis paling lama 7 hari; tidak dipakai untuk melatih model dan tidak dilihat siapa pun selain orang tua anak itu `[ISI: tinjauan hukum Q-15]`.
 
 **Yang tidak kami lakukan:** tidak ada iklan, tidak ada pelacak pihak ketiga, tidak ada profil perilaku anak, tidak ada lokasi tepat dikirim ke server `[ISI: konfirmasi dengan tim app]`.
 

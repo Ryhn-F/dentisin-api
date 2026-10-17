@@ -29,7 +29,7 @@ Catatan: SMTP, CAPTCHA, dan hook hanya aktif di proyek hosted setelah `supabase 
 
 | Aksi | supabase-js | HTTP |
 |---|---|---|
-| Daftar | `auth.signUp({ email, password, options: { emailRedirectTo, captchaToken } })` | `POST /auth/v1/signup` |
+| Daftar | `auth.signUp({ email, password, options: { data: { account_type: 'guardian' \| 'teen' }, emailRedirectTo, captchaToken } })` | `POST /auth/v1/signup` |
 | Masuk | `auth.signInWithPassword({ email, password, options: { captchaToken } })` | `POST /auth/v1/token?grant_type=password` |
 | Perpanjang sesi | otomatis (`autoRefreshToken`) | `POST /auth/v1/token?grant_type=refresh_token` |
 | Lupa sandi | `auth.resetPasswordForEmail(email, { redirectTo, captchaToken })` | `POST /auth/v1/recover` |
@@ -39,7 +39,7 @@ Catatan: SMTP, CAPTCHA, dan hook hanya aktif di proyek hosted setelah `supabase 
 Perilaku penting:
 
 - `enable_confirmations = true`: `signUp` tidak menghasilkan sesi; pengguna harus membuka tautan di email. `signInWithPassword` sebelum konfirmasi gagal (`email_not_confirmed`).
-- Akun baru otomatis berperan `guardian`. Field `options.data` (user metadata) **tidak** memberi peran apa pun.
+- Akun baru otomatis berperan `guardian`. `options.data.account_type` hanya menerima `'guardian'` (orang tua) atau `'teen'` (remaja, untuk dirinya sendiri); nilai lain diabaikan (dianggap `guardian`). Field `options.data` **tidak** memberi peran apa pun. **Akun anak** tidak dibuat lewat `signUp`: orang tua membuatnya lewat Edge Function `child-accounts`, anak masuk lewat `child-login` (bukan `signInWithPassword`); lihat [`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md).
 - Penghapusan akun **bukan** lewat Auth API klien; pakai RPC `request_deletion('account')` (bagian 3.2).
 - Isi email hanya tautan atau kode; tanpa data anak.
 
@@ -111,6 +111,10 @@ Kunci: R = SELECT, I = INSERT, U = UPDATE, D = DELETE. "Sendiri" = baris milik a
 | `class_roster_member` | - | CRUD dalam roster sendiri; menambah hanya anak yang dimiliki sendiri | - | - | semua |
 | `deletion_request` | R sendiri; I via `request_deletion()` (I langsung hanya untuk `pending` pada anak/akun sendiri) | sama | - | - | semua |
 | `sync_event` | R sendiri (ditulis oleh `sync_events`) | sama | - | - | semua |
+| `child_account` (ADR 017) | R akun anak miliknya (tanpa kredensial); tanpa tulis klien | - | - | - | semua |
+| `screening_request` (ADR 017) | R untuk anaknya; status diubah lewat RPC `ack_screening_request` / `screening_recorded`; tulis lewat `sync_events` | - | - | - | semua |
+| `brushing_proof` (ADR 017) | R metadata klip hidup anaknya; tandai dilihat/hapus lewat RPC | - | - | - | semua |
+| `child_login_attempt` | tidak ada | - | - | - | semua |
 | `feature_flag` | R (perlu login) | R | R | R; tulis lewat RPC | semua |
 | `app_setting` | - | - | - | R | semua |
 | `audit_log` | - | - | - | R | R/I saja (append-only) |
@@ -208,12 +212,28 @@ Admin pertama dibuat manual oleh owner di SQL editor: `insert into public.user_r
 
 ### 3.6 RPC khusus `service_role` (bukan untuk app)
 
-`service_pending_deletions(p_limit=20)`, `service_execute_deletion(p_request_id, p_storage_objects_deleted)`, `service_retention_candidates(p_limit=100)`, `service_mark_images_deleted(p_upload_ids uuid[])`, `service_retention_sweep_db()`, `service_ml_audit(...)` (dipakai FastAPI). Dipanggil Edge Functions / server saja; pemanggil lain mendapat `forbidden` (42501) atau 401/403. Detail alur: [`EDGE_FUNCTIONS_AND_HOOKS.md`](EDGE_FUNCTIONS_AND_HOOKS.md).
+`service_pending_deletions(p_limit=20)`, `service_execute_deletion(p_request_id, p_storage_objects_deleted)`, `service_retention_candidates(p_limit=100)`, `service_mark_images_deleted(p_upload_ids uuid[])`, `service_retention_sweep_db()`, `service_ml_audit(...)` (dipakai FastAPI); akun v2: `service_resolve_child_login`, `service_child_login_check`, `service_child_login_record`, `service_expired_proofs`, `service_mark_proof_object_removed`, `service_child_users_of`, `service_deletion_targets`. Dipanggil Edge Functions / server saja; pemanggil lain mendapat `forbidden` (42501) atau 401/403. Detail alur: [`EDGE_FUNCTIONS_AND_HOOKS.md`](EDGE_FUNCTIONS_AND_HOOKS.md).
 
 ```ts
 const { data, error } = await supabase.rpc('sync_events', { batch });           // 3.1
 const { data: reqId } = await supabase.rpc('request_deletion', { p_scope: 'account' });  // 3.2
 ```
+
+### 3.7 RPC akun v2 (ADR 017; `authenticated`, `anon` ditolak)
+
+Semua mengembalikan `forbidden` (42501) identik untuk "bukan milik Anda" dan "tidak ada". Kontrak lengkap, contoh, dan galat: [`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md).
+
+| RPC | Untuk | Hasil |
+|---|---|---|
+| `my_account()` | semua | jenis akun, peran, `self_child_id`, `child_account`, flag, `limits` |
+| `ensure_self_profile(p_child_id, p_birth_year, p_birth_month)` | remaja | `uuid` profil diri (idempoten) |
+| `list_children()` | orang tua / remaja / kader | ringkasan beranda per anak (lencana permintaan & bukti) |
+| `child_history(p_child, p_before, p_limit, p_kinds, p_from)` | orang tua / remaja / kader / anak | `{items[], next_before}` |
+| `brushing_streak(p_child, p_tz)` | semua yang berhak | `{current, longest, last_day, today_done, week[], ...}` |
+| `list_screening_requests(p_child, p_status, p_limit)` | orang tua / remaja / anak | permintaan (status efektif) |
+| `ack_screening_request(p_id, p_action)` | orang tua / remaja | `seen` atau `cancel` |
+| `list_brushing_proofs(p_child, p_before, p_limit)` | orang tua / remaja | klip hidup + `object_path` untuk `createSignedUrl` |
+| `mark_proof_viewed(p_proof)` / `delete_brushing_proof(p_proof)` | orang tua / remaja | status baru |
 
 ## 4. Storage
 
@@ -223,6 +243,7 @@ Batas proyek: `storage.file_size_limit = 50MiB`.
 |---|---|---|---|
 | `manifests` | **publik baca** lewat URL; tulis hanya `admin` atau `service_role` | 50 MiB; MIME `application/json`, `application/octet-stream`, `text/plain` | berisi `manifest.json`, `manifest.sig`, `model/<v>/...`, `rules/<v>/...`, `recommender/<v>/...` (lihat `CLIENT_CONTRACTS.md`) |
 | `dataset_photos` | privat; klien hanya **INSERT** | 512000 byte (500 KiB); MIME `image/jpeg` | lihat di bawah; tidak ada SELECT/UPDATE/DELETE untuk klien |
+| `brushing_proofs` (ADR 017) | privat; **akun anak** hanya INSERT; **orang tua/remaja pemilik** hanya SELECT (signed URL) untuk klip hidup | 10 MiB; MIME `video/mp4`, `video/quicktime` | path persis `<guardian_id>/<child_id>/<proof_id>.mp4\|.mov` dari event `brushing_proof_registered`; tanpa UPDATE/DELETE/upsert; retensi 7 hari; rinci di bawah |
 
 Syarat unggah `dataset_photos` (kebijakan `dentisai_dataset_photos_insert`; semua harus benar):
 
@@ -245,6 +266,16 @@ curl -sS -X POST "https://<project-ref>.supabase.co/storage/v1/object/dataset_ph
 ```ts
 await supabase.storage.from('dataset_photos')
   .upload(`${uid}/${childId}/${uploadId}.jpg`, jpegArrayBuffer, { contentType: 'image/jpeg', upsert: false });
+```
+
+Syarat unggah `brushing_proofs` (kebijakan `dentisai_brushing_proofs_insert`; semua harus benar): akun anak aktif (tidak dinonaktifkan); path persis milik baris `brushing_proof` yang didaftarkan anak itu (status `uploaded`, belum kedaluwarsa); flag `brushing_proof_video` hidup; consent (d) aktif; tidak ada permintaan hapus; ukuran dan MIME sesuai pendaftaran. Baca (`dentisai_brushing_proofs_select`): hanya pemilik anak (segmen pertama path = `auth.uid()`), hanya klip hidup dengan consent (d) aktif; kader, fasilitas, dan admin tidak punya akses. Pembersihan berkas oleh Edge Function `retention-sweep` / `process-deletion`.
+
+```ts
+// Anak: setelah brushing_proof_registered berstatus applied
+await supabase.storage.from('brushing_proofs')
+  .upload(`${guardianId}/${childId}/${proofId}.mp4`, videoArrayBuffer, { contentType: 'video/mp4', upsert: false });
+// Orang tua: tonton
+const { data } = await supabase.storage.from('brushing_proofs').createSignedUrl(objectPath, 300);
 ```
 
 ## 5. Batas laju dan kuota

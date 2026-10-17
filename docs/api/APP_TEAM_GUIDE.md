@@ -9,6 +9,7 @@
 |---|---|---|---|
 | Daftar, masuk, reset sandi | Supabase Auth: email + sandi (≥ 8, huruf kecil+besar+angka), konfirmasi email, CAPTCHA Turnstile, tautan email → `app.ryhnfir.dev/auth/callback` → `dentisai://` | [`SUPABASE_API.md`](SUPABASE_API.md) §1 | Dev **hidup**: pendaftaran terbuka dan email wajib dikonfirmasi (`/auth/v1/settings`: `disable_signup=false`, `mailer_autoconfirm=false`). Saklar `AUTH_SMTP/CAPTCHA/SEND_EMAIL_HOOK_ENABLED` di `.env` backend bernilai `true`; apakah sudah di-push ke proyek dev `[PERLU VERIFIKASI]` (CAPTCHA aktif = `signUp` tanpa token ditolak). **Belum terbukti**: daftar → email tiba → ketuk tautan → login di HP nyata |
 | Simpan hasil ke server | RPC `sync_events` (outbox idempoten) | [`SYNC_EVENTS.md`](SYNC_EVENTS.md) | **Selesai & teruji** di dev (pgTAP, HTTP, e2e) |
+| **Akun v2**: pilih remaja/orang tua, orang tua membuat akun anak, login anak, streak + video bukti, permintaan skrining ke orang tua, riwayat | `signUp` + `options.data.account_type`; Edge Function `child-accounts` / `child-login`; `sync_events` tipe baru; RPC `my_account`, `list_children`, `child_history`, `brushing_streak`, `list_screening_requests`, `list_brushing_proofs` dll.; bucket `brushing_proofs` | [`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md) (alur, galat, daftar periksa UI), ADR 017 | Kode + uji pgTAP/Deno **selesai**; **belum di-deploy ke proyek dev** dan belum diuji e2e/HP. Butuh tinjauan hukum sebelum rilis publik (video anak) |
 | Hak hapus, consent, data anak | tabel + RLS, RPC `request_deletion`, Edge Function | `SUPABASE_API.md` §2–3, [`EDGE_FUNCTIONS_AND_HOOKS.md`](EDGE_FUNCTIONS_AND_HOOKS.md) | **Selesai** di dev |
 | Deteksi foto (on-device) | bundel model **YOLOX-Nano float32** + dekoder TypeScript acuan | [`MODEL_BUNDLE.md`](MODEL_BUNDLE.md), [`examples/detector/`](examples/detector/) | Bundel **dev** `0.1.0-dev.2` siap diberikan; bundel resmi menyusul. Dekoder TS lulus vektor paritas + fixture model nyata. **Latensi HP belum diukur** |
 | Triase | `triage/dist/rules.json` + engine yang di-port ke TS | [`CLIENT_CONTRACTS.md`](CLIENT_CONTRACTS.md) §2 | **DRAFT**: nilai klinis `PLACEHOLDER` (diisi dari pustaka di Fase 3). Struktur masukan/keluaran stabil |
@@ -26,14 +27,16 @@
 | **013** | Model terpilih YOLOX-Nano **float32** (INT8 gagal) | Masukan **float32 BGR 0–255**, bukan uint8; keluaran satu tensor logit `[1,3549,7]` (bagian MODEL_BUNDLE) |
 | **014** | Kelas hanya `caries_permanent` / `caries_primary`; kotak = seluruh gigi | Tidak ada "berlubang/belum berlubang"; **jangan** turunkan keparahan dari ukuran kotak; triase hanya menerima `{class, confidence}` |
 | **015** | Aturan klinis bersumber pustaka (tanpa tanda tangan dokter gigi untuk MVP); dataset tunggal Ahmed 2025 | Layar Tentang/hasil memuat teks transparansi: aturan dari pedoman terbitan, model dilatih di dataset publik, **belum divalidasi klinis**. Dilarang menulis "divalidasi/disetujui dokter gigi" |
+| **017** | Model akun v2: `guardian` / `teen` / `child`; anak hanya streak + minta skrining; skrining oleh orang tua; video bukti 7 hari (consent `d`) | Beranda berbeda per `my_account().account_type`; login anak lewat `child-login` (bukan `signIn`); password anak dibuat orang tua; kompres video di klien; polling untuk permintaan baru; teks consent `d` menunggu tinjauan hukum |
 | **002** | Posisi regulasi | Fitur deteksi/triase di rilis publik mengikuti ADR 002; build internal boleh menyalakan modul medis lewat `feature_flag` |
 | 008/009 | Repo tertutup, Rp0, FastAPI tidak di jalur kritis | Tidak ada layanan berbayar/awan di jalur utama; semua hitungan inti offline |
 
 ## 3. Urutan integrasi yang disarankan
 
 1. **Klien Supabase** (env publik: `SUPABASE_URL`, `SUPABASE_ANON_KEY`; sesi di penyimpanan aman). Kode: `SUPABASE_API.md` §1.4. Uji cepat tanpa kode: bagian 6.
-2. **Auth** + CAPTCHA (WebView Turnstile, `SUPABASE_API.md` §1.3) + penanganan deep link (§1.2). Uji pada proyek dev dengan akun baru; ini satu-satunya langkah yang butuh email sungguhan.
+2. **Auth** + CAPTCHA (WebView Turnstile, `SUPABASE_API.md` §1.3) + penanganan deep link (§1.2). Uji pada proyek dev dengan akun baru; ini satu-satunya langkah yang butuh email sungguhan. Tambahkan layar **pilih peran** saat daftar (`account_type`) dan routing beranda dari `my_account()` ([`ACCOUNTS_AND_FLOWS.md`](ACCOUNTS_AND_FLOWS.md)).
 3. **Outbox → `sync_events`**: skema event di `SYNC_EVENTS.md`; kirim ≤ 50 event per panggilan, satu batch dalam penerbangan, `event_id` tetap saat retry.
+   - **Akun v2** (setelah 2–3 jalan): alur orang tua (tambah anak → `child-accounts`), login anak (`child-login`), beranda anak (streak, minta skrining), video bukti (kompres, unggah), beranda orang tua (`list_children`, permintaan, pemutar bukti), riwayat. Urutan dan kontrak di `ACCOUNTS_AND_FLOWS.md` §2 dan §10. Fitur ini baru bisa diuji nyata setelah backend men-deploy migrasi `20261017*` dan kedua Edge Function ke proyek dev.
 4. **Model**: terima bundel dev dari backend → verifikasi hash → jalankan `golden_runtime.json` di HP (keluaran mentah harus cocok) → pasang `decode.ts` + tesnya → jalankan foto uji milik tim sendiri. Jangan memakai foto anak.
 5. **Triase + rekomendasi + quality gate**: port engine ke TS; uji paritas dengan `cases.json` / vektor (bundel kontrak). Jalankan dengan parameter uji sampai Fase 3 selesai; keluaran tetap berlabel DRAFT.
 6. **Consent, hak hapus, mode anak tanpa akun** (offline penuh, tidak mengirim apa pun).
@@ -44,6 +47,8 @@
 | Gejala | Penyebab / tindakan |
 |---|---|
 | `GET …/manifests/manifest.json` memberi **HTTP 400** dengan isi `{"statusCode":"404","error":"not_found",…}` | Belum ada manifes terbit. Supabase Storage memakai 400 untuk objek yang tidak ada. Perlakukan **semua** status bukan-200 sebagai "tidak ada pembaruan" dan pakai rilis bawaan |
+| Login anak selalu `401 invalid_credentials` | Pesan sengaja seragam. Periksa: email **orang tua** (bukan email anak), username huruf kecil, password yang dibuat orang tua untuk anak itu, akun anak tidak dinonaktifkan, Turnstile terkirim. Banyak percobaan → `429` + `Retry-After` |
+| Bukti video: `consent_required` / `forbidden` | Orang tua belum memberi consent `b` **dan** `d`, atau akun anak dinonaktifkan; cek `my_account().child_account.proof_allowed` |
 | `signUp` berhasil tetapi `session` kosong | Konfirmasi email aktif: sesi baru ada setelah pengguna membuka tautan. `signInWithPassword` sebelum itu gagal (`email_not_confirmed`) |
 | Baca tabel tanpa login → HTTP 401, kode `42501` | Wajar: anon hanya boleh Storage `manifests`, Auth, dan RPC `keepalive`. Semua tabel butuh JWT pengguna |
 | Pendaftaran gagal `captcha_failed` | CAPTCHA aktif di server: setiap `signUp` / `signIn` / `resetPasswordForEmail` wajib membawa `captchaToken` sekali pakai |
@@ -93,6 +98,8 @@ node --test "docs/api/examples/detector/*.test.ts"      # 10 uji: vektor paritas
 
 | Item | Pemilik | Dampak |
 |---|---|---|
+| Deploy akun v2 ke proyek dev (`db push`, rahasia `CHILD_LOGIN_HASH_PEPPER`, `functions deploy`) | pemilik produk + backend | Sampai dilakukan, login anak/bukti video belum bisa dicoba dari app |
+| Tinjauan hukum video anak/remaja mendaftar sendiri (`OPEN_LEGAL_QUESTIONS.md`) | pemilik produk | Menentukan apakah fitur video boleh dihidupkan di rilis publik |
 | Latensi/memori di HP (S1) — protokol: [`../runbooks/spike-s1-latency.md`](../runbooks/spike-s1-latency.md) | tim app + pemilik produk | Menentukan model final dan presisi (float32/float16) |
 | Nilai klinis dari pustaka (Fase 3) | backend | Triase/rekomendasi tetap DRAFT sampai `release_check` hijau |
 | Kunci penandatangan + manifes pertama (4.1/4.2) | pemilik produk + backend | Pembaruan artefak lewat manifes belum bisa dipakai |
