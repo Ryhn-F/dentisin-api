@@ -78,7 +78,7 @@ pg_cron tidak dapat membangunkan proyek Free yang sudah dijeda; apakah aktivitas
 
 Berbeda dari fungsi di atas: **dipanggil app**, `verify_jwt = true`, `Authorization: Bearer <access token orang tua>`. Sumber: `supabase/functions/child-accounts/` (`handler.ts` logika, `ports.ts` supabase-js, `index.ts`).
 
-Urutan pemeriksaan: `OPTIONS` → 204 (CORS) · metode bukan `POST` → 405 `method_not_allowed` · env kurang → 500 `internal` · header `Authorization` bukan `Bearer <token>` atau `my_account()` gagal/anon → 401 `unauthorized` · `account_type` bukan `guardian` (remaja, anak) → 403 `forbidden` · body (JSON objek ≤ 4 KiB) tidak valid → 400 `invalid_body` · anak tidak terbaca lewat RLS dengan `owner_id` = pemanggil → 404 `child_not_found` (anak orang lain dan anak tak dikenal identik).
+Urutan pemeriksaan: `OPTIONS` → 204 (CORS) · metode bukan `POST` → 405 `method_not_allowed` · env kurang → 500 `internal` · header `Authorization` bukan `Bearer <token>` atau `my_account()` gagal/anon → 401 `unauthorized` · `account_type` bukan `guardian` (remaja, anak) atau pemanggil berperan `kader` → 403 `forbidden` · body (JSON objek ≤ 4 KiB) tidak valid → 400 `invalid_body` · anak tidak terbaca lewat RLS dengan `owner_id` = pemanggil → 404 `child_not_found` (anak orang lain dan anak tak dikenal identik).
 
 | `action` | Body | Sukses | Galat khusus |
 |---|---|---|---|
