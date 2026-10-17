@@ -3,6 +3,7 @@ brushing_score.py
 checkin.py
 generate_cases.py
 pyproject.toml
+release_check.py
 rules_loader.py
 synthetic.py
 validate_labels.py
@@ -14,5 +15,6 @@ dentisai_brushing.egg-info/top_level.txt
 tests/test_cases_parity.py
 tests/test_checkin.py
 tests/test_labels.py
+tests/test_release_check.py
 tests/test_rules_loader.py
 tests/test_scorer.py

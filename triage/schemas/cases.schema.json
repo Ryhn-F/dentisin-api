@@ -66,6 +66,11 @@
               }
             ]
           },
+          "expected_source": {
+            "description": "Optional (ADR 015): citation for the expected result (published guideline/review, or the evidence-table row it comes from). On review_basis literature the release check counts cases with a non-empty expected_source without PERLU VERIFIKASI.",
+            "type": "string",
+            "minLength": 1
+          },
           "graded_by_drg": {"type": "boolean"},
           "graded_by": {"type": ["string", "null"]},
           "graded_at": {"type": ["string", "null"]}

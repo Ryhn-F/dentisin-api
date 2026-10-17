@@ -44,7 +44,7 @@ uv run python export.py verify-bundle ../exports/0.1.0
 | `bake_off/` | README, template laporan, `compare.py` (`--adr` mengisi `ADR-013-template.md`) |
 | `preprocess.py` | Pra-proses referensi (DECODE_SPEC §1) + set kalibrasi INT8/ sampel paritas (`calib`, split train/val) |
 | `predict.py` | Jalankan `.tflite`/`.onnx` pada split → JSONL prediksi untuk `eval.py` (pra-proses + dekode yang sama dengan app) |
-| `thresholds.py` | Ambang skor per kelas dipilih di **val** (status `set_on_val`, tetap butuh tinjauan drg untuk rilis) |
+| `thresholds.py` | Ambang skor per kelas dipilih di **val** (status `set_on_val`; rilis butuh tinjauan: drg = `reviewed_by_drg`, atau anggota tim bernama dengan `review_basis: literature` + `reviewed_by` + `reviewed_at`, ADR 015) |
 | `artifacts.py` | `collect` (zip unduhan notebook; menolak gambar/`.npy`/checkpoint) · `pack-code` (zip kode untuk dataset privat Kaggle) |
 | `WEIGHT_LICENSES.md` | Verifikasi lisensi **bobot** pra-latih tiap kandidat (sumber primer, 2026-10-09) + patch `license_gate.yaml` |
 | `kaggle/` | Notebook Kaggle/Colab (`*_kaggle.py` sumber, `.ipynb` dibangkitkan `make_ipynb.py`; `bootstrap.py` di-*inline* ke sel 1: preflight + ambil kode via `GITHUB_TOKEN`), `nbkit.py` (data Zenodo/ split/ venv terkunci `requirements/*.txt`), `mm_train_py310.py`, `local_simulate.py` (simulasi Kaggle lokal), **`RUNBOOK.md`** |

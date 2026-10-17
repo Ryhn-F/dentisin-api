@@ -148,8 +148,13 @@ def _recommender_gate(rules: Mapping[str, Any], products: Mapping[str, Any]) -> 
     return EngineGate(releasable=count == 0, blocker_count=count)
 
 
-def _walk_review_rows(node: Any, path: str, out: list[ParamInfo]) -> None:
-    """Every recommender row that carries a review status (status + reviewed_by)."""
+def _walk_review_rows(
+    node: Any, path: str, out: list[ParamInfo], basis: str = recommender_release.DENTIST
+) -> None:
+    """Every recommender row that carries a review status (status + reviewed_by).
+
+    ``reviewed`` follows the recommender gate's own reviewer rule for ``basis`` (ADR 015).
+    """
     if isinstance(node, Mapping):
         if "status" in node and "reviewed_by" in node:
             out.append(
@@ -159,32 +164,39 @@ def _walk_review_rows(node: Any, path: str, out: list[ParamInfo]) -> None:
                     status=str(node["status"]),
                     placeholder=node["status"] != "approved"
                     or node.get("decision_pending") is True,
-                    reviewed=node["reviewed_by"] is not None and node["reviewed_at"] is not None,
+                    reviewed=recommender_release.reviewer_ok(node["reviewed_by"], basis)
+                    and node["reviewed_at"] is not None,
                 )
             )
         for key, value in node.items():
             if key != "messages":  # message texts are reviewed as a block, listed below
-                _walk_review_rows(value, f"{path}.{key}" if path else str(key), out)
+                _walk_review_rows(value, f"{path}.{key}" if path else str(key), out, basis)
     elif isinstance(node, list):
         for index, value in enumerate(node):
             ident = value.get("id") if isinstance(value, Mapping) else None
-            _walk_review_rows(value, f"{path}[{ident if ident else index}]", out)
+            _walk_review_rows(value, f"{path}[{ident if ident else index}]", out, basis)
 
 
 def _param_infos(triage_rules: Mapping[str, Any], rec_rules: Mapping[str, Any]) -> list[ParamInfo]:
+    triage_basis = triage_release.review_basis(triage_rules)
     infos = [
         ParamInfo(
             engine="triage",
             name=name,
             status=str(spec["status"]),
             placeholder=spec["value"] is None or spec["status"] != "SET",
-            reviewed=spec["reviewed_by"] not in (None, "PENDING_DRG")
+            reviewed=triage_release.reviewer_ok(spec["reviewed_by"], triage_basis)
             and spec["reviewed_at"] is not None,
         )
         for name, spec in triage_rules["params"].items()
     ]
     rows: list[ParamInfo] = []
-    _walk_review_rows({k: v for k, v in rec_rules.items() if k != "messages"}, "", rows)
+    _walk_review_rows(
+        {k: v for k, v in rec_rules.items() if k != "messages"},
+        "",
+        rows,
+        recommender_release.review_basis(rec_rules),
+    )
     infos.extend(rows)
     messages = rec_rules["messages"]
     pending = [m for m in messages.values() if m.get("status") != "approved"]

@@ -29,7 +29,7 @@ dev = [
 ]
 
 [tool.setuptools]
-py-modules = ["brushing_score", "rules_loader", "checkin", "synthetic", "validate_labels", "generate_cases"]
+py-modules = ["brushing_score", "rules_loader", "release_check", "checkin", "synthetic", "validate_labels", "generate_cases"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
@@ -58,6 +58,7 @@ strict = true
 files = [
   "brushing_score.py",
   "rules_loader.py",
+  "release_check.py",
   "checkin.py",
   "synthetic.py",
   "validate_labels.py",

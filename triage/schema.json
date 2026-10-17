@@ -16,6 +16,10 @@
     "status": {"enum": ["DRAFT", "APPROVED"]},
     "title": {"type": "string", "minLength": 1},
     "notice": {"type": "string"},
+    "review_basis": {
+      "description": "Optional (ADR 015). 'literature' = values set by the team from published sources (reviewed_by may be a team member; every source must be filled; release needs >= min_graded_cases cases with expected_source). 'dentist' = dentist sign-off (reviewed_by a dentist; graded_by_drg cases). Absent = 'dentist'.",
+      "enum": ["literature", "dentist"]
+    },
     "texts_review": {
       "type": "object",
       "additionalProperties": false,
@@ -30,7 +34,13 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["min_graded_cases"],
-      "properties": {"min_graded_cases": {"type": "integer", "minimum": 30}}
+      "properties": {
+        "min_graded_cases": {
+          "description": "Minimum cases backing the expected results: graded_by_drg (review_basis dentist) or carrying expected_source (review_basis literature).",
+          "type": "integer",
+          "minimum": 30
+        }
+      }
     },
     "levels": {
       "type": "array",
@@ -167,12 +177,12 @@
     "advice_id": {"type": "string", "pattern": "^ADV_[A-Z0-9_]+$"},
     "advice_id_list": {"type": "array", "items": {"$ref": "#/$defs/advice_id"}, "uniqueItems": true},
     "reviewed_by": {
-      "description": "Name/ID of the reviewing dentist, or PENDING_DRG / null while unreviewed.",
+      "description": "Name/ID of the reviewer: a dentist (review_basis dentist, the default) or a team member (review_basis literature, ADR 015); PENDING_DRG / null while unreviewed.",
       "type": ["string", "null"],
       "minLength": 1
     },
     "reviewed_at": {
-      "description": "ISO date (YYYY-MM-DD) of the dentist review, or null.",
+      "description": "ISO date (YYYY-MM-DD) of the review, or null.",
       "type": ["string", "null"],
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
     },

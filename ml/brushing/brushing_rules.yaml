@@ -10,6 +10,11 @@
 # Distances are divided by face_scale (face height), so 1.0 == one face height.
 # Scope (ADR 003 sec.4): duration + presence + coarse coverage + enthusiasm score.
 # This is NOT clinical technique scoring and makes no accuracy claim.
+#
+# Release gate: release_check.py. Optional top-level `review_basis` (ADR 015): `literature` =
+# values set by the team from published sources (reviewed_by may be a team member; every param
+# needs a `source` citation without PERLU VERIFIKASI); `dentist` = dentist sign-off. Absent =
+# `dentist`. Not set yet: nothing here has been reviewed on any basis.
 schema: brushing_rules/1
 version: "0.1.0"
 status: PLACEHOLDER

@@ -13,7 +13,7 @@ Prototipe **rule-based** yang bekerja pada aliran *fitur landmark* (bukan gambar
 
 ## Batasan jujur (wajib dibaca sebelum memakai angka apa pun)
 - **Bukti kamera depan lemah**: untuk wilayah sikat, literatur kuat hanya untuk sensor IMU; kamera depan layak untuk kehadiran/durasi/gamifikasi (`../docs/research/03_ai_components.md` sec. 3.4). Sikat sering menutupi mulut dan tangan.
-- **Semua ambang di `brushing_rules.yaml` berstatus `PLACEHOLDER`** (kecuali target 2 menit = konsensus). Belum ada validasi terhadap pengamat, apalagi drg. `Rules.placeholder_params()` mendaftar yang belum divalidasi; gerbang rilis dapat menolak build bila masih ada.
+- **Semua ambang di `brushing_rules.yaml` berstatus `PLACEHOLDER`** (kecuali target 2 menit = konsensus). Belum ada validasi terhadap pengamat, apalagi drg. `Rules.placeholder_params()` mendaftar yang belum divalidasi; gerbang rilis `release_check.py` menolak rilis selama masih ada (juga bila `reviewed_by`/`reviewed_at` kosong atau ada tanda `PERLU VERIFIKASI`). Basis tinjauan `review_basis` (opsional, ADR 015): `literature` = peninjau boleh anggota tim, tiap parameter wajib punya `source` (sitasi); `dentist` (bawaan bila kosong) = disahkan drg.
 - Peta sekstan (arah kiri/kanan, atas/bawah) adalah **heuristik tidak teruji**. Tampilkan hanya sebagai panduan permainan.
 - **Tidak ada klaim klinis dan tidak ada angka akurasi.** UI hanya boleh menyebut "skor semangat" (ADR 002/003; `../docs/style/forbidden_phrases.md`).
 - Tidak ada video/frame yang disimpan: `BrushingScorer` hanya menyimpan jendela geser `(t, x, y)` (dibatasi `window_ms`), dan frame kamera dibuang setelah fitur diekstrak (FR-64). App perlu tes sendiri bahwa tidak ada berkas frame di storage.
@@ -24,6 +24,7 @@ Prototipe **rule-based** yang bekerja pada aliran *fitur landmark* (bukan gambar
 |---|---|
 | `brushing_rules.yaml` | **Semua** ambang (nilai + status + rasional). Kode tidak punya default angka |
 | `rules_loader.py` | Memuat/memvalidasi aturan; `placeholder_params()` |
+| `release_check.py` | Gerbang rilis aturan (`python release_check.py`; exit 1 = belum boleh rilis; gagal hari ini, memang begitu) |
 | `brushing_score.py` | `Frame`, `BrushingScorer` (streaming), `score_session`; Python murni, mudah di-port ke TS |
 | `checkin.py` | Jendela check-in + streak (fungsi murni; UTC ms masuk, zona waktu IANA) |
 | `synthetic.py` | Generator aliran sintetis: wajah diam, sikat aktif, tangan melambai jauh, tangan diam, wajah hilang, geser satu arah, goyang cepat, sapuan 6 sekstan |

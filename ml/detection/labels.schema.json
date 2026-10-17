@@ -198,7 +198,10 @@
           }
         },
         "status": {"enum": ["PLACEHOLDER", "set_on_val", "reviewed_by_drg"]},
-        "source": {"type": ["string", "null"]}
+        "source": {"type": ["string", "null"]},
+        "review_basis": {"enum": ["literature", "dentist"], "description": "Optional (ADR 015). literature = operating point chosen on val and reviewed by a named team member; dentist (default when absent) = status reviewed_by_drg"},
+        "reviewed_by": {"type": ["string", "null"], "description": "Optional (ADR 015): reviewer of the operating point"},
+        "reviewed_at": {"type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Optional (ADR 015): review date YYYY-MM-DD"}
       }
     },
     "licenses": {
@@ -250,8 +253,15 @@
     {"if": {"properties": {"distribution": {"const": "release"}}},
      "then": {"properties": {
        "validation_status": {"const": "VALIDATED"},
-       "thresholds": {"properties": {"status": {"const": "reviewed_by_drg"},
-         "score": {"properties": {"caries_permanent": {"type": "number"}, "caries_primary": {"type": "number"}}}}},
+       "thresholds": {
+         "properties": {"score": {"properties": {"caries_permanent": {"type": "number"}, "caries_primary": {"type": "number"}}}},
+         "anyOf": [
+           {"properties": {"status": {"const": "reviewed_by_drg"}}},
+           {"required": ["review_basis", "reviewed_by", "reviewed_at"],
+            "properties": {"review_basis": {"const": "literature"}, "status": {"enum": ["set_on_val", "reviewed_by_drg"]},
+                           "reviewed_by": {"type": "string", "minLength": 1}, "reviewed_at": {"type": "string"},
+                           "source": {"type": "string", "minLength": 1}}}
+         ]},
        "licenses": {"properties": {"code": {"properties": {"verified": {"const": true}}}, "weights": {"properties": {"verified": {"const": true}, "basis": {"const": "verified"}}}}},
        "output": {"properties": {"tensors_verified": {"const": true}}}
      }}}

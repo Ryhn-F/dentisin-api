@@ -70,7 +70,9 @@ class Rules:
         return sorted(k for k, v in self.statuses.items() if v == "PLACEHOLDER")
 
 
-_META = {"version", "status", "schema", "reviewed_by", "reviewed_at"}
+_META = {"version", "status", "schema", "reviewed_by", "reviewed_at", "review_basis"}
+# Optional top-level ``review_basis`` (ADR 015); absent = "dentist". Used by release_check.py.
+REVIEW_BASES = frozenset({"literature", "dentist"})
 
 
 def _coerce(name: str, kind: Any, value: Any) -> Any:
@@ -142,6 +144,8 @@ def rules_from_mapping(
     unknown_meta = set(data) - _META - {"params"}
     if unknown_meta:
         raise ValueError(f"unknown top-level keys: {sorted(unknown_meta)}")
+    if "review_basis" in data and data["review_basis"] not in REVIEW_BASES:
+        raise ValueError(f"review_basis must be one of {sorted(REVIEW_BASES)}")
     params = data.get("params")
     if not isinstance(params, Mapping):
         raise ValueError("'params' mapping is missing")

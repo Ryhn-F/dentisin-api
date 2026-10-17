@@ -60,6 +60,8 @@ uv run python -m recommender.build_bundle    # regenerate dist/ after editing ru
 uv run python -m recommender.build_bundle --check
 ```
 `test_dist_bundle_is_up_to_date_with_the_sources` fails when `dist/` is stale; rebuild it.
+
+Review basis (ADR 015): optional top-level `review_basis` in `rules.json`. Absent or `dentist` = the original gate (`reviewed_by` not null, i.e. a dentist signs). `literature` = `reviewed_by` may be a team member (non-empty, not a placeholder such as `PENDING_DRG`/`PLACEHOLDER`/`null`) and every `source` (review rows and ppm candidates) must be a filled citation without `PERLU VERIFIKASI`. All other checks are the same. The shipped file has no `review_basis` yet (nothing is reviewed).
 The forbidden-phrase lint reads `FORBIDDEN_PHRASES_PATH`, else `../docs/style/forbidden_phrases.md`, else the vendored `backend/docs/style/forbidden_phrases.md`.
 
 ## API

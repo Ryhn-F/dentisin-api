@@ -10,8 +10,11 @@ hypothesis 0.85); if none reaches the target, pick the threshold with the best Y
 (sens + spec - 1), ties -> higher threshold. A class with no positive val image gets 1.0
 (effectively off) and a note.
 
-The output has ``status: "set_on_val"`` -- export.py --release still refuses it
-until a dentist reviews the operating point (``reviewed_by_drg``).
+The output has ``status: "set_on_val"`` -- export.py --release still refuses it until the
+operating point is reviewed: by a dentist (``status: "reviewed_by_drg"``), or, on the literature
+basis (ADR 015), by a named team member who adds ``"review_basis": "literature"``,
+``"reviewed_by"`` and ``"reviewed_at"`` (YYYY-MM-DD) to the file after choosing the point; the
+``source`` written here (val evidence hashes) must stay filled.
 """
 
 from __future__ import annotations
@@ -75,7 +78,8 @@ def select_thresholds(gt: Sequence[ImageAnnotation], preds: Mapping[str, Sequenc
         res = choose(*image_scores(gt, preds, cls), target_sensitivity)
         out[cls] = res["threshold"]
         out["details"][cls] = res
-    out["note"] = "Technical operating point on val; NOT reviewed by a dentist. Release requires reviewed_by_drg."
+    out["note"] = ("Technical operating point on val; NOT reviewed. Release requires status reviewed_by_drg, or "
+                   "review_basis 'literature' with a named team reviewed_by and reviewed_at (ADR 015).")
     return out
 
 

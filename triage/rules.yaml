@@ -15,6 +15,9 @@
 #   - `advice`     : teks saran yang ditampilkan ke pengguna.
 # Setiap aturan dan parameter punya `rationale`, `source`, `reviewed_by`, `reviewed_at`.
 # `reviewed_by: PENDING_DRG` = belum ada dokter gigi yang meninjau.
+# `review_basis` (opsional, ADR 015): `literature` = nilai ditetapkan tim dari pustaka terbitan
+#   (tiap `source` wajib berisi sitasi; peninjau boleh anggota tim); `dentist` = disahkan dokter
+#   gigi. Bila tidak ada, dianggap `dentist`. Saat ini belum diisi: belum ada tinjauan apa pun.
 #
 # Developer note: this file is the single source of truth. The TS app consumes the
 # generated `dist/rules.json` (run `uv run python -m triage.export`). Validate with

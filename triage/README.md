@@ -128,6 +128,12 @@ original `../../docs/style/forbidden_phrases.md` (repo root) if present, else th
 - `release_check` blocks while: status ≠ APPROVED, any param null / not `SET`, any
   `reviewed_by` null/`PENDING_DRG` or `reviewed_at` null, any source with `PERLU VERIFIKASI`,
   emergency numbers unverified, < 30 `graded_by_drg` cases, stale dist, or a forbidden phrase.
+- Review basis (ADR 015): optional top-level `review_basis`. Absent or `dentist` = the gate above,
+  unchanged. `literature` = `reviewed_by` may be a team member (non-empty, not a placeholder such
+  as `PENDING_DRG`/`PLACEHOLDER`/`null`), every rule/param `source` must be filled (no
+  `PERLU VERIFIKASI`), and the case requirement becomes ≥ 30 cases with a non-empty
+  `expected_source` (no `PERLU VERIFIKASI`) instead of `graded_by_drg`. `rules.yaml` has no
+  `review_basis` yet (nothing is reviewed on any basis).
 
 ### Engine contract (rules 0.2.0, ADR 014)
 `evaluate(rules, input, params) -> {level, reasons[{id,text}], lesions[], advice_ids[], referral_template_id, rules_version}`
@@ -198,7 +204,8 @@ describe.each(table.cases.map((c) => [c.id, c] as const))('%s', (_id, c: any) =>
 ```
 
 ### Shared case format (`tests/cases.json`, `format_version: 2`)
-`{id, description, tags[], input:{detections[{class, confidence}], photo_status, symptoms{}, age_months, pain, params_profile}, expected:{level, reasons_ids[], advice_ids[], referral_template_id, lesions?[{detection_index, dentition, counted}]} | {error:"TriageInputError", error_code}, graded_by_drg:false}`.
+`{id, description, tags[], input:{detections[{class, confidence}], photo_status, symptoms{}, age_months, pain, params_profile}, expected:{level, reasons_ids[], advice_ids[], referral_template_id, lesions?[{detection_index, dentition, counted}]} | {error:"TriageInputError", error_code}, expected_source?, graded_by_drg:false}`.
+`expected_source` (optional, ADR 015) = citation for the expected result; no case has one yet.
 `reasons_ids` and `advice_ids` are compared **in order**. Strip `params_profile` before calling the
 engine. All expectations were authored by engineers; `graded_by_drg` is false for every case, so the
 ≥ 30 dentist-graded cases requirement is **NOT met**.

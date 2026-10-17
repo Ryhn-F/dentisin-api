@@ -98,6 +98,80 @@ def test_thresholds_set() -> None:
     assert half["thresholds"]["status"] == "PLACEHOLDER"
 
 
+TEAM_REVIEWER = "SYNTHETIC_TEAM_MEMBER"  # tests only, not a real person
+LIT_THR = {"caries_permanent": 0.4, "caries_primary": 0.6, "status": "set_on_val", "source": "val preds sha256 abc",
+           "review_basis": "literature", "reviewed_by": TEAM_REVIEWER, "reviewed_at": "2000-01-01"}
+
+
+def test_threshold_review_metadata_is_optional_and_copied() -> None:
+    plain = labels_for("yolox_nano", thresholds={"caries_permanent": 0.4, "caries_primary": 0.6, "status": "set_on_val", "source": "s"})
+    assert set(plain["thresholds"]) == {"score", "status", "source"}  # unchanged when thresholds.json has no review block
+    lab = labels_for("yolox_nano", thresholds=LIT_THR)
+    assert lab["thresholds"]["review_basis"] == "literature" and lab["thresholds"]["reviewed_by"] == TEAM_REVIEWER
+    assert ex.validate_labels(lab) == []
+    bad = labels_for("yolox_nano", thresholds={**LIT_THR, "review_basis": "team"})
+    assert any("review_basis" in p for p in ex.validate_labels(bad))
+
+
+@pytest.mark.parametrize(
+    ("thr", "expected"),
+    [
+        ({"status": "reviewed_by_drg"}, []),
+        ({"status": "reviewed_by_drg", "review_basis": "dentist"}, []),
+        ({"status": "set_on_val", "source": "s"}, ["thresholds not reviewed by a dentist (PLACEHOLDER)"]),
+        # dentist basis is unchanged: a named reviewer does not replace reviewed_by_drg
+        ({**LIT_THR, "review_basis": "dentist"}, ["thresholds not reviewed by a dentist (PLACEHOLDER)"]),
+        ({k: v for k, v in LIT_THR.items() if k != "review_basis"}, ["thresholds not reviewed by a dentist (PLACEHOLDER)"]),
+        (LIT_THR, []),
+        ({**LIT_THR, "status": "PLACEHOLDER"}, ["thresholds are PLACEHOLDER (no operating point chosen on val)"]),
+        ({**LIT_THR, "reviewed_by": None}, ["thresholds reviewed_by is not a named team reviewer (literature basis)"]),
+        ({**LIT_THR, "reviewed_by": " PENDING_DRG "}, ["thresholds reviewed_by is not a named team reviewer (literature basis)"]),
+        ({**LIT_THR, "reviewed_by": "PLACEHOLDER"}, ["thresholds reviewed_by is not a named team reviewer (literature basis)"]),
+        ({**LIT_THR, "reviewed_at": None}, ["thresholds reviewed_at missing"]),
+        ({**LIT_THR, "source": None}, ["thresholds source missing (literature basis needs the val evidence)"]),
+        ({**LIT_THR, "source": "  "}, ["thresholds source missing (literature basis needs the val evidence)"]),
+        ({**LIT_THR, "source": "val [PERLU VERIFIKASI]"}, ["thresholds source still marked PERLU VERIFIKASI"]),
+    ],
+)
+def test_threshold_blockers_per_basis(thr: dict[str, Any], expected: list[str]) -> None:
+    assert ex.threshold_blockers(thr) == expected
+
+
+def test_release_accepts_team_reviewed_operating_point(tmp_path: Path, fake_tflite: Callable[[int], Path],
+                                                       write_cfg: Callable[..., Path]) -> None:
+    """ADR 015: --release no longer blocks on the thresholds when a team member reviewed them on the
+    literature basis; every other release blocker (here: licence basis, clinical validation) stays."""
+    cfg = write_cfg(license_verified=True, license_note="owner_accepted_risk")
+    thr = tmp_path / "thresholds.json"
+    thr.write_text(json.dumps(LIT_THR), encoding="utf-8")
+    with pytest.raises(ex.ExportError, match="release blocked") as info:
+        ex.build_bundle(cfg, tmp_path / "1.0.0", tflite_in=fake_tflite(256), thresholds_path=thr, release=True)
+    assert "thresholds" not in str(info.value)
+    assert "owner_accepted_risk" in str(info.value) and "clinical validation" in str(info.value)
+    thr.write_text(json.dumps({**LIT_THR, "review_basis": "dentist"}), encoding="utf-8")
+    with pytest.raises(ex.ExportError, match="thresholds not reviewed by a dentist"):
+        ex.build_bundle(cfg, tmp_path / "1.0.1", tflite_in=fake_tflite(256), thresholds_path=thr, release=True)
+
+
+def test_release_schema_accepts_either_review_basis() -> None:
+    """labels.schema.json release branch: reviewed_by_drg, or literature with reviewer + date + source."""
+    def release_labels(thr: dict[str, Any]) -> dict[str, Any]:
+        lab = labels_for("yolox_nano", thresholds=thr)
+        lab.update(distribution="release", validation_status="VALIDATED")
+        lab["licenses"]["code"]["verified"] = True
+        lab["licenses"]["weights"].update(verified=True, basis="verified")
+        lab["output"]["tensors_verified"] = True
+        return lab
+
+    def threshold_problems(lab: dict[str, Any]) -> list[str]:
+        return [p for p in ex.validate_labels(lab) if "thresholds" in p]
+
+    assert threshold_problems(release_labels({**LIT_THR, "status": "reviewed_by_drg", "review_basis": "dentist"})) == []
+    assert threshold_problems(release_labels(LIT_THR)) == []
+    assert threshold_problems(release_labels({k: v for k, v in LIT_THR.items() if k != "review_basis"}))
+    assert threshold_problems(release_labels({**LIT_THR, "reviewed_by": None}))
+
+
 def test_decode_errors() -> None:
     cfg, _ = load_config(DET / "configs" / "mediapipe_modelmaker_mobilenetv2_ssd.yaml")
     with pytest.raises(ex.ExportError, match="--anchors"):

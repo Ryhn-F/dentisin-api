@@ -1,6 +1,7 @@
 brushing_score
 checkin
 generate_cases
+release_check
 rules_loader
 synthetic
 validate_labels

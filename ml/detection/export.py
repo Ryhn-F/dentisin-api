@@ -12,7 +12,9 @@
 Gates: license gate (same as train.py), TFLite flatbuffer identifier, INT8 size <= max_size_mb
 (MiB, default from config = 15), labels.json schema + semantic checks. ``--release`` additionally
 requires verified licenses, reviewed thresholds, verified tensors and validation evidence, so it
-fails today by design. Nothing here signs the manifest (tools/sign_manifest.py does that).
+fails today by design. Reviewed thresholds = ``status: reviewed_by_drg`` (no/``dentist``
+``review_basis``), or ``review_basis: literature`` with a named team ``reviewed_by``,
+``reviewed_at`` and a filled ``source`` (ADR 015; see ``threshold_blockers``). Nothing here signs the manifest (tools/sign_manifest.py does that).
 
 Dev bundles only (never with ``--release``): ``--precision float16|float32`` packages the float fallback of the
 notebook conversion chain (labels.json ``model.int8`` = false), and ``--size-gate report`` turns the size gate into a
@@ -61,6 +63,11 @@ DENTITION = {"caries_permanent": "permanent", "caries_primary": "primary"}
 BOX_USE = "ui_overlay_only"
 PRECISIONS = ("int8", "float16", "float32")
 SIZE_GATES = ("enforce", "report")
+#: ADR 015: optional review metadata of the operating point (thresholds.json -> labels.json thresholds).
+THRESHOLD_REVIEW_KEYS = ("review_basis", "reviewed_by", "reviewed_at")
+#: Never accepted as a team reviewer's name on the literature basis (compared case-insensitively).
+PLACEHOLDER_REVIEWERS = frozenset({"pending_drg", "placeholder", "pending", "null", "none", "tbd", "todo"})
+UNVERIFIED_MARKER = "PERLU VERIFIKASI"
 
 
 class ExportError(RuntimeError):
@@ -198,6 +205,8 @@ def build_labels(
             "score": {c: thr.get(c) for c in CLASS_NAMES},
             "status": thr.get("status", "PLACEHOLDER") if all(thr.get(c) is not None for c in CLASS_NAMES) else "PLACEHOLDER",
             "source": thr.get("source"),
+            # optional review metadata (ADR 015), copied only when thresholds.json carries it
+            **{k: thr[k] for k in THRESHOLD_REVIEW_KEYS if k in thr},
         },
         "licenses": {
             "code": {k: model_lic.get("code", {}).get(k) for k in ("license", "verified", "source")},
@@ -372,14 +381,40 @@ def verify_bundle(bundle: Path, *, max_size_mb: float | None = 15.0) -> list[str
     return problems
 
 
+def threshold_blockers(thr: Mapping[str, Any]) -> list[str]:
+    """Release blockers of the operating point (labels.json ``thresholds``).
+
+    ``review_basis`` absent or ``dentist``: status must be ``reviewed_by_drg`` (the original gate).
+    ``literature`` (ADR 015): the operating point chosen on val (not PLACEHOLDER) is accepted when
+    ``reviewed_by`` is a named team member, ``reviewed_at`` is set and ``source`` (the val evidence)
+    is filled without ``PERLU VERIFIKASI``; no dentist sign-off is required.
+    """
+    if thr.get("review_basis", "dentist") != "literature":
+        return [] if thr["status"] == "reviewed_by_drg" else ["thresholds not reviewed by a dentist (PLACEHOLDER)"]
+    b: list[str] = []
+    if thr["status"] == "PLACEHOLDER":
+        b.append("thresholds are PLACEHOLDER (no operating point chosen on val)")
+    reviewer = thr.get("reviewed_by")
+    name = reviewer.strip() if isinstance(reviewer, str) else ""
+    if not name or name.casefold() in PLACEHOLDER_REVIEWERS:
+        b.append("thresholds reviewed_by is not a named team reviewer (literature basis)")
+    if not thr.get("reviewed_at"):
+        b.append("thresholds reviewed_at missing")
+    source = thr.get("source")
+    if not (isinstance(source, str) and source.strip()):
+        b.append("thresholds source missing (literature basis needs the val evidence)")
+    elif UNVERIFIED_MARKER in source:
+        b.append("thresholds source still marked PERLU VERIFIKASI")
+    return b
+
+
 def release_blockers(cfg: Mapping[str, Any], decision: GateDecision, labels: Mapping[str, Any]) -> list[str]:
     b: list[str] = []
     if decision.internal_experiment_only or not decision.allowed:
         b.append("license gate not fully passed")
     if decision.license_basis == "owner_accepted_risk":
         b.append("weights licence basis is owner_accepted_risk (not verified): re-review required before commercial/public release (ADR 014 §5)")
-    if labels["thresholds"]["status"] != "reviewed_by_drg":
-        b.append("thresholds not reviewed by a dentist (PLACEHOLDER)")
+    b += threshold_blockers(labels["thresholds"])
     if not labels["output"]["tensors_verified"]:
         b.append("output tensors not verified with an interpreter")
     if not cfg["model"].get("output_format_verified", False):

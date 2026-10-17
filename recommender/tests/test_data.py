@@ -215,6 +215,101 @@ def test_release_check_main_returns_zero_on_clean_data(monkeypatch: pytest.Monke
     assert release_check.main([]) == 0
 
 
+# --- release check: review basis (ADR 015) ---
+TEAM_REVIEWER = "Team Member (tests only, not a real person)"
+
+
+def _literature(rules: Any) -> dict[str, Any]:
+    """Approved on the literature basis: team reviewer, citations without PERLU VERIFIKASI."""
+    out = approve_everything(rules)
+    out["review_basis"] = "literature"
+
+    def walk(node: Any) -> None:
+        if isinstance(node, dict):
+            if "reviewed_by" in node:
+                node["reviewed_by"] = TEAM_REVIEWER
+            if "source" in node:
+                node["source"] = "SYNTHETIC_CITATION (tests only)"
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(out)
+    return out
+
+
+def test_shipped_rules_have_no_review_basis_yet() -> None:
+    assert "review_basis" not in RULES
+    assert release_check.review_basis(RULES) == "dentist"
+
+
+def test_absent_basis_equals_explicit_dentist() -> None:
+    for rules in (RULES, approve_everything(RULES)):
+        dentist = {**copy.deepcopy(rules), "review_basis": "dentist"}
+        assert release_check.collect_issues(dentist, PRODUCTS) == release_check.collect_issues(
+            rules, PRODUCTS
+        )
+
+
+def test_dentist_basis_is_unchanged() -> None:
+    """Only null reviewers block, and sources are not inspected (the original gate)."""
+    rules = {**approve_everything(RULES), "review_basis": "dentist"}
+    products = verify_everything(PRODUCTS)
+    rules["messages"]["rinse_little"]["source"] = "x [PERLU VERIFIKASI]"
+    rules["messages"]["rinse_little"]["reviewed_by"] = "PLACEHOLDER"
+    assert release_check.collect_issues(rules, products) == []
+    rules["messages"]["rinse_little"]["reviewed_by"] = None
+    issues = release_check.collect_issues(rules, products)
+    assert "rules.messages.rinse_little: reviewed_by is null" in issues
+    assert all(i.startswith("schema:") or "rinse_little" in i for i in issues)
+
+
+def test_literature_basis_passes_with_team_reviewer_and_citations() -> None:
+    assert release_check.collect_issues(_literature(RULES), verify_everything(PRODUCTS)) == []
+
+
+@pytest.mark.parametrize("reviewer", [None, "", "  ", "PENDING_DRG", "PLACEHOLDER", "null"])
+def test_literature_basis_rejects_placeholder_reviewers(reviewer: str | None) -> None:
+    rules = _literature(RULES)
+    rules["regulatory_ceiling_ppm"]["reviewed_by"] = reviewer
+    issues = release_check.collect_issues(rules, verify_everything(PRODUCTS))
+    expected = "rules.regulatory_ceiling_ppm: reviewed_by is not a named team reviewer"
+    # "" / "  " also break the schema (reviewed_by minLength 1 on approved rows)
+    assert any(issue.startswith(expected) for issue in issues)
+
+
+def test_literature_basis_requires_filled_sources() -> None:
+    rules = _literature(RULES)
+    products = verify_everything(PRODUCTS)
+    rules["valid_age_months"]["source"] = "   "
+    candidate = rules["age_bands"][1]["fluoride_ppm"]["candidates"][0]
+    candidate["source"] = "Pedoman X [PERLU VERIFIKASI]"
+    assert release_check.collect_issues(rules, products) == [
+        "rules.valid_age_months: source missing (literature basis needs a citation)",
+        "rules.age_bands[1].fluoride_ppm.candidates[0]: source still marked PERLU VERIFIKASI",
+    ]
+
+
+def test_literature_basis_keeps_every_other_check() -> None:
+    draft = {**copy.deepcopy(RULES), "review_basis": "literature"}
+    text = "\n".join(release_check.collect_issues(draft, PRODUCTS))
+    assert "needs_review" in text
+    assert "reviewed_by is not a named team reviewer" in text
+    assert "source still marked PERLU VERIFIKASI" in text
+    assert "decision_pending is true" in text
+    assert "verified is false" in text
+    assert "bpom_notification_no is null" in text
+    bad = {**copy.deepcopy(RULES), "review_basis": "team"}
+    assert any("review_basis" in e for e in release_check.schema_errors(bad, PRODUCTS))
+
+
+def test_release_check_main_prints_the_basis(capsys: pytest.CaptureFixture[str]) -> None:
+    assert release_check.main([]) == 1
+    assert "review_basis: dentist" in capsys.readouterr().out
+
+
 # --- bundle ---
 def test_bundle_is_deterministic_and_describes_the_draft_state() -> None:
     payload, digest = build_bundle.build()

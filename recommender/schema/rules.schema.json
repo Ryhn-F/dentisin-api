@@ -14,6 +14,10 @@
     "scope": { "const": "fluoride_only_v1" },
     "language": { "const": "id" },
     "readme": { "type": "string", "minLength": 1 },
+    "review_basis": {
+      "description": "Optional (ADR 015). 'literature' = values set by the team from published sources (reviewed_by may be a team member; every source must be a filled citation without PERLU VERIFIKASI). 'dentist' = dentist sign-off. Absent = 'dentist'.",
+      "enum": ["literature", "dentist"]
+    },
     "valid_age_months": {
       "allOf": [{ "$ref": "#/$defs/review" }],
       "type": "object",

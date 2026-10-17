@@ -159,6 +159,30 @@ def test_param_infos_cover_messages_block() -> None:
     assert infos[0] == sr.ParamInfo("recommender", "rows[a]", "approved", False, True)
 
 
+@pytest.mark.parametrize(
+    ("basis", "reviewer", "reviewed"),
+    [
+        (None, "PLACEHOLDER", True),  # absent = dentist gate: only null/PENDING_DRG fail
+        ("dentist", None, False),
+        ("literature", "Tim A", True),  # ADR 015: a named team member counts
+        ("literature", "PLACEHOLDER", False),
+        ("literature", "  ", False),
+    ],
+)
+def test_param_infos_reviewed_follows_review_basis(
+    basis: str | None, reviewer: str | None, reviewed: bool
+) -> None:
+    row = {"status": "SET", "value": 1, "reviewed_by": reviewer, "reviewed_at": "2026-01-01"}
+    triage: dict[str, Any] = {"params": {"p": row}}
+    rec: dict[str, Any] = {"messages": {}, "rows": [{**row, "id": "a", "status": "approved"}]}
+    if basis is not None:
+        triage["review_basis"] = basis
+        rec["review_basis"] = basis
+    infos = sr._param_infos(triage, rec)
+    assert infos[0] == sr.ParamInfo("triage", "p", "SET", False, reviewed)
+    assert infos[1] == sr.ParamInfo("recommender", "rows[a]", "approved", False, reviewed)
+
+
 # --- quality-gate loader ---------------------------------------------------------------------
 
 
