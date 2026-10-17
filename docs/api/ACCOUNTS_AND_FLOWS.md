@@ -53,7 +53,7 @@ const { data: childId, error } = await supabase.rpc('ensure_self_profile', {
 // Selalu pakai childId yang dikembalikan (jika profil sudah ada, itu id yang lama).
 ```
 
-  Rentang usia remaja: `limits.teen_min_age`..`teen_max_age` (bawaan 10..19) dihitung dari tahun-bulan lahir; tanpa bulan, semua usia yang mungkin harus masuk rentang. Di luar itu → galat `age_out_of_range`. Lalu kirim `consent_changed` (`b`, lalu `a`/`c` bila perlu, dan `d` bila ingin memakai video bukti, bagian 2.8) untuk profil dirinya seperti biasa; persetujuan ini diberikan remaja sendiri. Remaja **tidak** bisa membuat profil anak lain.
+  Rentang usia remaja: `limits.teen_min_age`..`teen_max_age` (bawaan **15..19**, ADR 018) dihitung dari tahun-bulan lahir; **di bawah 15 tahun wajib ada guardian** (orang tua mendaftar sebagai `guardian` dan membuat profil + akun anak, bagian 2.2) dan akun remaja tidak dapat dibuat. Layar pilih peran sebaiknya menanyakan tahun-bulan lahir **sebelum** `signUp` dan mengarahkan yang < 15 th ke jalur orang tua (konstanta tampilan 15–19; server tetap penentu lewat `age_out_of_range`, dan usia diisi sendiri sehingga tidak dapat diverifikasi); tanpa bulan, semua usia yang mungkin harus masuk rentang. Di luar itu → galat `age_out_of_range`. Lalu kirim `consent_changed` (`b`, lalu `a`/`c` bila perlu, dan `d` bila ingin memakai video bukti, bagian 2.8) untuk profil dirinya seperti biasa; persetujuan ini diberikan remaja sendiri. Remaja **tidak** bisa membuat profil anak lain.
 - **Orang tua** menambah anak seperti sebelumnya: event `consent_changed` (grant `b`) membuat profil kosong, lalu `child_upserted` (tahun-bulan lahir; tanpa nama).
 
 ### 2.2 Orang tua mendaftarkan akun untuk anak
@@ -299,7 +299,7 @@ await supabase.storage.from('brushing_proofs').upload(path, arrayBuffer, { conte
                     "disabled": false, "sync_allowed": true, "proof_allowed": true },
   "flags": { "brushing_proof_video": true },
   "capabilities": { "create_child_accounts": true, "register_proofs": false },
-  "limits": { "teen_min_age": 10, "teen_max_age": 19, "max_child_accounts_per_guardian": 6,
+  "limits": { "teen_min_age": 15, "teen_max_age": 19, "max_child_accounts_per_guardian": 6,
               "streak_min_duration_s": 60, "request_max_per_child_per_day": 5, "request_expiry_days": 14,
               "proof_max_bytes": 10485760, "proof_max_duration_s": 180,
               "proof_max_per_child_per_day": 3, "proof_retention_days": 7 } }

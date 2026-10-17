@@ -2,6 +2,11 @@
 
 Format: tanggal (YYYY-MM-DD), perubahan pada kontrak yang didokumentasikan. Perubahan kontrak nyata (migrasi, aturan, model) tetap dicatat di `../regulatory/CHANGELOG.md` dan ADR; berkas ini hanya melacak dokumen di `docs/api/`.
 
+## 2026-10-18 (usia remaja 15–19, ADR 018)
+
+- Akun `teen` hanya untuk usia **15–19 th** (`limits.teen_min_age` 10 -> **15**, migrasi `20261018000300_teen_age_15.sql`). Di bawah 15 th wajib guardian + akun anak; `ensure_self_profile` menolak dengan `age_out_of_range`. Perubahan nilai pengaturan, bukan bentuk kontrak.
+- Teks persetujuan remaja memakai kalimat "Saya sendiri bersedia" (draf `consent-*-teen-*` di `CONSENT_TEXT_DRAFT.md`; di sisi app teks (a)-(d) remaja dipilih berdasarkan `account_type`).
+
 ## 2026-10-18 (kader dihapus, ADR 018)
 
 - **Peran `kader`, mode kelas, `paper_via_kader`, dan rekap fasilitas dihapus** (ADR 018 menggantikan amandemen kader di bawah). App hanya untuk orang tua (`guardian`), remaja (`teen`), dan akun anak buatan orang tua. Peran yang dikembalikan `my_account().roles`: `guardian`, `child`, `admin`; `kader` dan `facility_viewer` tidak lagi bisa diberikan (`admin_grant_role` menjawab `role_not_available`, 22023).
