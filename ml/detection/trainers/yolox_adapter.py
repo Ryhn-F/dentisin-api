@@ -57,12 +57,16 @@ from yolox.exp import Exp as MyExp
 
 # The notebook's stall watchdog sends SIGUSR1 to a trainer that stopped logging: print every thread's stack to the log
 # so a hang (DataLoader worker? pin-memory thread? CUDA?) can be diagnosed instead of guessed (Kaggle 2026-10-14).
+# The dump goes to <output_dir>/<exp>/stacks.txt (survives in the downloaded outputs; the watchdog also prints it).
 if hasattr(signal, "SIGUSR1"):
     try:
-        faulthandler.register(signal.SIGUSR1, file=sys.stderr, all_threads=True)
+        _stacks_dir = os.path.join(r"{output_dir}", "{exp_name}")
+        os.makedirs(_stacks_dir, exist_ok=True)
+        _stacks_file = open(os.path.join(_stacks_dir, "stacks.txt"), "a")
+        faulthandler.register(signal.SIGUSR1, file=_stacks_file, all_threads=True)
     except (OSError, ValueError, AttributeError):
-        # A notebook kernel's stderr has no fileno (Colab: UnsupportedOperation) -- and the notebook imports this Exp
-        # in the kernel itself (ONNX export). Only the trainer process, whose stderr is a real pipe, needs the dump.
+        # e.g. a read-only output dir; and (Colab) the notebook imports this Exp in the kernel itself for the ONNX export,
+        # where a stderr fallback would raise UnsupportedOperation: fileno. Only the trainer needs the dump.
         pass
 
 
@@ -112,7 +116,12 @@ class Exp(MyExp):
     def get_model(self, sublinear=False):
         # Nano uses depthwise convs (mirrors exps/default/yolox_nano.py); act is configurable.
         from yolox.models import YOLOX, YOLOPAFPN, YOLOXHead
+        import torch
         import torch.nn as nn
+        # tools/train.py turns cudnn.benchmark ON after importing this Exp and before calling get_model(). With YOLOX's
+        # multi-scale training (11 input sizes, 320..640) every NEW size then cost a ~55 s cuDNN autotune on a T4:
+        # 11 stalls = the first 11 minutes of the Kaggle run 2026-10-17. Off by default (trainer_options.cudnn_benchmark).
+        torch.backends.cudnn.benchmark = {cudnn_benchmark}
         if getattr(self, "model", None) is None:
             in_channels = [256, 512, 1024]
             backbone = YOLOPAFPN(self.depth, self.width, in_channels=in_channels, depthwise=True, act=self.act)
@@ -165,6 +174,7 @@ def options(ctx: TrainContext) -> dict[str, Any]:
     opts.setdefault("max_restarts", 2)           # automatic resumes after a stall / DataLoader timeout
     opts.setdefault("stall_s", 600)
     opts.setdefault("eval_interval", 10)
+    opts.setdefault("cudnn_benchmark", False)
     opts["devices"] = effective_devices(opts)
     return opts
 
@@ -206,7 +216,8 @@ def render_exp(ctx: TrainContext, data_dir: Path, opts: Mapping[str, Any] | None
     return EXP_TEMPLATE.format(
         h=h, w=w, num_classes=len(ctx.cfg["data"]["classes"]), epochs=t["epochs"], no_aug_epochs=no_aug_epochs(int(t["epochs"])),
         lr=t["learning_rate"], seed=ctx.seed, data_dir=data_dir.as_posix(), act=o["act"], workers=int(o["workers"]), dl_timeout=int(o["dataloader_timeout_s"]),
-        eval_interval=int(o["eval_interval"]), output_dir=Path(str(o["output_dir"])).as_posix(),
+        eval_interval=int(o["eval_interval"]), output_dir=Path(str(o["output_dir"])).as_posix(), exp_name=EXP_NAME,
+        cudnn_benchmark=bool(o.get("cudnn_benchmark", False)),
     )
 
 
@@ -347,17 +358,48 @@ def last_log_line(log: Path, tail_bytes: int = 4096) -> str:
     return lines[-1][:220] if lines else ""
 
 
-def _dump_stacks(proc: Any, sleep: Callable[[float], None]) -> None:
-    """Ask the (hung) trainer for a Python traceback of all its threads (faulthandler.register(SIGUSR1) in the Exp)."""
+def process_report(pid: int, run: Callable[..., Any] = subprocess.run) -> str:
+    """What a hung trainer looks like from outside: GPU load/memory (a busy GPU = a stuck kernel; idle = a CPU/data hang) and
+    the state of every process in its session (D = blocked on I/O, Z = dead worker, wchan = what it waits for)."""
+    parts = []
+    for title, cmd in (("nvidia-smi", ["nvidia-smi", "--query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu,clocks.sm,power.draw",
+                                       "--format=csv"]),
+                       ("processes of the trainer's session", ["ps", "--sid", str(pid), "-o", "pid,ppid,stat,pcpu,pmem,etime,wchan:24,args"])):
+        try:
+            res = run(cmd, capture_output=True, text=True, check=False, timeout=30)
+            parts.append(f"[{title}]\n{(res.stdout or res.stderr or '').strip()}")
+        except (OSError, subprocess.SubprocessError) as exc:
+            parts.append(f"[{title}] unavailable: {type(exc).__name__}")
+    return "\n".join(parts)
+
+
+def _dump_stacks(proc: Any, sleep: Callable[[float], None], log: Path | None = None,
+                 run: Callable[..., Any] = subprocess.run) -> None:
+    """Ask the (hung) trainer for a Python traceback of all its threads (faulthandler.register(SIGUSR1) in the Exp, which
+    writes ``stacks.txt`` next to ``train_log.txt``), print it with :func:`process_report`, and keep both in
+    ``stall_report.txt`` there so they come back with the downloaded outputs."""
     import signal
 
     pid = getattr(proc, "pid", None)
     if sys.platform == "win32" or pid is None or not hasattr(signal, "SIGUSR1"):
         return
     print(f"--- trainer stalled: Python stacks of pid {pid} (faulthandler) ---", flush=True)
+    stacks = log.with_name("stacks.txt") if log is not None else None
+    before = stacks.stat().st_size if stacks is not None and stacks.is_file() else 0
     with contextlib.suppress(OSError):
         os.kill(int(pid), signal.SIGUSR1)
         sleep(5.0)
+    text = ""
+    if stacks is not None and stacks.is_file():
+        with stacks.open("rb") as fh:
+            fh.seek(before)
+            text = fh.read().decode("utf-8", errors="replace")
+    stacks_text = text.strip() or "(no Python stacks: the Exp could not register faulthandler)"
+    report = f"{stacks_text}\n\n{process_report(int(pid), run)}"
+    print(report, flush=True)
+    if log is not None:
+        with contextlib.suppress(OSError), log.with_name("stall_report.txt").open("a", encoding="utf-8") as fh:
+            fh.write(f"=== {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} pid {pid} ===\n{report}\n")
 
 
 def _stop(proc: Any, grace_s: float = 60.0) -> None:
@@ -410,7 +452,7 @@ def run_with_budget(cmd: Sequence[str], *, cwd: Path, env: Mapping[str, str], bu
                     print(f"  [yolox {now - started:.0f}s] {last_log_line(log) or '(train_log.txt still empty)'}", flush=True)
                 if stall_s is not None and stop_at is None and now - last_change >= stall_s:
                     line = last_log_line(log)
-                    _dump_stacks(proc, sleep)
+                    _dump_stacks(proc, sleep, log)
                     _stop(proc)
                     raise TrainerStalled(
                         f"YOLOX wrote nothing to train_log.txt for {stall_s / 60:.0f} min (after {now - started:.0f}s) -- "

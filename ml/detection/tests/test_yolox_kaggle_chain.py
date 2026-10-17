@@ -89,20 +89,10 @@ def test_exp_disables_jit_cocoeval_and_restores_info(tmp_path: Path, config_dict
     assert train.kw["name"] == "train" and train.kw["img_size"] == (416, 416)
 
 
-def test_exp_imports_in_a_kernel_whose_stderr_has_no_fileno(tmp_path: Path, config_dict: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
-    """Colab 2026-10-16: the notebook imports the Exp in the KERNEL (ONNX export); ``faulthandler.register(file=sys.stderr)``
-    raised UnsupportedOperation: fileno there, which YOLOX reports as "doesn't contains class named 'Exp'"."""
+def _exec_exp(tmp_path: Path, config_dict: dict[str, Any], monkeypatch: pytest.MonkeyPatch, register: Any, **opts: Any) -> dict[str, Any]:
     import faulthandler
-    import io
     import signal
     import types
-
-    class KernelStderr(io.StringIO):
-        def fileno(self) -> int:
-            raise io.UnsupportedOperation("fileno")
-
-    def register(signum: int, file: Any = None, all_threads: bool = True) -> None:
-        file.fileno()  # what the C implementation does with `file`
 
     exp_mod = types.ModuleType("yolox.exp")
     exp_mod.Exp = type("Exp", (), {})  # type: ignore[attr-defined]
@@ -112,10 +102,74 @@ def test_exp_imports_in_a_kernel_whose_stderr_has_no_fileno(tmp_path: Path, conf
     monkeypatch.setitem(sys.modules, "yolox.exp", exp_mod)
     monkeypatch.setattr(signal, "SIGUSR1", 10, raising=False)  # absent on Windows
     monkeypatch.setattr(faulthandler, "register", register, raising=False)
-    monkeypatch.setattr(sys, "stderr", KernelStderr())
     ns: dict[str, Any] = {"__file__": str(tmp_path / "dentis_yolox_nano_exp.py")}
-    exec(compile(ya.render_exp(_ctx(tmp_path, config_dict), tmp_path / "d"), "exp.py", "exec"), ns)
+    exec(compile(ya.render_exp(_ctx(tmp_path, config_dict, **opts), tmp_path / "d"), "exp.py", "exec"), ns)
+    return ns
+
+
+def test_exp_dumps_stacks_to_a_file_beside_the_log(tmp_path: Path, config_dict: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    """The watchdog's SIGUSR1 dump must land in <output_dir>/<exp>/stacks.txt (downloaded with the outputs)."""
+    registered: list[Any] = []
+    ns = _exec_exp(tmp_path, config_dict, monkeypatch, lambda signum, file=None, all_threads=True: registered.append(file))
+    ns["_stacks_file"].close()
+    target = tmp_path / "yolox_outputs" / "dentis_yolox_nano_exp" / "stacks.txt"
+    assert target.is_file() and Path(registered[0].name) == target
+
+
+def test_exp_imports_even_if_faulthandler_cannot_register(tmp_path: Path, config_dict: dict[str, Any], monkeypatch: pytest.MonkeyPatch) -> None:
+    """Colab 2026-10-16: the notebook imports the Exp in the KERNEL (ONNX export); registering faulthandler on the kernel's
+    stderr raised UnsupportedOperation: fileno, which YOLOX reports as "doesn't contains class named 'Exp'"."""
+    import io
+
+    def register(signum: int, file: Any = None, all_threads: bool = True) -> None:
+        raise io.UnsupportedOperation("fileno")
+
+    ns = _exec_exp(tmp_path, config_dict, monkeypatch, register)
     assert ns["Exp"]().exp_name == "dentis_yolox_nano_exp"
+    ns["_stacks_file"].close()
+
+
+def test_exp_turns_cudnn_benchmark_off_unless_asked(tmp_path: Path, config_dict: dict[str, Any]) -> None:
+    """Kaggle 2026-10-17: tools/train.py sets cudnn.benchmark = True, and each of the 11 multi-scale input sizes then cost a
+    ~55 s autotune (11 stalls in the first 11 minutes). get_model() runs after that and turns it off."""
+    assert "torch.backends.cudnn.benchmark = False" in ya.render_exp(_ctx(tmp_path, config_dict), tmp_path / "d")
+    assert "torch.backends.cudnn.benchmark = True" in ya.render_exp(_ctx(tmp_path, config_dict, cudnn_benchmark=True), tmp_path / "d")
+
+
+def test_process_report_survives_missing_tools() -> None:
+    from types import SimpleNamespace
+
+    def run(cmd: list[str], **kw: Any) -> Any:
+        if cmd[0] == "nvidia-smi":
+            raise FileNotFoundError(cmd[0])
+        return SimpleNamespace(returncode=0, stdout="  PID  STAT\n 12 Dl\n", stderr="")
+
+    text = ya.process_report(12, run)
+    assert "[nvidia-smi] unavailable: FileNotFoundError" in text and "12 Dl" in text
+
+
+def test_stall_writes_a_report_beside_the_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    import os
+    import signal
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(signal, "SIGUSR1", 10, raising=False)
+    killed: list[tuple[int, int]] = []
+    log = tmp_path / "train_log.txt"
+    stacks = tmp_path / "stacks.txt"
+    stacks.write_text("old dump\n", encoding="utf-8")
+
+    def kill(pid: int, sig: int) -> None:  # the real trainer's faulthandler would append its stacks here
+        killed.append((pid, sig))
+        with stacks.open("a", encoding="utf-8") as fh:
+            fh.write("Thread 0x1 (most recent call first):\n  File dataloader.py, line 9 in _get_data\n")
+
+    monkeypatch.setattr(os, "kill", kill)
+    ya._dump_stacks(SimpleNamespace(pid=4242), lambda s: None, log, run=lambda cmd, **kw: SimpleNamespace(stdout="ok " + cmd[0], stderr=""))
+    out = capsys.readouterr().out
+    assert killed == [(4242, 10)] and "_get_data" in out and "old dump" not in out and "ok nvidia-smi" in out
+    assert "_get_data" in (tmp_path / "stall_report.txt").read_text(encoding="utf-8")
 
 
 def test_devices_and_environment(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
