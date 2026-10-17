@@ -1,9 +1,9 @@
 # Rencana Implementasi Backend DentisAI — per Fase
 
-> Disusun 2026-10-09. Acuan: `PRD.md` §13 (timeline 10 minggu), `CLAUDE.md` backend §15 (pertanyaan terbuka), ADR 001/005/008/009/010. Minggu 1 = 8–14 Okt 2026.
-> Legenda: **[Selesai]** terbukti dijalankan · **[Ditulis]** ada kode tetapi belum terbukti di lingkungan asli · **[Terblokir]** menunggu pihak lain · 🧑 pemilik produk · 🦷 drg pembimbing · ⚖ penasihat hukum · 📱 tim frontend · 🤖 dikerjakan Claude (Opus high untuk area berat, Sonnet high untuk area kecil, Opus max hanya untuk bug sulit).
+> Disusun 2026-10-09, ditulis ulang 2026-10-11 mengikuti **ADR 015** (aturan klinis berbasis pustaka tanpa tanda tangan drg; dataset tunggal Ahmed 2025). Acuan: `PRD.md` §13 (timeline 10 minggu), `CLAUDE.md` backend §15, ADR 001/005/008/009/010/014/015. Minggu 1 = 8–14 Okt 2026.
+> Legenda: **[Selesai]** terbukti dijalankan · **[Ditulis]** ada kode tetapi belum terbukti di lingkungan asli · **[Terblokir]** menunggu pihak lain · 🧑 pemilik produk · ⚖ penasihat hukum · 📱 tim frontend · 🤖 dikerjakan Claude (Opus high untuk area berat, Sonnet high untuk area kecil, Opus max hanya untuk bug sulit).
 
-## Status per 2026-10-10
+## Status per 2026-10-11
 | Item | Status |
 |---|---|
 | 1.1 pgTAP asli, 1.5 hapus data e2e, 1.6 RLS lewat HTTP | **Selesai** (lokal): 217 tes pgTAP, 88/88 HTTP, 29/29 e2e; bug audit GoTrue diperbaiki (migrasi 20261010000100) |
@@ -15,17 +15,26 @@
 | 2.1–2.2 dataset + split | **Selesai** (heuristik per pasien, 0 kebocoran) |
 | 2.4 lisensi bobot | **Selesai**; YOLOX = `owner_accepted_risk` (ADR 014 §5) |
 | 2.3 pelatihan Kaggle | **Berjalan** (dijalankan pemilik) |
-| 2.5–2.7 ekspor INT8, spike S1, ADR 013 | Menunggu hasil pelatihan + HP uji |
+| 2.5–2.8 ekspor INT8, spike S1, ADR 013, titik operasi | Menunggu hasil pelatihan + HP uji |
+| 4.3 bundel kontrak antar-repo | **Selesai** (lokal, 2026-10-11): `tools/contracts/` (26 berkas, zip deterministik dari objek git, `verify`), workflow `contracts-release.yml`; 26 tes. Belum: tag `contracts-v0.1.0` pertama (🧑) dan konsumsi di repo app (📱) |
 | 5.4 pemantauan kuota Free | **Selesai** (lokal, 2026-10-11): RPC admin/service, Edge `quota-check`, job harian; 24 pgTAP + 7 Deno. Belum: `db push` + deploy fungsi ke dev (🧑), uji alert di GitHub |
 | ADR 014 (kelas D/d, tanpa keparahan dari ukuran kotak) | **Diterapkan** di ml, triase, API, DB, dokumen |
+| ADR 015 (aturan berbasis pustaka, dataset tunggal) | **Diterima**; perubahan kode gerbang rilis = 3.1 (belum) |
+
+## Batas MVP (ADR 015)
+Berlaku selama belum ada drg peninjau dan persetujuan KEPK:
+- **Nilai klinis bersumber pustaka.** Setiap ambang, level, red flag, dan nilai fluoride punya sitasi; bila pustaka tidak memberi angka, dipilih opsi yang lebih waspada. Tidak ada tanda tangan drg yang ditunggu.
+- **Dataset: hanya Ahmed 2025**, anotasi apa adanya (tanpa pelabelan ulang/ tinjauan anotasi). DENTALAI, AlphaDent, dan data lokal tidak dipakai.
+- **Klaim:** keluaran tetap "indikasi/ perlu diperiksa" + rujukan; angka kinerja hanya "pada split uji Ahmed 2025" beserta batasannya. Tidak ada klaim akurasi klinis atau "divalidasi/ disetujui dokter gigi".
+- **Tanpa data & uji pada anak:** `dataset_contribution` mati; uji kegunaan dengan sukarelawan dewasa. Rilis publik fitur deteksi/ triase mengikuti ADR 002.
+- **Validasi klinis** (drg, KEPK, uji lapangan, data lokal) dikerjakan di Fase 7.
 
 ## Gerbang (gate) yang mengatur urutan
 | Gerbang | Isi | Target | Akibat bila belum |
 |---|---|---|---|
-| **G1** | ≥ 1 drg bersedia meninjau aturan klinis secara tertulis | akhir minggu 2 | Tanpa klaim klinis; nilai klinis `PLACEHOLDER`; modul medis & `dataset_contribution` mati; tidak ada uji pada anak (PRD §13.4) |
-| **G2** | Bake-off model selesai + spike S1 (ukuran/latensi di HP RAM 3–4 GB) | minggu 3 | Tidak ada `model.tflite` untuk dirilis |
-| **G3** | KEPK menyetujui | sebelum fase 6 | Foto anak tidak boleh dikumpulkan; tidak ada uji lapangan |
-| **G4** | Semua `release_check` hijau (triase 99 → 0 penghambat, rekomendasi 126 → 0) | minggu 6 | Manifes produksi tidak bisa ditandatangani |
+| **G2** | Bake-off model selesai + spike S1 (ukuran/latensi di HP RAM 3–4 GB) + titik operasi dipilih di split val | minggu 3 | Tidak ada `model.tflite` maupun ambang kepercayaan untuk dirilis |
+| **G4** | Semua `release_check` hijau dengan `review_basis: literature` (triase, rekomendasi, sikat gigi) | minggu 5 | Manifes produksi tidak bisa ditandatangani |
+| ~~G1~~ / ~~G3~~ | Tinjauan drg / persetujuan KEPK | — | **Bukan gerbang MVP lagi (ADR 015).** Dipindah ke Fase 7; batasnya tercantum di "Batas MVP" |
 
 ---
 
@@ -51,34 +60,37 @@ Tujuan: mengubah semua yang bertanda **[Ditulis]** menjadi **[Selesai]**.
 | 1.7 | Backup: pasang `age`, isi `BACKUP_*`, jalankan `tools/backup_db.sh` pertama, uji restore ke DB sementara (`restore_check.md`) | 🧑 + 🤖 | Sonnet high |
 | 1.8 | Verifikasi: apakah ping REST/pg_cron mencegah penjedaan (catat di dashboard setelah 7 hari) | 🧑 | — |
 | 1.9 | Type-check & uji Edge Functions dengan Deno | 🤖 | Sonnet high |
-| 1.10 | Mulai paket G1: kirim outreach drg/mitra/KEPK (`docs/pitch/outreach_drg_mitra_kepk.md`) | 🧑 | — |
-**Keluar:** `supabase test db` hijau di Supabase CLI; konfirmasi & reset email tiba; backup + restore terbukti; outreach terkirim.
+**Keluar:** `supabase test db` hijau di Supabase CLI; konfirmasi & reset email tiba; backup + restore terbukti.
 
 ## Fase 2 — Dataset & bake-off model (minggu 1–3) → G2
-Tujuan: memilih detektor permisif dan membuktikan ekspor LiteRT INT8.
+Tujuan: memilih detektor permisif, membuktikan ekspor LiteRT INT8, dan menetapkan titik operasi — **hanya dengan Ahmed 2025**.
 | # | Pekerjaan | Pemilik | Model |
 |---|---|---|---|
-| 2.1 | Unduh Ahmed 2025 (CC BY 4.0), `verify_dataset.py`, pemetaan kelas D→`caries_permanent`, d→`caries_primary` (ADR 014) **[Selesai]** | 🧑 + 🤖 | Opus high |
-| 2.2 | `make_splits.py` per pasien (heuristik EXIF) + simpan hash split | 🤖 | Sonnet high |
-| 2.3 | Latih kandidat #1 (YOLOX-Nano) & #2 (EfficientDet-Lite0 / MediaPipe Model Maker di env Py ≤ 3.10) di Kaggle/Colab — **data publik saja** | 🧑 jalankan | — |
-| 2.4 | Verifikasi lisensi **bobot** pra-latih tiap kandidat; isi `license_gate.yaml` | 🤖 + 🧑 | Opus high |
+| 2.1 | Unduh Ahmed 2025 (CC BY 4.0), `verify_dataset.py`, pemetaan kelas D→`caries_permanent`, d→`caries_primary` (ADR 014). Satu-satunya dataset; anotasi dipakai apa adanya (ADR 015) **[Selesai]** | 🧑 + 🤖 | Opus high |
+| 2.2 | `make_splits.py` per pasien (heuristik EXIF) + simpan hash split **[Selesai]** | 🤖 | Sonnet high |
+| 2.3 | Latih kandidat #1 (YOLOX-Nano) & #2 (EfficientDet-Lite0 / MediaPipe Model Maker di env Py ≤ 3.10) di Kaggle/Colab — **Ahmed 2025 saja** | 🧑 jalankan | — |
+| 2.4 | Verifikasi lisensi **bobot** pra-latih tiap kandidat; isi `license_gate.yaml` **[Selesai]** | 🤖 + 🧑 | Opus high |
 | 2.5 | Ekspor INT8, `check_int8_parity.py`, gerbang ≤ 15 MB, tulis dekoder keluaran (`DECODE_SPEC.md`) | 🤖 | Opus high |
 | 2.6 | Spike S1 di ≥ 3 HP (RAM 3/4/6 GB) bersama 📱: latensi & memori | 📱 + 🧑 | — |
 | 2.7 | `bake_off/compare.py` → ADR hasil bake-off (ADR 013) | 🤖 | Sonnet high |
-**Keluar (G2):** 1 model terpilih; INT8 ≤ 15 MB; latensi terukur; lisensi bobot jelas; ADR 013. **Risiko:** sens karies di bawah target → turunkan klaim, pakai ukuran lebih besar. Dataset Ahmed tidak membedakan kavitas/ non-kavitas dan kotaknya melingkupi seluruh gigi → tidak ada klaim kavitas/ keparahan (ADR 014).
+| 2.8 | Titik operasi: `thresholds.py` pada split **val** (target sensitivitas 0,85 = hipotesis PRD §3.3); tim memilih dan mencatat alasan → masukan untuk 3.3. Lalu `eval.py` pada split **uji** sekali → laporan per kelas + tingkat citra untuk model card | 🤖 + 🧑 | Opus high |
+**Keluar (G2):** 1 model terpilih; INT8 ≤ 15 MB; latensi terukur; lisensi bobot jelas; ADR 013; `thresholds.json` + laporan uji. **Risiko:** sens karies di bawah target → turunkan klaim, pakai ukuran lebih besar. Dataset Ahmed tidak membedakan kavitas/ non-kavitas dan kotaknya melingkupi seluruh gigi → tidak ada klaim kavitas/ keparahan (ADR 014). Anotasi tidak ditinjau ulang → kesalahan label ikut terlatih; dicatat di model card.
 
-## Fase 3 — Aturan klinis (minggu 3–6) → G1 → G4 **[Terblokir 🦷]**
-Tujuan: mengganti semua `PLACEHOLDER` dengan nilai yang ditandatangani drg.
-| # | Pekerjaan | Pemilik |
-|---|---|---|
-| 3.1 | Sesi tinjauan 🦷 atas `triage/README.md` (tabel Indonesia) — 6 keputusan: trismus, jawaban "tidak tahu", skala nyeri, usia/foto tak layak, X/N, nomor darurat | 🦷 + 🤖 menyiapkan lembar tinjauan |
-| 3.2 | Isi `params` (X, N, ambang kepercayaan), `reviewed_by`, `reviewed_at`; perbarui `cases.json` dengan **harapan dari 🦷, bukan regenerasi dari kode** | 🤖 (Opus high) |
-| 3.3 | ≥ 30 kasus `graded_by_drg: true`; kasus batas hasil penilaian 🦷 | 🦷 |
-| 3.4 | Rekomendasi: putuskan konflik SNI 500–1000 ppm vs ≥ 1000 ppm (PDGI/IDAI), pita usia, jumlah pakai; isi `products.json` nyata (nomor BPOM via cekbpom) | 🦷 + 🧑 |
-| 3.5 | Sahkan `forbidden_phrases.md`; sinkronkan salinan di repo frontend | 🦷 + 🧑 |
-| 3.6 | Sahkan nilai sikat gigi (`brushing_rules.yaml`) & protokol sekstan | 🦷 |
-| 3.7 | `release_check` triase & rekomendasi hijau; catat di `docs/regulatory/CHANGELOG.md` | 🤖 (Sonnet high) |
-**Keluar (G4):** `release_check` = 0 penghambat; change log terisi. **Tanpa G1:** fase ini berhenti; produk tetap demo teknis tanpa klaim klinis.
+## Fase 3 — Aturan klinis berbasis pustaka (minggu 3–5) → G4
+Tujuan: mengganti semua `PLACEHOLDER` dengan nilai yang ditetapkan tim dari pustaka terbitan, tiap nilai bersitasi, tanpa menunggu tanda tangan drg (ADR 015). Struktur tinjauan dipertahankan agar drg dapat meninjau di Fase 7 tanpa mengubah format.
+| # | Pekerjaan | Pemilik | Model |
+|---|---|---|---|
+| 3.1 | **Ubah gerbang rilis:** tambahkan `review_basis: literature \| dentist` di `rules.yaml`, `recommender/rules.json`, `brushing_rules.yaml`, dan `thresholds.json`. `release_check` menerima `reviewed_by` anggota tim bila basis pustaka dan `source` terisi tanpa `PERLU VERIFIKASI`; syarat `graded_by_drg` diganti ≥ 30 kasus dengan `expected_source`; `export.py --release` menerima titik operasi `reviewed_by` tim. Pemeriksaan lain tetap. Tes gerbang diperbarui; kontrak `dist/` & `cases.json` ke app tetap kompatibel (field baru opsional) | 🤖 | Opus high |
+| 3.2 | **Tabel bukti** `docs/research/11_clinical_rule_sources.md`: tiap parameter, aturan, dan red flag → sumber (pedoman organisasi profesi/ pemerintah, tinjauan sistematis), ringkasan isi, tanggal akses. Tanpa angka di pustaka → nilai `if_unset` (lebih waspada), ditandai "keputusan tim (konservatif)". Mencakup 6 keputusan terbuka: trismus, jawaban "tidak tahu", skala nyeri, usia/ foto tak layak, N, nomor darurat | 🤖 menyusun, 🧑 mengesahkan | Opus high |
+| 3.3 | Isi `params` triase dari 3.2 dan ambang kepercayaan dari 2.8: `value`, `status: SET`, `reviewed_by`, `reviewed_at`, `source`; perbarui header & `notice` `rules.yaml` (basis pustaka, belum divalidasi klinis) | 🤖 | Opus high |
+| 3.4 | `cases.json`: ≥ 30 kasus dengan harapan **ditulis dari tabel bukti 3.2, bukan regenerasi dari kode**; mencakup kasus batas, jawaban "tidak tahu", dan kombinasi red flag; tiap kasus punya `expected_source` | 🤖 | Opus high |
+| 3.5 | Rekomendasi: tetapkan ppm per usia, jumlah pakai, dan pengawasan dari pedoman terbaru yang terdokumentasi; catat konflik SNI 500–1000 ppm vs anjuran ≥ 1000 ppm (PDGI/IDAI) dan alasan pilihan; isi `products.json` nyata (nomor BPOM via cekbpom; merek hanya contoh, netral) | 🤖 + 🧑 | Sonnet high |
+| 3.6 | Nilai sikat gigi (`brushing_rules.yaml`) & protokol sekstan dari pustaka | 🤖 | Sonnet high |
+| 3.7 | Verifikasi nomor darurat (`contacts`) dari sumber resmi → `VERIFIED` | 🧑 | — |
+| 3.8 | Sahkan `forbidden_phrases.md` (tambahkan klaim "divalidasi/ disetujui dokter gigi"); sinkronkan salinan di app | 🧑 + 📱 | — |
+| 3.9 | Teks transparansi di layar Tentang & hasil: aturan disusun dari pedoman terbitan, model dilatih pada dataset publik, belum divalidasi klinis | 📱 + 🧑 | — |
+| 3.10 | `release_check` triase, rekomendasi, dan sikat gigi hijau; catat `review_basis: literature` dan daftar sumber di `docs/regulatory/CHANGELOG.md` | 🤖 | Sonnet high |
+**Keluar (G4):** `release_check` = 0 penghambat; setiap nilai klinis tertaut ke sumber di 3.2; change log terisi. **Ketergantungan:** 3.3 (ambang kepercayaan) menunggu 2.8; sisanya bisa mulai minggu 3.
 
 ## Fase 4 — Pipeline rilis & kontrak ke app (minggu 5–6)
 Tujuan: artefak aturan/model sampai ke app secara terverifikasi dan dapat di-rollback.
@@ -86,11 +98,11 @@ Tujuan: artefak aturan/model sampai ke app secara terverifikasi dan dapat di-rol
 |---|---|---|---|
 | 4.1 | Buat kunci Ed25519 (`keygen`) di luar repo; cadangan terenkripsi; tanam kunci publik di app (📱) | 🧑 | — |
 | 4.2 | Tandatangani manifes internal-test; unggah ke bucket `manifests`; app memverifikasi (vektor SPEC §3.1 dijalankan di TS) | 🧑 + 📱 + 🤖 | Opus high |
-| 4.3 | **Distribusi kontrak antar-repo** (repo frontend terpisah): rilis berversi berisi `triage/dist/`, `tests/cases.json`, `recommender/dist/`, vektor manifes, `quality_gate_vectors`, `decode_vectors` — mis. GitHub Release / paket privat; app mengunduh dan menjalankan Jest paritas | 🤖 | Sonnet high |
+| 4.3 | **[Selesai lokal]** **Distribusi kontrak antar-repo** (repo frontend terpisah): rilis berversi berisi `triage/dist/`, `tests/cases.json`, `recommender/dist/`, vektor manifes, `quality_gate_vectors`, `decode_vectors` — mis. GitHub Release / paket privat; app mengunduh dan menjalankan Jest paritas | 🤖 | Sonnet high |
 | 4.4 | Uji paritas Python↔TS: triase, rekomendasi, quality gate, check-in sikat gigi, dekoder detektor | 📱 + 🤖 | Opus high |
 | 4.5 | Prosedur rollback & rotasi kunci (SPEC §6); uji manifes dirusak ditolak di app | 🤖 + 📱 | Sonnet high |
 | 4.6 | Ekspor bundel model resmi `ml/exports/<semver>` + `MODEL_CARD.md` + `SHA256` | 🤖 | Sonnet high |
-| 4.7 | TTS: naskah disetujui → `generate_audio.py --provider gemini` → serahkan audio ke 📱; dengar-uji 5 anak; konfirmasi syarat Gemini sebelum rilis publik (ADR 012) | 🧑 + 🤖 | Sonnet high |
+| 4.7 | TTS: naskah disetujui 🧑 (lolos lint frasa terlarang) → `generate_audio.py --provider gemini` → serahkan audio ke 📱; dengar-uji dengan sukarelawan dewasa; konfirmasi syarat Gemini sebelum rilis publik (ADR 012) | 🧑 + 🤖 | Sonnet high |
 **Keluar:** satu manifes produksi bertanda tangan terverifikasi end-to-end di perangkat nyata; paritas hijau.
 
 ## Fase 5 — Integrasi dengan app (minggu 7–8)
@@ -99,42 +111,48 @@ Tujuan: artefak aturan/model sampai ke app secara terverifikasi dan dapat di-rol
 - 5.3 Hak hapus dari app → `deletion_request` → bukti; mode anak tanpa akun tidak mengirim apa pun.
 - 5.4 **[Selesai lokal]** Pemantauan kuota gratis (DB 500 MB, storage 1 GB, MAU, email/hari) — `admin_quota_usage()` + Edge `quota-check` + job `scheduled-jobs.yml` (`critical` → run merah). Egress/pemanggilan fungsi tetap manual di dashboard.
 - 5.5 Telemetri agregat tanpa PII; verifikasi log tidak memuat PII/foto.
-- 5.6 Perbaiki kontrak: kuesioner 9 pertanyaan vs batas 7 layar (FR-10), `lesions[]` (keluaran triase; `teeth[]` di `app/CLAUDE.md` usang) — selaraskan dengan 📱; kuesioner 9 vs 7 layar → 🦷.
+- 5.6 Perbaiki kontrak: `lesions[]` (keluaran triase; `teeth[]` di `app/CLAUDE.md` usang) — selaraskan dengan 📱; kuesioner 9 pertanyaan vs batas 7 layar (FR-10) → diputuskan 🧑 + 📱 berdasarkan tabel bukti 3.2 (red flag tidak boleh dibuang).
 **Keluar:** APK demo menjalankan skrining → triase → sinkron ke Supabase tanpa pelanggaran privasi.
 
-## Fase 6 — Kesiapan uji lapangan (minggu 9) → G3
+## Fase 6 — Kesiapan rilis MVP (minggu 9)
+Tujuan: MVP aman, terdokumentasi, dan jujur tentang batasannya.
 | # | Pekerjaan | Pemilik |
 |---|---|---|
-| 6.1 | KEPK: protokol, consent (a/b/c) & assent anak, lembar informasi; setelah disetujui baru `dataset_contribution` boleh dinyalakan; retensi foto (365 hari placeholder) ditetapkan KEPK | 🧑 + 🦷 |
-| 6.2 | Tinjauan hukum ⚖: 14 pertanyaan di `OPEN_LEGAL_QUESTIONS.md` (transfer Singapura, UU PDP, PP Tunas, KMK 951/2026), pemberitahuan privasi & teks consent | ⚖ |
-| 6.3 | Pen-test ringan RLS/Storage/API; pemindaian dependensi; SBOM final | 🤖 Opus high |
-| 6.4 | Latihan insiden & restore backup; prosedur reset password oleh admin | 🧑 + 🤖 |
-| 6.5 | Model card, risk register (probabilitas & risiko sisa diisi 🦷/🧑), data lineage final | 🤖 Sonnet high + 🦷 |
-| 6.6 | Uji lapangan kecil: sensitivitas/spesifisitas vs drg, % foto diagnostik, under-triage, SUS | 🦷 + 📱 |
-**Keluar (G3):** persetujuan KEPK + hasil uji; laporan evaluasi.
+| 6.1 | Pen-test ringan RLS/Storage/API; pemindaian dependensi; SBOM final | 🤖 Opus high |
+| 6.2 | Latihan insiden & restore backup; prosedur reset password oleh admin | 🧑 + 🤖 |
+| 6.3 | Model card (metrik split uji Ahmed 2025; batasan: Pakistan, 10–24 th, satu perangkat, anotasi tidak ditinjau ulang, belum divalidasi klinis), risk register (probabilitas & risiko sisa diisi 🧑), data lineage final | 🤖 Sonnet high + 🧑 |
+| 6.4 | Uji kegunaan dengan sukarelawan dewasa: SUS, % foto lolos quality gate, waktu alur; tanpa anak dan tanpa unggah foto | 🧑 + 📱 |
+| 6.5 | Tinjauan hukum ⚖: pertanyaan di `OPEN_LEGAL_QUESTIONS.md` (transfer Singapura, UU PDP, PP Tunas, KMK 951/2026), pemberitahuan privasi & teks consent; status rilis publik fitur deteksi/ triase per ADR 002 | ⚖ + 🧑 |
+**Keluar:** APK MVP + paket dokumen kepatuhan; semua batasan diungkapkan di app dan model card.
 
-## Fase 7 — Pasca-pilot / v1.1 (setelah minggu 10)
-- Deploy FastAPI (`backend/api`) ke Azure Container Apps (Jepang) bila diperlukan; peran `reviewer`, URL foto bertanda tangan jangka pendek, auto-batal item bila foto ditarik.
-- Dasbor fasilitas (agregat, `facility_viewer`), rekap kelas PDF/CSV.
-- Kelas tambahan & data lokal ≥ 2 anotator (κ); ML sikat gigi dari landmark.
-- Chatbot (v2) hanya dengan keputusan anggaran/penyedia baru — Gemini terlarang di jalur runtime (ADR 006/010).
-- Migrasi ke tier berbayar/ regenerasi audio TTS di akun berbayar sebelum rilis komersial.
+## Fase 7 — Validasi klinis & perluasan (pasca-MVP, setelah minggu 10)
+Tujuan: membawa produk dari bukti teknis ke bukti klinis dan memperluas cakupan.
+- 7.1 **Drg peninjau** (paket outreach `docs/pitch/outreach_drg_mitra_kepk.md`): tinjau tabel bukti 3.2 dan semua nilai; terbitkan ulang aturan dengan `review_basis: dentist`; ≥ 30 kasus `graded_by_drg`; tinjau titik operasi model.
+- 7.2 **KEPK:** protokol, consent (a/b/c) & assent anak, lembar informasi; setelah disetujui baru `dataset_contribution` boleh dinyalakan; retensi foto (365 hari placeholder) ditetapkan KEPK.
+- 7.3 **Uji lapangan:** sensitivitas/spesifisitas vs drg, % foto diagnostik, under-triage, SUS pada pengguna sasaran.
+- 7.4 Data lokal ≥ 2 anotator (κ), kelas tambahan, latih ulang di PC tim/ lab kampus; ML sikat gigi dari landmark.
+- 7.5 Deploy FastAPI (`backend/api`) ke Azure Container Apps (Jepang) bila diperlukan; peran `reviewer`, URL foto bertanda tangan jangka pendek, auto-batal item bila foto ditarik.
+- 7.6 Dasbor fasilitas (agregat, `facility_viewer`), rekap kelas PDF/CSV.
+- 7.7 Chatbot (v2) hanya dengan keputusan anggaran/penyedia baru — Gemini terlarang di jalur runtime (ADR 006/010).
+- 7.8 Migrasi ke tier berbayar/ regenerasi audio TTS di akun berbayar dan tinjau ulang lisensi bobot YOLOX (ADR 014 §5) sebelum rilis komersial.
 
 ---
 
 ## Jalur kritis & yang bisa jalan paralel
 ```
-Fase 1 (verifikasi) ─┬─────────────────────────────┐
-Fase 2 (bake-off) ───┼─► G2 ──► 4.6 bundel model ──┤
-G1 (drg) ► Fase 3 ───┴─► G4 ──► 4.2 manifes ───────┼─► Fase 5 ─► Fase 6 (G3) ─► Fase 7
-                                 4.3 kontrak antar-repo ┘
+Fase 2 bake-off ──► G2 ──┬──► 3.3 ambang ──┐
+                         └──► 4.6 bundel model ───────┐
+Fase 3 pustaka (3.1–3.10) ─────────────────┴──► G4 ───┴──► 4.2 manifes ──┐
+Fase 1 verifikasi · 4.3 kontrak antar-repo ──────────────────────────────┴──► Fase 5 ──► Fase 6 (rilis MVP) ──► Fase 7 (validasi klinis)
 ```
-Jalur terpanjang = **G1 → Fase 3 → G4**. Semua pekerjaan 🤖 di Fase 1, 2, 4.3, 4.7, dan 5.x dapat berjalan tanpa drg.
+Jalur terpanjang = **Fase 2 → G2 → 3.3 (ambang kepercayaan) → G4 → 4.2**. Tabel bukti (3.2), kasus uji (3.4), rekomendasi (3.5), sikat gigi (3.6), dan semua pekerjaan Fase 1, 4.3, 4.7, dan 5.x berjalan paralel tanpa menunggu pihak luar.
 
 ## Risiko utama & mitigasi
 | Risiko | Mitigasi |
 |---|---|
-| Tidak ada drg (G1 gagal) | Demo teknis tanpa klaim klinis; nilai tetap `PLACEHOLDER`; `release_check` mencegah rilis tak sengaja |
+| Aturan berbasis pustaka tidak sesuai praktik klinis lokal | Sitasi per nilai; opsi lebih waspada bila pustaka diam; red flag selalu menang; keluaran "indikasi" + rujukan; teks transparansi (3.9); validasi drg di Fase 7 |
+| Model hanya dari Ahmed 2025 (Pakistan, 10–24 th, satu perangkat, label tidak ditinjau ulang) → generalisasi ke anak Indonesia/ HP lain tidak diketahui | Quality gate foto; metrik dilaporkan hanya "pada split uji Ahmed 2025"; batasan di model card & layar Tentang; data lokal di Fase 7 |
+| Klaim berlebihan di materi atau UI | Lint frasa terlarang (termasuk "divalidasi/ disetujui dokter gigi"); CHANGELOG mencatat `review_basis: literature` |
 | Model permisif kurang akurat / ekspor INT8 gagal | Bake-off ≥ 2 kandidat; turunkan klaim; ukuran model lebih besar |
 | Kuota/penjedaan Supabase Free | Keep-alive terbukti 200; backup manual terjadwal; pantau kuota (5.4); rencana tier berbayar |
 | Syarat Gemini untuk aplikasi anak (ADR 012) | Konfirmasi tertulis Google atau ganti penyedia — audio bisa dibuat ulang |
@@ -142,6 +160,7 @@ Jalur terpanjang = **G1 → Fase 3 → G4**. Semua pekerjaan 🤖 di Fase 1, 2, 
 | Kebocoran rahasia (`.env`, service_role, kunci penandatangan) | `.gitignore`, `check_secrets.py` di CI, kunci offline, `CRON_SECRET` terpisah dari service_role |
 
 ## Pekerjaan yang belum punya pemilik
-- Siapa yang menjalankan pelatihan di Kaggle/Colab dan mengunduh dataset (2.1, 2.3)?
-- Siapa 🦷, ⚖, dan kontak KEPK? (belum ada)
+- Siapa yang menjalankan pelatihan di Kaggle/Colab (2.3) dan memilih titik operasi bersama 🤖 (2.8)?
+- Siapa yang mengesahkan tabel bukti (3.2) di sisi tim — 🧑 atau anggota tim dengan latar kesehatan?
 - Daftar HP uji untuk spike S1 (≥ 3 perangkat)?
+- Siapa ⚖ (6.5)? Drg peninjau dan kontak KEPK baru dibutuhkan di Fase 7.
