@@ -19,8 +19,10 @@ Invariants (tests: tests/test_screening_*.py):
 
 from __future__ import annotations
 
+import base64
+import binascii
 import time
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Final
 
@@ -34,9 +36,15 @@ from ..auth import Principal
 from ..errors import ApiError
 from ..repositories import tables as t
 from ..repositories.base import MlRepository
-from ..schemas.screening import MAX_DETECTIONS, AnalyzeRequest, EvaluateRequest, Preferences
+from ..schemas.screening import (
+    MAX_DETECTIONS,
+    MAX_PHOTO_BYTES,
+    AnalyzeRequest,
+    EvaluateRequest,
+    PhotoScreeningRequest,
+    Preferences,
+)
 from .detector import Detection, Detector, NullDetector
-from .inference import MAX_PHOTO_BYTES
 from .quality import QualityGate, QualityOutcome
 from .review_queue import eligible_image
 from .screening_rules import (
@@ -106,6 +114,7 @@ def _engine_check(rules: ScreeningRules, triage_input: object) -> TriageInputErr
 
 
 _ANALYZE_FIELDS: Final = frozenset(AnalyzeRequest.model_fields)
+_PHOTO_FIELDS: Final = frozenset(PhotoScreeningRequest.model_fields)
 _ANALYZE_TRIAGE_FIELDS: Final = ("symptoms", "age_months", "pain")
 
 
@@ -154,12 +163,29 @@ def map_analyze_validation(
     rules: ScreeningRules | None, body: Any, exc: RequestValidationError
 ) -> ApiError | None:
     """Same idea for /analyze: symptoms/age/pain errors carry the engine code."""
+    return _map_photo_route_validation(rules, body, exc, _ANALYZE_FIELDS)
+
+
+def map_photo_validation(
+    rules: ScreeningRules | None, body: Any, exc: RequestValidationError
+) -> ApiError | None:
+    """/photo: symptoms/age/pain errors carry the engine code; a bad `photo` field
+    falls through to the generic validation_error (not a triage input)."""
+    return _map_photo_route_validation(rules, body, exc, _PHOTO_FIELDS)
+
+
+def _map_photo_route_validation(
+    rules: ScreeningRules | None,
+    body: Any,
+    exc: RequestValidationError,
+    fields: frozenset[str],
+) -> ApiError | None:
     if rules is None or _rejects_json(exc):
         return None
     if not isinstance(body, Mapping):
         return triage_input_error(rules, TriageInputError("INPUT_NOT_OBJECT", "not an object"))
     for key in body:
-        if key not in _ANALYZE_FIELDS:
+        if key not in fields:
             return triage_input_error(rules, TriageInputError("UNKNOWN_FIELD", "unknown field"))
     for key in _ANALYZE_TRIAGE_FIELDS:
         if key not in body:
@@ -172,7 +198,7 @@ def map_analyze_validation(
     engine_error = _engine_check(rules, synthetic)
     if engine_error is not None:
         return triage_input_error(rules, engine_error)
-    return _api_only_error(rules, body, exc)  # photo_ref -> generic validation_error
+    return _api_only_error(rules, body, exc)  # photo_ref / photo -> generic validation_error
 
 
 # --------------------------------------------------------------------------- envelope
@@ -290,7 +316,7 @@ class AnalyzeResult:
     overlay: list[Detection] | None
 
 
-def _symptom_triage_input(body: AnalyzeRequest) -> dict[str, Any]:
+def _symptom_triage_input(body: AnalyzeRequest | PhotoScreeningRequest) -> dict[str, Any]:
     return {
         "detections": [],
         "photo_status": "not_taken",
@@ -308,11 +334,9 @@ def _valid_detections(rules: ScreeningRules, detections: list[Detection]) -> boo
 @dataclass
 class _Pipeline:
     rules: ScreeningRules
-    body: AnalyzeRequest
-    repo: MlRepository
+    body: AnalyzeRequest | PhotoScreeningRequest
     detector: Detector
     quality_gate: QualityGate
-    principal: Principal
     log: StageLog = field(default_factory=StageLog)
 
     def fail(self, status: int, code: str, message: str) -> ApiError:
@@ -326,34 +350,6 @@ class _Pipeline:
         if isinstance(self.detector, NullDetector):
             self.log.add("detector", "unavailable", detector=self.detector.name)
             raise self.fail(503, "detector_unavailable", "No detector is configured.")
-
-    async def fetch_photo(self) -> bytes:
-        """(b) consent/flag gating, then the photo bytes (memory only, size-capped)."""
-        started = time.perf_counter()
-        try:
-            image = await eligible_image(self.repo, str(self.body.photo_ref))
-        except ApiError as exc:
-            self.log.add("consent", "failed", started, code=exc.code)
-            exc.extra = {"fail_safe": fail_safe(self.rules), "stages": self.log.stages}
-            raise
-        self.log.add("consent", "completed", started)
-        started = time.perf_counter()
-        try:
-            photo = await self.repo.fetch_photo(image.object_path, MAX_PHOTO_BYTES)
-        except ValueError:
-            self.log.add("photo_fetch", "failed", started, code="photo_not_processable")
-            raise self.fail(
-                409, "photo_not_processable", "The photo could not be processed."
-            ) from None
-        self.log.add("photo_fetch", "completed", started)
-        await self.repo.audit(
-            self.principal.user_id,
-            "screening_analyze_photo_read",
-            t.IMAGE_UPLOAD,
-            image.id,
-            {"detector": self.detector.name},
-        )
-        return photo
 
     async def check_quality(self, photo: bytes) -> QualityOutcome:
         """(c) reference quality gate in a worker thread (CPU-bound)."""
@@ -422,16 +418,41 @@ class _Pipeline:
         )
 
 
-async def analyze(
-    rules: ScreeningRules,
-    body: AnalyzeRequest,
-    repo: MlRepository,
-    detector: Detector,
-    quality_gate: QualityGate,
-    principal: Principal,
+async def _fetch_dataset_photo(
+    pipe: _Pipeline, body: AnalyzeRequest, repo: MlRepository, principal: Principal
+) -> bytes:
+    """(b) consent/flag gating, then the photo bytes (memory only, size-capped)."""
+    started = time.perf_counter()
+    try:
+        image = await eligible_image(repo, str(body.photo_ref))
+    except ApiError as exc:
+        pipe.log.add("consent", "failed", started, code=exc.code)
+        exc.extra = {"fail_safe": fail_safe(pipe.rules), "stages": pipe.log.stages}
+        raise
+    pipe.log.add("consent", "completed", started)
+    started = time.perf_counter()
+    try:
+        photo = await repo.fetch_photo(image.object_path, MAX_PHOTO_BYTES)
+    except ValueError:
+        pipe.log.add("photo_fetch", "failed", started, code="photo_not_processable")
+        raise pipe.fail(409, "photo_not_processable", "The photo could not be processed.") from None
+    pipe.log.add("photo_fetch", "completed", started)
+    await repo.audit(
+        principal.user_id,
+        "screening_analyze_photo_read",
+        t.IMAGE_UPLOAD,
+        image.id,
+        {"detector": pipe.detector.name},
+    )
+    return photo
+
+
+async def _run_photo_pipeline(
+    pipe: _Pipeline, get_photo: Callable[[], Awaitable[bytes]]
 ) -> AnalyzeResult:
-    pipe = _Pipeline(rules, body, repo, detector, quality_gate, principal)
-    symptoms_input = _symptom_triage_input(body)
+    """(a) red flags -> stages available -> (b) photo -> (c) quality -> (d) detector -> (e)/(f)."""
+    rules = pipe.rules
+    symptoms_input = _symptom_triage_input(pipe.body)
 
     # (a) red flags FIRST, from the questionnaire only. When the symptoms alone reach
     # the top level, nothing a photo shows can change it: skip every photo stage.
@@ -444,7 +465,7 @@ async def analyze(
         return pipe.finish(symptoms_input, "red_flag_short_circuit", None, None, "symptoms_only")
 
     pipe.ensure_stages_available()
-    photo = await pipe.fetch_photo()
+    photo = await get_photo()
     try:
         quality = await pipe.check_quality(photo)
         if not quality.passed:
@@ -467,3 +488,52 @@ async def analyze(
         "detections": [{"class": d.cls, "confidence": d.score} for d in detections],
     }
     return pipe.finish(triage_input, "completed", quality, detections, "symptoms_and_photo")
+
+
+async def analyze(
+    rules: ScreeningRules,
+    body: AnalyzeRequest,
+    repo: MlRepository,
+    detector: Detector,
+    quality_gate: QualityGate,
+    principal: Principal,
+) -> AnalyzeResult:
+    pipe = _Pipeline(rules, body, detector, quality_gate)
+    return await _run_photo_pipeline(
+        pipe, lambda: _fetch_dataset_photo(pipe, body, repo, principal)
+    )
+
+
+# --------------------------------------------------------------------------- photo
+def _decode_photo_field(pipe: _Pipeline, photo_b64: str) -> bytes:
+    """(b) the app's photo, base64 -> bytes (memory only, size-capped). A bad photo is a
+    transport error, not a triage input: no fail-safe, the app keeps its own result."""
+    started = time.perf_counter()
+    try:
+        photo = base64.b64decode(photo_b64, validate=True)
+    except (binascii.Error, ValueError):
+        pipe.log.add("photo_fetch", "failed", started, code="photo_invalid")
+        raise ApiError(422, "photo_invalid", "The photo is not valid base64.") from None
+    if not photo or len(photo) > MAX_PHOTO_BYTES:
+        pipe.log.add("photo_fetch", "failed", started, code="photo_too_large")
+        raise ApiError(413, "photo_too_large", "The photo is too large.")
+    pipe.log.add("photo_fetch", "completed", started)
+    return photo
+
+
+async def screen_photo(
+    rules: ScreeningRules,
+    body: PhotoScreeningRequest,
+    detector: Detector,
+    quality_gate: QualityGate,
+) -> AnalyzeResult:
+    """POST /v1/screening/photo (ADR 020): the same stages as ``analyze``, with the photo
+    taken from the request instead of the dataset bucket. Consent (b) is checked by the
+    app; nothing is stored (the parent screens their own child, as with /evaluate)."""
+    pipe = _Pipeline(rules, body, detector, quality_gate)
+
+    async def get_photo() -> bytes:
+        pipe.log.skip("consent")
+        return _decode_photo_field(pipe, body.photo)
+
+    return await _run_photo_pipeline(pipe, get_photo)

@@ -1,6 +1,7 @@
 # Context = backend/ (see Dockerfile). Deny everything, then admit only what the image needs.
-# Never admits .env*, keys, photos, datasets, model weights, tests (except the shared
-# triage case table the release gate counts), caches or virtualenvs.
+# Never admits .env*, keys, photos, datasets, training runs, tests (except the shared
+# triage case table the release gate counts), caches or virtualenvs. Model weights only as
+# released export bundles in ml/exports/<semver> (ADR 020).
 *
 !api/pyproject.toml
 !api/uv.lock
@@ -18,6 +19,13 @@
 !recommender/schema/
 !ml/detection/quality_gate.py
 !ml/detection/quality_gate.yaml
+!ml/detection/canonical.py
+!ml/detection/decode.py
+!ml/detection/preprocess.py
+!ml/exports/*/model.tflite
+!ml/exports/*/labels.json
+!ml/exports/*/MODEL_CARD.md
+!ml/exports/*/SHA256
 !docs/style/forbidden_phrases.md
 **/__pycache__
 **/*.pyc

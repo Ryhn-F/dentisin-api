@@ -11,7 +11,7 @@ import json
 import logging
 import secrets
 import time
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -144,15 +144,19 @@ class BodySizeLimitMiddleware:
     """Rejects bodies above ``max_bytes`` with 413: early via Content-Length,
     and while streaming for chunked/lying clients."""
 
-    def __init__(self, app: ASGIApp, max_bytes: int) -> None:
+    def __init__(
+        self, app: ASGIApp, max_bytes: int, path_limits: Mapping[str, int] | None = None
+    ) -> None:
         self.app = app
         self.max_bytes = max_bytes
+        self.path_limits = dict(path_limits or {})
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
         rid = _request_id(scope)
+        max_bytes = self.path_limits.get(scope.get("path", ""), self.max_bytes)
         for name, value in scope.get("headers", []):
             if name == b"content-length":
                 try:
@@ -160,7 +164,7 @@ class BodySizeLimitMiddleware:
                 except ValueError:
                     await _send_error(send, 400, "bad_request", "Invalid Content-Length.", rid)
                     return
-                if declared > self.max_bytes:
+                if declared > max_bytes:
                     await _send_error(
                         send, 413, "payload_too_large", "Request body too large.", rid
                     )
@@ -176,7 +180,7 @@ class BodySizeLimitMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_bytes:
+                if received > max_bytes:
                     # Answer 413 ourselves (FastAPI would turn an exception raised
                     # here into a generic 400) and tell the app the client left.
                     rejected = True

@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # /v1/screening/* (medical module, ADR 002 option 3): default OFF -> every
     # screening route answers 404, indistinguishable from a missing route.
     ENABLE_SCREENING_API: bool = False
+    # POST /v1/screening/photo (ADR 020): the app sends the screening photo for the
+    # detector. Needs ENABLE_SCREENING_API too; default OFF -> 404.
+    ENABLE_SCREENING_PHOTO: bool = False
+    # Export bundle folder {model.tflite, labels.json} (ml/exports/<semver>). Empty or
+    # unloadable (no LiteRT runtime, sha256 mismatch) -> no detector -> photo routes 503.
+    DETECTOR_MODEL_DIR: str = ""
     # Comma-separated exact origins. Empty (default) = no CORS headers at all.
     API_ALLOWED_ORIGINS: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
@@ -56,6 +62,8 @@ class Settings(BaseSettings):
     API_RATE_LIMIT_PER_MINUTE: int = Field(default=60, ge=1, le=10_000)
     API_RATE_LIMIT_BURST: int = Field(default=20, ge=1, le=10_000)
     API_MAX_BODY_BYTES: int = Field(default=64 * 1024, ge=1024, le=1024 * 1024)
+    # Only POST /v1/screening/photo (base64 JPEG <= 512 KB + JSON) may exceed the default.
+    API_MAX_PHOTO_BODY_BYTES: int = Field(default=768 * 1024, ge=1024, le=2 * 1024 * 1024)
     API_TRUST_FORWARDED_FOR: bool = False
     API_DOCS_ENABLED: bool = False
     API_LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"

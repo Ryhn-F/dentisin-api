@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from functools import lru_cache
+from pathlib import Path
 
 import httpx
 from fastapi import FastAPI
@@ -30,7 +31,7 @@ from .ratelimit import TokenBucketLimiter
 from .repositories.base import MlRepository
 from .repositories.supabase import SupabaseRepository
 from .routers import health, infer, models, review_queue, screening
-from .services.detector import Detector, NullDetector
+from .services.detector import Detector, load_detector
 from .services.manifest_verify import TrustStore
 from .services.quality import QualityGate, load_reference_quality_gate
 from .services.screening_rules import (
@@ -60,6 +61,10 @@ def _trust_store(settings: Settings) -> TrustStore | None:
         )
     except ValueError:
         return None  # misconfigured key -> registration answers 503, never crashes
+
+
+def _model_dir(settings: Settings) -> Path | None:
+    return Path(settings.DETECTOR_MODEL_DIR) if settings.DETECTOR_MODEL_DIR else None
 
 
 @lru_cache(maxsize=1)
@@ -110,7 +115,7 @@ def create_app(
         user_limiter=TokenBucketLimiter(
             settings.API_RATE_LIMIT_PER_MINUTE, settings.API_RATE_LIMIT_BURST
         ),
-        detector=detector or NullDetector(),
+        detector=detector or load_detector(_model_dir(settings)),
         trust_store=_trust_store(settings),
         http_client=http_client,
         screening=_screening_rules() if screening_rules is True else (screening_rules or None),
@@ -151,7 +156,11 @@ def create_app(
         ),
         trust_forwarded_for=settings.API_TRUST_FORWARDED_FOR,
     )
-    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.API_MAX_BODY_BYTES)
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        max_bytes=settings.API_MAX_BODY_BYTES,
+        path_limits={screening.PHOTO_PATH: settings.API_MAX_PHOTO_BODY_BYTES},
+    )
     if settings.API_ALLOWED_ORIGINS:
         app.add_middleware(
             CORSMiddleware,

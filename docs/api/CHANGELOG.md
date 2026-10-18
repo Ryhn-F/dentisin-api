@@ -2,6 +2,11 @@
 
 Format: tanggal (YYYY-MM-DD), perubahan pada kontrak yang didokumentasikan. Perubahan kontrak nyata (migrasi, aturan, model) tetap dicatat di `../regulatory/CHANGELOG.md` dan ADR; berkas ini hanya melacak dokumen di `docs/api/`.
 
+## 2026-10-19 (skrining foto di server, ADR 020)
+
+- Baru: `POST /v1/screening/photo` (FastAPI) — app mengirim foto skrining (base64 JPEG ≤ 512 KB, tanpa metadata) + jawaban kuesioner, nyeri, usia; server menjalankan quality gate, detektor YOLOX-Nano (LiteRT, `DETECTOR_MODEL_DIR`) dan triase referensi, lalu mengembalikan hasil + kotak `overlay` (piksel foto yang dikirim). Foto tidak disimpan. Saklar baru `ENABLE_SCREENING_PHOTO` (default mati), batas body khusus `API_MAX_PHOTO_BODY_BYTES` (768 KiB). Detail: `api/docs/API.md` §5a.
+- App: foto hanya dikirim untuk orang tua/remaja yang masuk dengan consent (b); teks consent (b) diperbarui (foto diperiksa server lalu dibuang).
+
 ## 2026-10-18 (usia remaja 15–19, ADR 018)
 
 - Akun `teen` hanya untuk usia **15–19 th** (`limits.teen_min_age` 10 -> **15**, migrasi `20261018000300_teen_age_15.sql`). Di bawah 15 th wajib guardian + akun anak; `ensure_self_profile` menolak dengan `age_out_of_range`. Perubahan nilai pengaturan, bukan bentuk kontrak.

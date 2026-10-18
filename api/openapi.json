@@ -1189,6 +1189,214 @@
         "title": "ParamOut",
         "type": "object"
       },
+      "PhotoScreeningRequest": {
+        "additionalProperties": false,
+        "description": "The app's screening photo + questionnaire (ADR 020). The photo is decoded in\nmemory for the quality gate and the detector, then dropped: never stored or logged.",
+        "properties": {
+          "age_months": {
+            "anyOf": [
+              {
+                "maximum": 300.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Age Months"
+          },
+          "pain": {
+            "anyOf": [
+              {
+                "maximum": 10.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "const": "unknown",
+                "type": "string"
+              }
+            ],
+            "title": "Pain"
+          },
+          "photo": {
+            "description": "Standard base64 (no data: prefix) of the JPEG/PNG photo that passed the on-device quality gate, <= 512 000 bytes, metadata stripped.",
+            "maxLength": 682668,
+            "minLength": 1,
+            "title": "Photo",
+            "type": "string"
+          },
+          "preferences": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Preferences"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "symptoms": {
+            "$ref": "#/components/schemas/Symptoms"
+          }
+        },
+        "required": [
+          "photo",
+          "symptoms",
+          "age_months",
+          "pain"
+        ],
+        "title": "PhotoScreeningRequest",
+        "type": "object"
+      },
+      "PhotoScreeningResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "clinically_validated": {
+            "title": "Clinically Validated",
+            "type": "boolean"
+          },
+          "detector": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DetectorOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "disclaimer_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Disclaimer Ids",
+            "type": "array"
+          },
+          "disclaimers": {
+            "items": {
+              "$ref": "#/components/schemas/IdText"
+            },
+            "title": "Disclaimers",
+            "type": "array"
+          },
+          "outcome": {
+            "enum": [
+              "completed",
+              "red_flag_short_circuit",
+              "quality_failed"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "overlay": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Overlay"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Boxes in pixels of the photo that was sent, for drawing ONLY (ADR 014). Never sent to triage; never use box size/area for severity."
+          },
+          "photo_status": {
+            "enum": [
+              "assessed",
+              "not_taken",
+              "quality_failed"
+            ],
+            "title": "Photo Status",
+            "type": "string"
+          },
+          "purpose": {
+            "const": "screening_photo",
+            "default": "screening_photo",
+            "title": "Purpose",
+            "type": "string"
+          },
+          "quality": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/QualityOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecommendationOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recommendation_status": {
+            "enum": [
+              "ok",
+              "skipped_age_unknown",
+              "skipped_age_out_of_range"
+            ],
+            "title": "Recommendation Status",
+            "type": "string"
+          },
+          "referral": {
+            "$ref": "#/components/schemas/Referral"
+          },
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "rules_status": {
+            "description": "draft/needs_review while the triage or recommender release check fails: the output must NOT be presented as clinically validated.",
+            "enum": [
+              "draft",
+              "needs_review",
+              "approved"
+            ],
+            "title": "Rules Status",
+            "type": "string"
+          },
+          "rules_version": {
+            "$ref": "#/components/schemas/RulesVersion"
+          },
+          "stages": {
+            "items": {
+              "$ref": "#/components/schemas/StageOut"
+            },
+            "title": "Stages",
+            "type": "array"
+          },
+          "triage": {
+            "$ref": "#/components/schemas/TriageOut"
+          }
+        },
+        "required": [
+          "triage",
+          "recommendation",
+          "recommendation_status",
+          "rules_version",
+          "rules_status",
+          "clinically_validated",
+          "disclaimer_ids",
+          "disclaimers",
+          "referral",
+          "request_id",
+          "outcome",
+          "photo_status",
+          "stages",
+          "quality",
+          "detector",
+          "overlay"
+        ],
+        "title": "PhotoScreeningResponse",
+        "type": "object"
+      },
       "PpmOption": {
         "additionalProperties": false,
         "properties": {
@@ -2938,6 +3146,112 @@
           }
         ],
         "summary": "Stateless triage + toothpaste recommendation from device-provided inputs",
+        "tags": [
+          "screening"
+        ]
+      }
+    },
+    "/v1/screening/photo": {
+      "post": {
+        "operationId": "photo_v1_screening_photo_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhotoScreeningRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhotoScreeningResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Request Entity Too Large"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Screening with the server detector: the app's photo + questionnaire (404 unless ENABLE_SCREENING_API and ENABLE_SCREENING_PHOTO; ADR 020)",
         "tags": [
           "screening"
         ]

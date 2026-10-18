@@ -28,11 +28,15 @@ COPY triage/dist triage/dist
 COPY triage/tests/cases.json triage/tests/cases.json
 COPY recommender recommender
 COPY ml/detection/quality_gate.py ml/detection/quality_gate.yaml ml/detection/
+# Detector (ADR 020): reference pre/post-processing + the export bundle(s) in ml/exports/<semver>.
+# Select one at run time with DETECTOR_MODEL_DIR=/srv/backend/ml/exports/<semver>.
+COPY ml/detection/canonical.py ml/detection/decode.py ml/detection/preprocess.py ml/detection/
+COPY ml/exports ml/exports
 COPY docs/style/forbidden_phrases.md docs/style/forbidden_phrases.md
 COPY api/pyproject.toml api/uv.lock api/
 WORKDIR /srv/backend/api
-# `vision` extra = numpy + Pillow for the quality-gate stage of /v1/screening/analyze.
-RUN uv sync --frozen --no-dev --extra vision
+# `vision` extra = numpy + Pillow (quality gate, detector pre-processing); `detector` = LiteRT.
+RUN uv sync --frozen --no-dev --extra vision --extra detector
 COPY api/app app
 
 FROM python:3.12-slim AS runtime

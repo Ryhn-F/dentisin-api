@@ -1,0 +1,166 @@
+{
+ "schema_version": "2.0.0",
+ "model": {
+  "name": "dentisai-caries-detector",
+  "version": "0.1.0-dev.2",
+  "candidate": "yolox_nano",
+  "variant": "yolox_nano",
+  "created_at": "2026-10-17T12:52:14.251902+00:00",
+  "run_id": "20261017T110527Z_yolox_nano_137a1889",
+  "eval_report_sha256": "bfff52db8b712683e1a5fbade93d24882dce335a4c15e5737fdb4351986cef65",
+  "sha256": "3aa743f2325ce773b11a8ddf5e8e9a10e816ce0ff2a9946fb7ab666917d8bfb6",
+  "size_bytes": 3651644,
+  "int8": false
+ },
+ "validation_status": "NOT_VALIDATED",
+ "intended_use": "screening_only",
+ "distribution": "pilot",
+ "classes": [
+  {
+   "id": 0,
+   "name": "caries_permanent",
+   "dentition": "permanent",
+   "may_raise_triage_level": true,
+   "ui_label_key": "finding.caries_permanent"
+  },
+  {
+   "id": 1,
+   "name": "caries_primary",
+   "dentition": "primary",
+   "may_raise_triage_level": true,
+   "ui_label_key": "finding.caries_primary"
+  }
+ ],
+ "input": {
+  "width": 416,
+  "height": 416,
+  "channels": 3,
+  "layout": "NHWC",
+  "color_order": "BGR",
+  "dtype": "float32",
+  "normalization": {
+   "pixel_range": [
+    0,
+    255
+   ],
+   "mean": [
+    0,
+    0,
+    0
+   ],
+   "std": [
+    1,
+    1,
+    1
+   ],
+   "formula": "v = lo + p*(hi-lo)/255 for 8-bit pixel p; x = (v - mean[c]) / std[c]; if dtype is int8/uint8: q = round(x/scale) + zero_point"
+  },
+  "quantization": null,
+  "resize": {
+   "method": "letterbox",
+   "align": "top_left",
+   "pad_value": 114,
+   "interpolation": "bilinear"
+  }
+ },
+ "output": {
+  "format": "yolox_raw",
+  "tensors": [
+   {
+    "index": 0,
+    "name": "PartitionedCall:0",
+    "role": "raw",
+    "shape": [
+     1,
+     3549,
+     7
+    ],
+    "dtype": "float32",
+    "quantization": null
+   }
+  ],
+  "tensors_verified": true,
+  "decode": {
+   "type": "yolox_raw",
+   "strides": [
+    8,
+    16,
+    32
+   ],
+   "sigmoid_applied": false,
+   "row_order": "stride_major_then_y_then_x",
+   "box_formula": "cx=(tx+gx)*s; cy=(ty+gy)*s; w=exp(tw)*s; h=exp(th)*s",
+   "score_formula": "score=obj*max_c(cls_c); class=argmax_c"
+  },
+  "postprocess": {
+   "nms_iou_threshold": 0.45,
+   "class_agnostic_nms": false,
+   "max_detections": 20,
+   "status": "technical_default"
+  }
+ },
+ "thresholds": {
+  "score": {
+   "caries_permanent": 0.5913890678821997,
+   "caries_primary": 0.00956633374848482
+  },
+  "status": "set_on_val",
+  "source": "val preds sha256 bc0ae3975517f54f5066ff4bff0b92c5078753b7450d1f0ff8e7656ea5ba0c09; splits sha256 61b59b7b2a8a98908afe18b0419f457ccd0ac3dda47f3a53d28a570bab1fb625"
+ },
+ "licenses": {
+  "code": {
+   "license": "Apache-2.0",
+   "verified": true,
+   "source": "https://github.com/Megvii-BaseDetection/YOLOX/blob/main/LICENSE (read 2026-10-08; 'Copyright (c) 2021-2022 Megvii Inc.')"
+  },
+  "weights": {
+   "license": null,
+   "source": "yolox_nano.pth = release asset (0.1.1rc0) of the Apache-2.0 repo, no separate terms; maintainer question https://github.com/Megvii-BaseDetection/YOLOX/issues/1865 (2026-03-31) open with 0 comments (re-checked 2026-10-10)",
+   "verified": false,
+   "basis": "owner_accepted_risk"
+  },
+  "datasets": [
+   {
+    "id": "ahmed2025",
+    "license": "CC-BY-4.0",
+    "url": "https://zenodo.org/records/14827784",
+    "doi": "10.5281/zenodo.14827784"
+   }
+  ],
+  "model_artifact": "Proprietary DentisAI model (closed repo, ADR 008); third-party terms above apply."
+ },
+ "attribution": [
+  {
+   "lang": "id",
+   "text": "Model ini dilatih memakai data dari \"Annotated intraoral image dataset for dental caries detection\" (v1, 2025) oleh S. M. F. Ahmed, H. Ghori, A. Khalid, A. Nooruddin, N. Adnan, A. Lal dan F. Umer (Aga Khan University), Zenodo, doi:10.5281/zenodo.14827784, lisensi CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Perubahan: label dipetakan ulang ke kelas DentisAI dan ukuran gambar diubah."
+  },
+  {
+   "lang": "en",
+   "text": "Contains data from \"Annotated intraoral image dataset for dental caries detection\" (v1, 2025) by S. M. F. Ahmed, H. Ghori, A. Khalid, A. Nooruddin, N. Adnan, A. Lal and F. Umer (Aga Khan University), Zenodo, doi:10.5281/zenodo.14827784, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Changes: annotations re-mapped to DentisAI classes, images resized; the dataset was used to train a model."
+  }
+ ],
+ "box_use": "ui_overlay_only",
+ "int8_parity": {
+  "n_samples": 50,
+  "tensors": [
+   {
+    "index": 0,
+    "max_abs_err": 0.0,
+    "mean_abs_err": 0.0,
+    "cosine": 0.9999999999999998
+   }
+  ],
+  "detection_agreement": 1.0,
+  "mean_score_abs_diff": 0.0,
+  "n_float_detections": 54,
+  "min_cosine": 0.98,
+  "min_agreement": 0.9,
+  "passed": true,
+  "failures": []
+ },
+ "decode_spec": {
+  "document": "ml/detection/DECODE_SPEC.md",
+  "version": "1.0.0",
+  "reference_impl": "ml/detection/decode.py"
+ }
+}

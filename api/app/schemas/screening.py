@@ -26,6 +26,9 @@ from .common import ResponseModel, StrictModel
 MAX_DETECTIONS: Final = 100
 MAX_ALLERGIES: Final = 10
 MAX_ALLERGY_CODE_CHARS: Final = 64
+# /photo: base64 of a JPEG/PNG <= 512 000 bytes (same cap as the dataset_photos bucket).
+MAX_PHOTO_BYTES: Final = 512_000
+MAX_PHOTO_BASE64_CHARS: Final = 4 * ((MAX_PHOTO_BYTES + 2) // 3)
 
 Answer = Literal["yes", "no", "unknown"]
 CariesClass = Literal["caries_permanent", "caries_primary"]
@@ -124,6 +127,22 @@ class AnalyzeRequest(StrictModel):
     photo_ref: UUID = Field(
         description="public.image_upload.id of a consented dataset photo (consent (c) active, "
         "dataset_contribution ON). Raw photos are never accepted."
+    )
+    symptoms: Symptoms
+    age_months: AgeMonths | None
+    pain: PainScore | Literal["unknown"]
+    preferences: Preferences | None = None
+
+
+class PhotoScreeningRequest(StrictModel):
+    """The app's screening photo + questionnaire (ADR 020). The photo is decoded in
+    memory for the quality gate and the detector, then dropped: never stored or logged."""
+
+    photo: str = Field(
+        min_length=1,
+        max_length=MAX_PHOTO_BASE64_CHARS,
+        description="Standard base64 (no data: prefix) of the JPEG/PNG photo that passed the "
+        "on-device quality gate, <= 512 000 bytes, metadata stripped.",
     )
     symptoms: Symptoms
     age_months: AgeMonths | None
@@ -306,6 +325,19 @@ class AnalyzeResponse(ScreeningBase):
     overlay: Overlay | None = Field(
         description="Boxes for drawing ONLY (ADR 014). Never sent to triage; never use box "
         "size/area for severity."
+    )
+
+
+class PhotoScreeningResponse(ScreeningBase):
+    purpose: Literal["screening_photo"] = "screening_photo"
+    outcome: Literal["completed", "red_flag_short_circuit", "quality_failed"]
+    photo_status: PhotoStatus
+    stages: list[StageOut]
+    quality: QualityOut | None
+    detector: DetectorOut | None
+    overlay: Overlay | None = Field(
+        description="Boxes in pixels of the photo that was sent, for drawing ONLY (ADR 014). "
+        "Never sent to triage; never use box size/area for severity."
     )
 
 

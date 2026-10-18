@@ -21,6 +21,8 @@ from ..schemas.screening import (
     AnalyzeResponse,
     EvaluateRequest,
     EvaluateResponse,
+    PhotoScreeningRequest,
+    PhotoScreeningResponse,
     RulesResponse,
 )
 from ..services import screening as svc
@@ -28,11 +30,17 @@ from ..services.detector import NullDetector
 from ..services.screening_rules import DISCLAIMER_ID, RULES_NOT_VALIDATED_ID, ScreeningRules
 
 PREFIX = "/v1/screening"
+PHOTO_PATH = f"{PREFIX}/photo"
 
 
 async def require_screening_enabled(state: StateDep) -> None:
     """Runs BEFORE authentication: a disabled module looks like a missing route."""
     if not state.settings.ENABLE_SCREENING_API:
+        raise not_found()
+
+
+async def require_photo_enabled(state: StateDep) -> None:
+    if not state.settings.ENABLE_SCREENING_PHOTO:
         raise not_found()
 
 
@@ -69,38 +77,8 @@ def _payload(envelope: svc.Envelope, request: Request) -> dict[str, Any]:
     }
 
 
-@router.post(
-    "/evaluate",
-    response_model=EvaluateResponse,
-    response_model_by_alias=True,
-    responses=error_responses(401, 403, 404, 413, 422, 429, 503),
-    summary="Stateless triage + toothpaste recommendation from device-provided inputs",
-)
-async def evaluate(
-    body: EvaluateRequest, principal: ScreenerDep, state: StateDep, request: Request
-) -> EvaluateResponse:
-    del principal  # authorisation only; nothing about the user is used or stored
-    rules = _rules(state.screening)
-    envelope = svc.evaluate(rules, body)
-    return EvaluateResponse.model_validate(_payload(envelope, request))
-
-
-@router.post(
-    "/analyze",
-    response_model=AnalyzeResponse,
-    response_model_by_alias=True,
-    dependencies=[Depends(require_cloud_infer_enabled)],
-    responses=error_responses(401, 403, 404, 409, 413, 422, 429, 503),
-    summary="QA/second-opinion pipeline on a consented dataset photo reference "
-    "(404 unless ENABLE_SCREENING_API and ENABLE_CLOUD_INFER)",
-)
-async def analyze(
-    body: AnalyzeRequest, principal: AdminDep, state: StateDep, request: Request
-) -> AnalyzeResponse:
-    rules = _rules(state.screening)
-    result = await svc.analyze(
-        rules, body, state.repo, state.detector, state.quality_gate, principal
-    )
+def _photo_payload(result: svc.AnalyzeResult, state: AppState, request: Request) -> dict[str, Any]:
+    """Envelope + photo stages (quality, detector, overlay) shared by /analyze and /photo."""
     payload = _payload(result.envelope, request)
     payload.update(
         {
@@ -133,7 +111,60 @@ async def analyze(
             },
         }
     )
-    return AnalyzeResponse.model_validate(payload)
+    return payload
+
+
+@router.post(
+    "/evaluate",
+    response_model=EvaluateResponse,
+    response_model_by_alias=True,
+    responses=error_responses(401, 403, 404, 413, 422, 429, 503),
+    summary="Stateless triage + toothpaste recommendation from device-provided inputs",
+)
+async def evaluate(
+    body: EvaluateRequest, principal: ScreenerDep, state: StateDep, request: Request
+) -> EvaluateResponse:
+    del principal  # authorisation only; nothing about the user is used or stored
+    rules = _rules(state.screening)
+    envelope = svc.evaluate(rules, body)
+    return EvaluateResponse.model_validate(_payload(envelope, request))
+
+
+@router.post(
+    "/analyze",
+    response_model=AnalyzeResponse,
+    response_model_by_alias=True,
+    dependencies=[Depends(require_cloud_infer_enabled)],
+    responses=error_responses(401, 403, 404, 409, 413, 422, 429, 503),
+    summary="QA/second-opinion pipeline on a consented dataset photo reference "
+    "(404 unless ENABLE_SCREENING_API and ENABLE_CLOUD_INFER)",
+)
+async def analyze(
+    body: AnalyzeRequest, principal: AdminDep, state: StateDep, request: Request
+) -> AnalyzeResponse:
+    rules = _rules(state.screening)
+    result = await svc.analyze(
+        rules, body, state.repo, state.detector, state.quality_gate, principal
+    )
+    return AnalyzeResponse.model_validate(_photo_payload(result, state, request))
+
+
+@router.post(
+    "/photo",
+    response_model=PhotoScreeningResponse,
+    response_model_by_alias=True,
+    dependencies=[Depends(require_photo_enabled)],
+    responses=error_responses(401, 403, 404, 413, 422, 429, 503),
+    summary="Screening with the server detector: the app's photo + questionnaire "
+    "(404 unless ENABLE_SCREENING_API and ENABLE_SCREENING_PHOTO; ADR 020)",
+)
+async def photo(
+    body: PhotoScreeningRequest, principal: ScreenerDep, state: StateDep, request: Request
+) -> PhotoScreeningResponse:
+    del principal  # authorisation only; nothing about the user is used or stored
+    rules = _rules(state.screening)
+    result = await svc.screen_photo(rules, body, state.detector, state.quality_gate)
+    return PhotoScreeningResponse.model_validate(_photo_payload(result, state, request))
 
 
 @router.get(
@@ -241,6 +272,10 @@ def install(app: FastAPI) -> None:
     def _analyze_mapper(body: Any, exc: RequestValidationError) -> ApiError | None:
         return svc.map_analyze_validation(_rules_of_app(), body, exc)
 
+    def _photo_mapper(body: Any, exc: RequestValidationError) -> ApiError | None:
+        return svc.map_photo_validation(_rules_of_app(), body, exc)
+
     mappers = validation_mappers(app)
     mappers[f"{PREFIX}/evaluate"] = _evaluate_mapper
     mappers[f"{PREFIX}/analyze"] = _analyze_mapper
+    mappers[PHOTO_PATH] = _photo_mapper

@@ -4,7 +4,8 @@
 > The shipped triage and toothpaste rules are **DRAFTS** (`rules_status: "draft"`): no dentist has
 > signed them off, so **no client may present this output as clinically validated**.
 > The module is **off by default** (`ENABLE_SCREENING_API=false` → every route answers 404).
-> Not deployed on the MVP; the app's critical path runs fully on-device (ADR 002, 005, 008, 009, 014).
+> Since ADR 020 the app sends the screening photo to `POST /v1/screening/photo` for the detector;
+> without the API the app still screens from the questionnaire (offline-first, ADR 019/020).
 
 Other endpoints of this service (review queue, model registry, `/v1/ml/infer`) are described in
 [`../README.md`](../README.md); Supabase (auth, CRUD, `sync_events`) in
@@ -16,13 +17,14 @@ Other endpoints of this service (review queue, model registry, `/v1/ml/infer`) a
 | Endpoint | Fungsi | Saklar | Peran | Menyimpan data? |
 |---|---|---|---|---|
 | `POST /v1/screening/evaluate` | Triase + rekomendasi pasta gigi dari jawaban kuesioner, nyeri, usia, dan **temuan model di HP** (`{class, confidence}` saja, tanpa kotak) | `ENABLE_SCREENING_API` | `guardian`, `admin` | Tidak |
+| `POST /v1/screening/photo` | Skrining dari app dengan **detektor server** (ADR 020): foto (base64, ≤ 512 KB) + jawaban kuesioner, nyeri, usia → tanda bahaya → quality gate → detektor → triase → rekomendasi; kotak di `overlay` | `ENABLE_SCREENING_API` **dan** `ENABLE_SCREENING_PHOTO` | `guardian`, `admin` | Tidak (foto hanya di memori selama permintaan) |
 | `POST /v1/screening/analyze` | Pipeline QA/*second opinion* atas **foto dataset berizin** (hanya `image_upload.id`): tanda bahaya → consent → foto → quality gate → detektor → triase → rekomendasi | `ENABLE_SCREENING_API` **dan** `ENABLE_CLOUD_INFER` | `admin` | Tidak (foto hanya di memori; akses foto dicatat di `audit_log`) |
 | `GET /v1/screening/rules` | Metadata: versi aturan, `rules_status`, kelas, daftar parameter + `placeholder: true/false` | `ENABLE_SCREENING_API` | semua peran aplikasi | Tidak |
 | `GET /v1/screening/schema/input` · `/schema/output` | JSON Schema masukan/keluaran mesin triase (dari `triage/dist`) untuk codegen | `ENABLE_SCREENING_API` | semua peran aplikasi | Tidak |
 
 Aturan penting untuk klien:
-1. **Tanda bahaya selalu menang** dan berasal dari kuesioner, bukan model. Di `/analyze`, bila gejala saja sudah 🔴, foto **tidak diambil** sama sekali.
-2. **Kotak tidak pernah masuk triase** (ADR 014). `/evaluate` menolak kunci `box` (`DETECTION_INVALID`). Kotak hanya muncul di `overlay` pada `/analyze`, khusus untuk gambar di layar.
+1. **Tanda bahaya selalu menang** dan berasal dari kuesioner, bukan model. Di `/analyze` dan `/photo`, bila gejala saja sudah 🔴, foto **tidak diperiksa** sama sekali.
+2. **Kotak tidak pernah masuk triase** (ADR 014). `/evaluate` menolak kunci `box` (`DETECTION_INVALID`). Kotak hanya muncul di `overlay` pada `/analyze` dan `/photo`, khusus untuk gambar di layar.
 3. **Error tidak pernah membawa level.** Status 422/409/503 dari `/v1/screening` berisi `fail_safe.action = "show_referral_screen"`: tampilkan layar rujukan ("periksakan ke dokter gigi/puskesmas"), jangan level yang lebih rendah.
 4. Selama `rules_status != "approved"` atau `clinically_validated = false`: tampilkan teks `RULES_NOT_VALIDATED` dan pesan konservatif; jangan menampilkan angka ppm sebagai saran klinis.
 5. API ini **stateless**: hasil tidak disimpan. Perangkat menyinkronkan hasilnya sendiri lewat RPC Supabase `sync_events`.
@@ -48,6 +50,7 @@ Aturan penting untuk klien:
 | Route | Roles allowed |
 |---|---|
 | `POST /evaluate` | `guardian` (parent and teen accounts), `admin` |
+| `POST /photo` | `guardian` (parent and teen accounts), `admin` |
 | `POST /analyze` | `admin` (dentist reviewers use admin accounts; there is no `reviewer` role) |
 | `GET /rules`, `GET /schema/*` | `guardian`, `admin` |
 
@@ -60,6 +63,8 @@ this API), `admin`. The retired values `kader` / `facility_viewer` (ADR 018) gra
 |---|---|---|
 | `ENABLE_SCREENING_API` | `false` | Off → **404 `not_found` before authentication** for every `/v1/screening` route (indistinguishable from a missing route). |
 | `ENABLE_CLOUD_INFER` | `false` | Also required by `/analyze` (it moves a consented photo into the API's memory). |
+| `ENABLE_SCREENING_PHOTO` | `false` | Also required by `/photo` (ADR 020: the app sends the screening photo). |
+| `DETECTOR_MODEL_DIR` | empty | Export bundle `{model.tflite, labels.json}` for `/photo` and `/analyze`; empty/unloadable → 503 `detector_unavailable`. |
 | feature flag `dataset_contribution` (Supabase `feature_flag` table) | off | `/analyze` → 409 `dataset_contribution_disabled` until KEPK approval. |
 
 ## 4. The "draft rules" contract (read this before building a client)
@@ -386,6 +391,45 @@ param's cautious `if_unset` fallback — e.g. any counted finding → 🟠 `urge
   }
 }
 ```
+
+## 5a. `POST /v1/screening/photo` (ADR 020)
+
+The app's screening with the **server detector**: the photo that passed the on-device quality gate
+plus the questionnaire. Same stages as `/analyze` (red flags first → quality gate → detector →
+triage → recommendation), but the photo comes **in the request body** instead of from the dataset
+bucket. Nothing is stored and nothing is audited beyond the access log line (the parent screens
+their own child, as with `/evaluate`). Consent (b) is enforced by the app (ADR 020).
+
+Switches: `ENABLE_SCREENING_API` **and** `ENABLE_SCREENING_PHOTO` (else 404). Detector:
+`DETECTOR_MODEL_DIR` = an export bundle folder `{model.tflite, labels.json}` (sha256 of the model
+must match `labels.json` `model.sha256`; LiteRT runtime = `--extra detector`, Linux only). Without
+a loadable detector the route answers **503 `detector_unavailable`** (fail-safe attached).
+Roles: `guardian` (parent and teen), `admin`. Body limit for this path only:
+`API_MAX_PHOTO_BODY_BYTES` (default 768 KiB).
+
+Request (strict, no other keys):
+
+| Field | Type | Notes |
+|---|---|---|
+| `photo` | string | Standard base64 (no `data:` prefix) of a JPEG/PNG ≤ 512 000 bytes, metadata stripped. The app sends its 640 px analysis copy. |
+| `symptoms` | object | All 9 questions, `yes`/`no`/`unknown` (as `/evaluate`). |
+| `age_months` | int 0–300 \| null | |
+| `pain` | int 0–10 \| `"unknown"` | |
+| `preferences` | object \| absent | As `/evaluate`. |
+
+Response 200: the `/evaluate` envelope (`triage`, `recommendation`, `rules_version`,
+`rules_status`, `clinically_validated`, `disclaimer_ids`, `disclaimers`, `referral`, `request_id`)
+plus `purpose: "screening_photo"`, `outcome` (`completed` | `red_flag_short_circuit` |
+`quality_failed`), `photo_status`, `stages[]` (`consent` is always `skipped`), `quality`,
+`detector {name, model_version}` and `overlay.detections[] {detection_index, class, confidence,
+box {x1, y1, x2, y2}}` in **pixels of the photo that was sent** (UI overlay only, ADR 014).
+
+Errors: 401/403/404/429 as elsewhere; **422 `photo_invalid`** (not base64) and **413
+`photo_too_large`** carry **no** `fail_safe` (transport problem, not a triage input: the app keeps
+the photo and offers a retry); 422 with an engine code (`PAIN_INVALID`, `UNKNOWN_FIELD`,
+`MISSING_FIELD`, ...) carries `fail_safe`; 503 `detector_unavailable` / `detector_failed` /
+`quality_gate_unavailable` / `rules_unavailable` carry `fail_safe` (the app treats them like
+offline and offers a retry or "continue without photo").
 
 ## 6. `POST /v1/screening/analyze`
 
@@ -1203,7 +1247,7 @@ Examples:
 * Rate limit (in-memory token bucket, per replica): `API_RATE_LIMIT_PER_MINUTE` (60) refill and
   `API_RATE_LIMIT_BURST` (20), separately **per client IP** (all routes except `/healthz`, `/readyz`)
   and **per user** (`sub`). `X-Forwarded-For` only with `API_TRUST_FORWARDED_FOR=true`.
-* Body ≤ 64 KiB; detections ≤ 100; allergies ≤ 10 × 64 chars; photo ≤ 512 000 B and ≤ 24 MP.
+* Body ≤ 64 KiB (`/photo`: `API_MAX_PHOTO_BODY_BYTES`, 768 KiB); detections ≤ 100; allergies ≤ 10 × 64 chars; photo ≤ 512 000 B and ≤ 24 MP.
 
 ## 11. Privacy and security notes
 
@@ -1212,7 +1256,9 @@ Examples:
 * **No PII in logs:** one JSON access line per request with the route *template*, status and
   duration; no bodies, symptoms, levels, ids, tokens or storage paths (tests assert this, including
   that photo bytes never appear in logs or responses).
-* **Photos:** `/analyze` accepts only a reference; bytes stay in memory for the request and are
+* **Photos (`/photo`, ADR 020):** the app sends the photo only for a signed-in parent/teen with
+  consent (b); bytes stay in memory for the request, are never written, logged or returned.
+* **Photos (`/analyze`):** `/analyze` accepts only a reference; bytes stay in memory for the request and are
   dropped; nothing is written to disk; the access is audited. Cloud processing moves a photo to the
   API's region (Japan if hosted) for the duration of the call — keep `ENABLE_CLOUD_INFER` off unless
   consent (c), KEPK approval and the legal review cover it.
@@ -1237,7 +1283,9 @@ sequenceDiagram
         D->>S: Upload JPEG <= 500 KB to private bucket dataset_photos
     end
     Note over A: Off by default; not on the critical path
-    D-->>A: POST /evaluate (optional re-check, same inputs, no photo)
+    D->>A: POST /photo {photo, symptoms, age, pain} (consent (b); ADR 020)
+    A-->>D: triage + overlay boxes + stages[] (offline/5xx: app retries or continues without photo)
+    D-->>A: POST /evaluate (no photo: same inputs as the device engine)
     A-->>D: triage + recommendation + rules_status + disclaimers
     participant Q as QA / dentist (admin)
     Q->>A: POST /analyze {photo_ref, symptoms, ...}

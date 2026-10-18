@@ -31,6 +31,11 @@ vision = [
     "numpy>=1.26",
     "pillow>=10.4",
 ]
+# /v1/screening/photo detector (ADR 020): LiteRT interpreter, Apache-2.0. Linux wheels only;
+# without it the detector is not loaded and the photo route answers 503 detector_unavailable.
+detector = [
+    "ai-edge-litert>=1.0; sys_platform == 'linux'",
+]
 
 [dependency-groups]
 # pytest MIT · pytest-cov MIT · anyio MIT · respx BSD-3 · ruff MIT · mypy MIT
