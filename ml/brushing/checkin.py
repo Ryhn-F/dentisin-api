@@ -115,14 +115,15 @@ def find_window(
 
 
 def evaluate_checkin(
-    end_utc_ms: int, completed: bool, windows: Sequence[CheckinWindow], tz_name: str
+    start_utc_ms: int, completed: bool, windows: Sequence[CheckinWindow], tz_name: str
 ) -> CheckinResult:
-    """Place a finished session (by its END time) on the calendar.
+    """Place a finished session (by its START time) on the calendar.
 
     A session counts for the streak only if the 2-minute timer completed (``completed``) and it
-    ended inside a window. Sessions that start before a window and end inside it count.
+    started inside a window; one that runs past the window end still counts. Same instant as the
+    app (slotForTime(startedAt)) and the server (brushing_event.started_at).
     """
-    found = find_window(end_utc_ms, windows, tz_name)
+    found = find_window(start_utc_ms, windows, tz_name)
     if found is None:
         return CheckinResult(window=None, local_date=None, counts=False)
     name, local_date = found

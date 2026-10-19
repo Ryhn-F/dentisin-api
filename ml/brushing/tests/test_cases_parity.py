@@ -73,7 +73,7 @@ def test_session_case(case: dict[str, Any]) -> None:
 @pytest.mark.parametrize("case", CASES["checkin_cases"], ids=lambda c: c["id"])
 def test_checkin_case(case: dict[str, Any]) -> None:
     windows = parse_windows(case["windows"])
-    res = evaluate_checkin(case["end_utc_ms"], case["completed"], windows, case["timezone"])
+    res = evaluate_checkin(case["start_utc_ms"], case["completed"], windows, case["timezone"])
     expect = case["expect"]
     assert res.window == expect["window"]
     assert (res.local_date.isoformat() if res.local_date else None) == expect["local_date"]

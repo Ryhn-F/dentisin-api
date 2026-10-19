@@ -26,7 +26,12 @@ def test_nobody_has_reviewed_anything_yet(rules: dict[str, Any]) -> None:
 
 
 def test_clinical_params_are_placeholders(rules: dict[str, Any]) -> None:
+    # ADR 021: the team proposed these three; every other param waits for the drg.
+    team_proposed = {"pain_unknown_level", "age_out_of_range_level", "photo_not_assessed_level"}
     for name, spec in rules["params"].items():
+        if name in team_proposed:
+            assert (spec["value"], spec["status"]) == ("routine", "PROPOSED"), name
+            continue
         assert spec["value"] is None, name
         assert spec["status"] == "PLACEHOLDER", name
     assert rules["params"]["many_lesions_n"]["symbol"] == "N"
@@ -67,8 +72,8 @@ def test_engine_runs_on_placeholder_rules_with_fail_safe_fallbacks(rules: dict[s
         },
         params,
     )
-    # Age range is empty while unset, so nothing is reported as plain "routine".
-    assert out["level"] == "scheduled"
+    # ADR 021: no red flag, no pain, no finding -> routine (age range only noted).
+    assert out["level"] == "routine"
 
 
 def test_no_forbidden_phrases_in_any_rules_string(

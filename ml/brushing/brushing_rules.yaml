@@ -16,7 +16,7 @@
 # needs a `source` citation without PERLU VERIFIKASI); `dentist` = dentist sign-off. Absent =
 # `dentist`. Not set yet: nothing here has been reviewed on any basis.
 schema: brushing_rules/1
-version: "0.1.0"
+version: "0.2.0"
 status: PLACEHOLDER
 reviewed_by: null      # dentist sign-off pending [PENDING]
 reviewed_at: null
@@ -143,11 +143,11 @@ params:
     rationale: Default IANA zone; the app lets the user pick Asia/Makassar or Asia/Jayapura. Timestamps are stored in UTC.
   windows:
     value:
-      - {name: morning, start: "06:00", end: "10:00"}
-      - {name: evening, start: "19:00", end: "23:00"}
+      - {name: morning, start: "06:00", end: "09:00"}
+      - {name: evening, start: "20:00", end: "23:00"}
     status: PLACEHOLDER
-    rationale: "Morning after breakfast / evening before bed (SKI 2023 'waktu yang benar' definition, ../docs/research/01_problem.md). Local wall-clock, start inclusive, end exclusive; end < start means the window crosses midnight; start == end is invalid. User-configurable."
+    rationale: "Product decision 2026-10-19: one session per window per day (the app blocks a second one and any start outside the windows). Morning after breakfast / evening before bed (SKI 2023 'waktu yang benar' definition, ../docs/research/01_problem.md). Local wall-clock, start inclusive, end exclusive; end < start means the window crosses midnight; start == end is invalid. User-configurable."
   streak_requires:
-    value: both
+    value: any
     status: PLACEHOLDER
-    rationale: '"both" = morning and evening check-ins both needed for a streak day; "any" = one is enough. Product decision.'
+    rationale: '"both" = morning and evening check-ins both needed for a streak day; "any" = one is enough. Product decision 2026-10-19: any (matches the server brushing_streak()).'

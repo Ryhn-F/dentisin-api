@@ -20,7 +20,7 @@ def test_default_rules_load(rules: Rules) -> None:
     assert rules.target_duration_ms == 120_000
     assert rules.timezone == "Asia/Jakarta"
     assert [w.name for w in rules.windows] == ["morning", "evening"]
-    assert rules.streak_requires == "both"
+    assert rules.streak_requires == "any"
 
 
 def test_placeholders_are_reported(rules: Rules) -> None:
@@ -45,7 +45,7 @@ def test_unknown_override_rejected() -> None:
 def test_load_from_explicit_path(tmp_path: Path) -> None:
     path = tmp_path / "r.yaml"
     path.write_text(yaml.safe_dump(_raw()), encoding="utf-8")
-    assert load_rules(path).version == "0.1.0"
+    assert load_rules(path).version == "0.2.0"
 
 
 def test_non_mapping_file_rejected(tmp_path: Path) -> None:

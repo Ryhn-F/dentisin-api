@@ -9,7 +9,7 @@ Prototipe **rule-based** yang bekerja pada aliran *fitur landmark* (bukan gambar
 | **Anti-curang** | variasi gerak: varians posisi tangan terhadap mulut dalam jendela geser, jumlah balik arah, batas kecepatan | tangan diam memegang sikat **tidak** dihitung |
 | **Cakupan kasar** | 6 sekstan dari posisi tangan relatif mulut + yaw/pitch kepala; sekstan "tercakup" bila >= `min_sextant_ms` | **bukan** penilaian teknik/klinis |
 | **Skor semangat** | 0-100 = bobot (durasi aktif, kelincahan gerak, cakupan) | bukan skor kebersihan gigi |
-| **Jendela check-in** | pagi (setelah sarapan) / malam (sebelum tidur), zona waktu Asia/Jakarta (WITA/WIT dapat dipilih), disimpan UTC (FR-63) | tidak memeriksa jam perangkat yang dimanipulasi |
+| **Jendela check-in** | pagi 06.00–09.00 (setelah sarapan) / malam 20.00–23.00 (sebelum tidur), satu sesi per jendela per hari, satu jendela cukup untuk streak (`streak_requires: any`), zona waktu Asia/Jakarta (WITA/WIT dapat dipilih), disimpan UTC (FR-63) | tidak memeriksa jam perangkat yang dimanipulasi |
 
 ## Batasan jujur (wajib dibaca sebelum memakai angka apa pun)
 - **Bukti kamera depan lemah**: untuk wilayah sikat, literatur kuat hanya untuk sensor IMU; kamera depan layak untuk kehadiran/durasi/gamifikasi (`../docs/research/03_ai_components.md` sec. 3.4). Sikat sering menutupi mulut dan tangan.

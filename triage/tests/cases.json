@@ -2335,7 +2335,7 @@
     },
     {
       "id": "PAIN-10",
-      "description": "Nyeri 1, params kosong: sakit sekecil apa pun = segera",
+      "description": "Nyeri 1, params kosong: di bawah 5 tidak menaikkan level (ADR 021)",
       "tags": [
         "pain",
         "unset_params"
@@ -2359,19 +2359,17 @@
         "params_profile": "unset"
       },
       "expected": {
-        "level": "urgent",
+        "level": "scheduled",
         "reasons_ids": [
-          "PAIN_HIGH",
           "CTX_AGE_OUTSIDE_VALIDATED_RANGE"
         ],
         "advice_ids": [
-          "ADV_ASK_MEDICATION",
-          "ADV_DENTIST_SOON",
+          "ADV_DENTIST_SCHEDULED",
           "ADV_PHOTO_LIMITATION",
           "ADV_DISCLAIMER_NOT_DIAGNOSIS",
           "ADV_REFERRAL_CTA"
         ],
-        "referral_template_id": "REF_URGENT"
+        "referral_template_id": "REF_SCHEDULED"
       },
       "graded_by_drg": false
     },

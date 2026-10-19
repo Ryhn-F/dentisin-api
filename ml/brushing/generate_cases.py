@@ -157,7 +157,7 @@ def _checkin(
         "timezone": tz,
         "local_time": local_iso,
         "windows": windows or DEFAULT_WINDOWS,
-        "end_utc_ms": _utc_ms(local_iso, tz),
+        "start_utc_ms": _utc_ms(local_iso, tz),
         "completed": completed,
         "expect": {
             "window": expect_window,
