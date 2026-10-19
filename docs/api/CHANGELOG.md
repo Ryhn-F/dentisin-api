@@ -42,6 +42,10 @@ Format: tanggal (YYYY-MM-DD), perubahan pada kontrak yang didokumentasikan. Peru
 - `CLIENT_CONTRACTS.md` §4: model terpilih float32 (contoh `variant`/`int8`/`size_bytes` diperbarui), butir terbuka diperbarui, tautan ke `MODEL_BUNDLE.md`.
 - Kontrak model berubah (ADR 013): masukan **float32** (bukan uint8), keluaran logit `[1,3549,7]`, ambang `set_on_val`. Tidak ada perubahan skema `labels.json` (2.0.0).
 
+## 2026-10-11 (bundel kontrak)
+
+- `CLIENT_CONTRACTS.md` §7: bundel kontrak berversi `dentisai-contracts` (26 berkas, `CONTRACTS.json`, aturan verifikasi untuk app). Pembuat `tools/contracts/build_contracts.py`, workflow `contracts-release.yml` (tag `contracts-v*`). Versi bundel pertama `0.1.0` (`clinical_status: draft`).
+
 ## 2026-10-11 (kuota)
 
 - Migrasi `20261011000100_quota_monitoring.sql`: RPC `admin_quota_usage()` (admin, diaudit) dan `service_quota_usage()` (service); 6 baris `app_setting` `quota_*`.

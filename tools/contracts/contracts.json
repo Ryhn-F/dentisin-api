@@ -1,0 +1,38 @@
+{
+  "bundle_name": "dentisai-contracts",
+  "bundle_version": "0.1.0",
+  "versioning": "Semver. MAJOR when a file is removed/renamed or a format/schema changes incompatibly; MINOR when files are added or rules/vectors change; PATCH for docs only. Tag = contracts-v<bundle_version>.",
+  "files": [
+    {"path": "triage/dist/rules.json", "component": "triage", "role": "artifact"},
+    {"path": "triage/dist/input.schema.json", "component": "triage", "role": "schema"},
+    {"path": "triage/dist/output.schema.json", "component": "triage", "role": "schema"},
+    {"path": "triage/dist/SHA256SUMS", "component": "triage", "role": "checksum"},
+    {"path": "triage/tests/cases.json", "component": "triage", "role": "parity"},
+    {"path": "triage/tests/fixtures/params_profiles.json", "component": "triage", "role": "parity", "test_only": true},
+
+    {"path": "recommender/dist/recommender.json", "component": "recommender", "role": "artifact"},
+    {"path": "recommender/dist/recommender.json.sha256", "component": "recommender", "role": "checksum"},
+    {"path": "recommender/tests/cases.json", "component": "recommender", "role": "parity"},
+
+    {"path": "tools/manifest/SPEC.md", "component": "manifest", "role": "spec"},
+    {"path": "tools/manifest/vectors/canonicalization.json", "component": "manifest", "role": "parity"},
+    {"path": "tools/manifest/vectors/manifest_v1_valid_01_minimal.json", "component": "manifest", "role": "parity"},
+    {"path": "tools/manifest/vectors/manifest_v1_valid_02_internal_test_expiring.json", "component": "manifest", "role": "parity"},
+    {"path": "tools/manifest/vectors/manifest_v1_valid_03_escapes_and_semver.json", "component": "manifest", "role": "parity"},
+    {"path": "tools/manifest/vectors/manifest_v1_invalid.json", "component": "manifest", "role": "parity"},
+
+    {"path": "ml/detection/DECODE_SPEC.md", "component": "detection", "role": "spec"},
+    {"path": "ml/detection/labels.schema.json", "component": "detection", "role": "schema"},
+    {"path": "ml/detection/tests/decode_vectors.json", "component": "detection", "role": "parity"},
+    {"path": "ml/detection/quality_gate.yaml", "component": "quality_gate", "role": "artifact"},
+    {"path": "ml/detection/tests/quality_gate_vectors.json", "component": "quality_gate", "role": "parity"},
+
+    {"path": "ml/brushing/brushing_rules.yaml", "component": "brushing", "role": "artifact"},
+    {"path": "ml/brushing/tests/cases.json", "component": "brushing", "role": "parity"},
+
+    {"path": "docs/style/forbidden_phrases.md", "component": "style", "role": "lint"},
+    {"path": "docs/api/CLIENT_CONTRACTS.md", "component": "docs", "role": "spec"},
+    {"path": "docs/api/SYNC_EVENTS.md", "component": "docs", "role": "spec"},
+    {"path": "docs/api/SUPABASE_API.md", "component": "docs", "role": "spec"}
+  ]
+}

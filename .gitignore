@@ -33,3 +33,5 @@ dataset_export/
 node_modules/
 .claude
 claude.md
+# build outputs (contract bundles etc.)
+/build/

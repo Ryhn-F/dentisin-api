@@ -223,3 +223,42 @@ Alur (integer sedapat mungkin, deterministik):
 Keluaran: `{ passed, reasons[], metrics{}, config_status }` (`config_status` = `PLACEHOLDER` selama ambang belum ditetapkan), dengan kode alasan stabil dan berurutan: `too_dark`, `too_bright`, `blurry`, `teeth_not_visible` (app memetakan ke pesan Indonesia). Gagal -> `photo_status = quality_failed` di masukan triase (tidak ada deteksi).
 
 Vektor paritas: `ml/detection/tests/quality_gate_vectors.json` (versi 1, 12 vektor; toleransi abs/rel 1e-9). Tiap vektor: `id`, `gen` (generator parametris berbasis integer: `uniform`, `checker`, `hgradient`, `mouth`, `mouth_soft`, opsional `blur`), `expected.passed`, `expected.reasons`, `expected.metrics` (`laplacian_var`, `mean_luma`, `dark_fraction`, `bright_fraction`, `tooth_fraction`, `tissue_fraction`, ...). Konfigurasi yang dipakai disimpan di dalam berkas vektor agar perubahan ambang tidak mengubah vektor secara diam-diam. Regenerasi: `python quality_gate_vectors.py --write` (dari `ml/detection/`).
+
+## 7. Bundel kontrak berversi untuk repo app (item 4.3)
+
+Repo app (terpisah) **tidak menyalin berkas satu per satu**. Ia mengambil satu bundel berversi dari GitHub Release repo backend dan menjalankan uji paritas Jest terhadapnya.
+
+| Hal | Isi |
+|---|---|
+| Daftar isi (sumber kebenaran) | [`../../tools/contracts/contracts.json`](../../tools/contracts/contracts.json): 26 berkas — triase (`dist/*`, `cases.json`, fixture parameter **khusus uji**), rekomendasi (bundel + `cases.json`), manifes (`SPEC.md` + 5 vektor), detektor (`DECODE_SPEC.md`, `labels.schema.json`, `decode_vectors.json`), quality gate (`quality_gate.yaml` + vektor), sikat gigi (`brushing_rules.yaml` + `cases.json`), `forbidden_phrases.md`, dokumen API untuk app |
+| Pembuat | `python tools/contracts/build_contracts.py build` (stdlib saja). Rilis membaca **objek git commit**, bukan salinan kerja → byte identik di Windows/Linux (tidak terpengaruh `core.autocrlf`) dan dapat direproduksi |
+| Rilis | ubah `bundle_version` → commit → tag `contracts-v<versi>` → workflow `contracts-release.yml` membuat GitHub Release (immutable; **prerelease** selama `clinical_status = draft`) berisi `dentisai-contracts-<v>.zip`, `.zip.sha256`, `CONTRACTS.json` |
+| Versi | semver: MAJOR = berkas dihapus/diganti nama atau format tidak kompatibel; MINOR = berkas baru atau aturan/vektor berubah; PATCH = dokumen saja |
+
+`CONTRACTS.json` (di akar folder zip `dentisai-contracts-<v>/`):
+
+```json
+{
+  "format": 1, "bundle_name": "dentisai-contracts", "bundle_version": "0.1.0",
+  "source": { "commit": "<40 hex>", "dirty": false },
+  "clinical_status": "draft",
+  "clinical_blockers": ["triage", "recommender", "quality_gate", "brushing"],
+  "components": {
+    "triage": { "rules_version": "0.2.0-draft", "status": "DRAFT", "cases_format": 2, "cases": 114 },
+    "recommender": { "rules_version": "0.1.0-draft", "release_ready": false, "release_issue_count": 126, "cases_format": 1, "cases": 50 },
+    "manifest": { "spec_version": 1 },
+    "detection": { "decode_spec_version": "1.0.0", "labels_schema_version": "2.0.0" },
+    "quality_gate": { "version": "1", "status": "PLACEHOLDER", "vectors_version": 1, "vectors": 12 },
+    "brushing": { "version": "0.1.0", "status": "PLACEHOLDER", "cases_schema": "brushing_cases/1" }
+  },
+  "files": [ { "path": "triage/dist/rules.json", "component": "triage", "role": "artifact", "test_only": false, "sha256": "…", "size": 0 } ]
+}
+```
+
+Aturan untuk app:
+1. Unduh dengan token baca saja: `gh release download contracts-v0.1.0 -R <owner>/<repo-backend> -p 'dentisai-contracts-*'`. Sematkan versi (tag) di repo app; jangan "latest".
+2. Verifikasi sebelum dipakai: SHA-256 zip = `.zip.sha256`; isi zip = tepat satu folder `dentisai-contracts-<v>/`; himpunan berkas = `files[]` (tanpa ekstra/kurang); tiap berkas cocok `size` + `sha256`. Acuan: `build_contracts.py verify <zip>` (melakukan semua cek ini) — port TS cukup ±30 baris dengan `node:crypto` + pembaca zip.
+3. Berkas `test_only: true` (mis. `params_profiles.json`) **tidak boleh** masuk build app.
+4. Bila `clinical_status` bukan `approved`, artefak klinis hanya untuk uji paritas dan build `internal-test`; build produksi wajib menolaknya (penanda tangan manifes juga menolak).
+5. Artefak yang benar-benar dipakai app saat runtime tetap datang lewat **manifes bertanda tangan** (§5); bundel ini adalah kontrak uji + sumber rilis bawaan (bundled), bukan kanal pembaruan.
+

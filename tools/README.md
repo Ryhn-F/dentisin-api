@@ -53,6 +53,16 @@ uv run --project tools/manifest python tools/verify_manifest.py --manifest <dir>
 
 ---
 
+## contracts/ — bundel kontrak untuk repo app (item 4.3)
+Satu zip berversi berisi artefak + vektor paritas yang dipakai app (daftar: `contracts/contracts.json`). Stdlib saja.
+```bash
+# dari backend/
+python tools/contracts/build_contracts.py build                 # dari HEAD (objek git) -> build/contracts/
+python tools/contracts/build_contracts.py build --worktree      # dev, ditandai -dirty, jangan dirilis
+python tools/contracts/build_contracts.py verify build/contracts/dentisai-contracts-0.1.0.zip
+```
+Rilis: naikkan `bundle_version`, commit, `git tag contracts-v<versi> && git push origin contracts-v<versi>` → workflow `contracts-release.yml`. Build gagal bila `SHA256SUMS`/`.sha256` tidak cocok dengan berkas (jalankan ulang exporter triase/rekomendasi). Kontrak untuk app: `docs/api/CLIENT_CONTRACTS.md` §7. Tes: `tests/test_contracts.py`.
+
 ## backup_db.sh — cadangan database terenkripsi
 
 Supabase Free **tidak punya backup otomatis**. `bash tools/backup_db.sh` menjalankan `pg_dump` (format custom) lalu langsung mengenkripsinya dengan `age` ke kunci **publik** penerima. Hasil: `BACKUP_OUTPUT_DIR/dentisai-<UTC>.dump.age` (+ `.sha256`).

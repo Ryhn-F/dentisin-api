@@ -1,0 +1,91 @@
+# Contract bundle for the app repo (IMPLEMENTATION_PLAN 4.3).
+#
+# Release: bump `bundle_version` in tools/contracts/contracts.json, commit, then
+#   git tag contracts-v<bundle_version> && git push origin contracts-v<bundle_version>
+# This builds the bundle from the TAGGED COMMIT's git objects (byte-identical on any OS),
+# verifies it, and publishes a GitHub Release with the zip, its .sha256 and CONTRACTS.json.
+# Releases are immutable: an existing tag/release is never overwritten (gh fails instead).
+#
+# The app repo downloads it with a read-only token, e.g.
+#   gh release download contracts-v0.1.0 -R <owner>/<this-repo> -p 'dentisai-contracts-*'
+# and runs `python tools/contracts/build_contracts.py verify <zip>` or the equivalent TS check
+# (see docs/api/CLIENT_CONTRACTS.md §8) before its parity tests.
+#
+# workflow_dispatch = dry run: build + verify + upload as a workflow artifact, no release.
+# No secrets besides the built-in GITHUB_TOKEN; the bundle contains no keys or data.
+name: contracts-release
+
+on:
+  push:
+    tags: ["contracts-v*"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BACKEND_DIR: "" # "" standalone repo | "backend/" monorepo (same switch as ci.yml)
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # create the GitHub Release (tag runs only)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build from the checked-out commit
+        id: build
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          expect=()
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            ver="${REF_NAME#contracts-v}"
+            expect=(--expect-version "${ver}")
+          fi
+          python "${BACKEND_DIR}tools/contracts/build_contracts.py" build --ref HEAD \
+            --out "${RUNNER_TEMP}/contracts" "${expect[@]}"
+          echo "dir=${RUNNER_TEMP}/contracts" >> "$GITHUB_OUTPUT"
+      - name: Verify the built bundle
+        env:
+          DIR: ${{ steps.build.outputs.dir }}
+        run: |
+          set -euo pipefail
+          for z in "${DIR}"/*.zip; do
+            python "${BACKEND_DIR}tools/contracts/build_contracts.py" verify "$z"
+          done
+      - name: Upload as workflow artifact (dry run)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: contracts-bundle
+          path: ${{ steps.build.outputs.dir }}
+          retention-days: 7
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DIR: ${{ steps.build.outputs.dir }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          status=$(python -c "import json,sys; print(json.load(open(sys.argv[1]))['clinical_status'])" "${DIR}/CONTRACTS.json")
+          notes="Contract bundle ${TAG} (built from ${GITHUB_SHA}). clinical_status=${status}."
+          if [ "${status}" != "approved" ]; then
+            notes="${notes} DRAFT clinical content: parity tests and internal-test builds only, never production."
+          fi
+          gh release create "${TAG}" -R "${GITHUB_REPOSITORY}" --verify-tag \
+            --title "${TAG}" --notes "${notes}" \
+            $( [ "${status}" != "approved" ] && echo --prerelease ) \
+            "${DIR}"/*.zip "${DIR}"/*.zip.sha256 "${DIR}/CONTRACTS.json"
