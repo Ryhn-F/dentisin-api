@@ -1,8 +1,9 @@
 # ml/detection — detektor karies bounding box (permisif) · DentisAI
 
-> **Belum ada model terlatih dan belum ada klaim akurasi.** Folder ini berisi pipeline yang teruji
-> pada data **sintetis**; pelatihan dijalankan tim di Kaggle/Colab (data publik) atau PC tim (data
-> lokal). Semua hasil = **skrining "indikasi / perlu diperiksa"**, bukan diagnosis. Path relatif
+> **Belum ada klaim akurasi klinis.** Bundel `../exports/0.1.0-dev.2` (YOLOX-Nano float32, ADR 013)
+> sudah ada dan dipakai FastAPI untuk `POST /v1/screening/photo` (ADR 020), tetapi berstatus `NOT_VALIDATED`
+> (data publik, belum ada data anak Indonesia). Pipeline di folder ini diuji pada data **sintetis**;
+> pelatihan dijalankan tim di Kaggle/Colab (data publik) atau PC tim (data lokal). Semua hasil = **skrining "indikasi / perlu diperiksa"**, bukan diagnosis. Path relatif
 > terhadap `backend/` (ADR 009).
 
 ## Ringkasan
